@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>平行板电容器 · 动态变化模拟器</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+        background: radial-gradient(circle at 30% 15%, #16384f 0%, #0b1826 58%, #060d16 100%);
+        font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+        display: flex; justify-content: center; align-items: stretch;
+        padding: 10px; font-size: 17px; color: #eef4fc; overflow: auto;
+    }
+    .sim-card {
+        width: 100%; max-width: 100%; height: 98vh; min-height: 720px;
+        background: rgba(18, 34, 50, 0.40);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 26px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ===== 顶部工具条 ===== */
+    .toolbar {
+        flex-shrink: 0;
+        background: rgba(0,0,0,0.20);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding: 9px 16px;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .toolbar .row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .toolbar .row.right { margin-left: auto; }
+    .toolbar .title { font-size: 19px; font-weight: 600; color: #d6e6ff; display: flex; align-items: center; gap: 9px; margin-right: 8px; }
+    .toolbar .title small { opacity: 0.5; font-weight: 300; font-size: 13px; }
+    .status {
+        font-size: 13px; color: #9fb6d4; background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05); padding: 5px 13px; border-radius: 30px;
+    }
+    .status b { color: #ffd27a; }
+
+    .group {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 12px; background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;
+    }
+    .group-label { font-size: 12px; color: #7fa6d0; letter-spacing: 1px; margin-right: 2px; opacity: 0.85; white-space: nowrap; }
+    .val { font-size: 13px; color: #ffe2a8; min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    button {
+        font-family: inherit; font-size: 13px; color: #eaf2ff; cursor: pointer;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px; padding: 7px 12px; transition: all 0.15s ease; white-space: nowrap;
+    }
+    button:hover { background: rgba(255,255,255,0.12); }
+    button:active { transform: translateY(1px); }
+    button.active { background: rgba(90,170,255,0.30); border-color: rgba(120,190,255,0.6); color: #fff; box-shadow: 0 0 14px rgba(90,170,255,0.25); }
+    button.mode-charge.active { background: rgba(120,210,140,0.32); border-color: rgba(140,230,160,0.6); box-shadow: 0 0 14px rgba(120,210,140,0.25); }
+    button.mode-off.active { background: rgba(255,170,90,0.30); border-color: rgba(255,190,120,0.6); box-shadow: 0 0 14px rgba(255,170,90,0.25); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 150px; height: 6px; border-radius: 4px;
+        background: linear-gradient(90deg, #4a8fd8, #2b5a8c); outline: none; cursor: pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+        background: #eaf2ff; border: 2px solid #4a8fd8; box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+    input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #eaf2ff; border: 2px solid #4a8fd8; }
+
+    /* ===== 舞台 ===== */
+    .stage { position: relative; flex: 1 1 auto; min-height: 0; }
+    #cv { width: 100%; height: 100%; display: block; }
+
+    .overlay {
+        position: absolute; background: rgba(10,20,32,0.62); backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px; padding: 14px 16px; box-shadow: 0 12px 30px -12px rgba(0,0,0,0.7);
+    }
+    .panel-data { top: 16px; right: 16px; width: 268px; }
+    .panel-note { bottom: 16px; left: 16px; width: 340px; font-size: 13px; line-height: 1.55; color: #c7d8ee; }
+    .panel-note h4 { font-size: 13px; color: #ffd27a; margin-bottom: 6px; letter-spacing: .5px; }
+    .panel-note b { color: #eaf2ff; }
+    .panel-data h4 { font-size: 13px; color: #9fd0ff; margin-bottom: 10px; letter-spacing: .5px; display:flex; justify-content:space-between; }
+    .panel-data h4 .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+    .tag.charge { background: rgba(120,210,140,0.25); color: #bff3cf; }
+    .tag.off { background: rgba(255,170,90,0.22); color: #ffd9a8; }
+    .drow { display: flex; justify-content: space-between; align-items: baseline; margin: 7px 0 2px; }
+    .drow .k { font-size: 12px; color: #9fb6d4; }
+    .drow .v { font-size: 15px; color: #eaf2ff; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .bar { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 4px; }
+    .bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg,#5fb0ff,#9fe0ff); transition: width 0.12s linear; }
+    .bar.q > i { background: linear-gradient(90deg,#ff8a8a,#ffc2c2); }
+    .bar.s > i { background: linear-gradient(90deg,#ffb86b,#ffe0a8); }
+    .bar.e > i { background: linear-gradient(90deg,#7be0a8,#c4f3d6); }
+    .hint { position:absolute; bottom:16px; right:16px; font-size:12px; color:#7fb0d0; opacity:.8; }
+</style>
+</head>
+<body>
+<div class="sim-card">
+    <div class="toolbar">
+        <div class="row">
+            <div class="title">平行板电容器 · 动态变化 <small>充电 / 断电 · 电容 · 电压 · 电荷 · 电场线</small></div>
+            <button id="mCharge" class="mode-charge active">充电（电源接通）</button>
+            <button id="mOff" class="mode-off">断电（电源断开）</button>
+            <div class="status" id="statusPill">充电模式 · 电压恒定</div>
+            <div class="row right">
+                <button id="tMeter" class="active">仪表</button>
+                <button id="tData" class="active">数据</button>
+                <button id="tNote" class="active">说明</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="group">
+                <span class="group-label">正对面积 A</span>
+                <input type="range" id="sA" min="100" max="1000" step="10" value="500" />
+                <span class="val" id="vA">500 cm²</span>
+            </div>
+            <div class="group">
+                <span class="group-label">极板间距 d</span>
+                <input type="range" id="sD" min="1" max="10" step="0.5" value="2" />
+                <span class="val" id="vD">2.0 mm</span>
+            </div>
+            <div class="group">
+                <span class="group-label">电介质</span>
+                <button class="mat active" data-m="air">空气</button>
+                <button class="mat" data-m="wax">石蜡</button>
+                <button class="mat" data-m="glass">玻璃</button>
+                <button class="mat" data-m="mica">云母</button>
+                <button class="mat" data-m="water">纯水</button>
+            </div>
+            <div class="group">
+                <button id="bInsert">抽出电介质</button>
+            </div>
+            <div class="group">
+                <span class="group-label">电源电压 V₀</span>
+                <input type="range" id="sV" min="1" max="20" step="1" value="10" />
+                <span class="val" id="vV">10 V</span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="group">
+                <span class="group-label">演示</span>
+                <button id="p1">① 充电·增大间距</button>
+                <button id="p2">② 断电·插电介质</button>
+                <button id="p3">③ 断电·增大面积</button>
+            </div>
+            <div class="group">
+                <button id="bReset">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stage">
+        <canvas id="cv"></canvas>
+        <div class="overlay panel-data" id="panelData">
+            <h4>实时数据 <span class="tag charge" id="modeTag">充电</span></h4>
+            <div class="drow"><span class="k">电容 C</span><span class="v" id="oC">—</span></div>
+            <div class="drow"><span class="k">板间电压 U</span><span class="v" id="oV">—</span></div>
+            <div class="drow"><span class="k">极板电荷量 Q</span><span class="v" id="oQ">—</span></div>
+            <div class="bar q"><i id="barQ"></i></div>
+            <div class="drow"><span class="k">面电荷密度 σ</span><span class="v" id="oS">—</span></div>
+            <div class="bar s"><i id="barS"></i></div>
+            <div class="drow"><span class="k">板间场强 E</span><span class="v" id="oE">—</span></div>
+            <div class="bar e"><i id="barE"></i></div>
+            <div class="drow"><span class="k">相对介电 εᵣ</span><span class="v" id="oEps">—</span></div>
+        </div>
+        <div class="overlay panel-note" id="panelNote">
+            <h4>物理原理</h4>
+            <div id="noteText"></div>
+        </div>
+        <div class="hint">拖动上方滑块即可观察动态变化</div>
+    </div>
+</div>
+
+<script>
+"use strict";
+// ============================================================
+//  平行板电容器 · 动态变化模拟器
+//  纯 canvas + 原生 JS，零外部依赖，可独立以 iframe 嵌入
+// ============================================================
+const EPS0 = 8.854e-12; // F/m
+const MATERIALS = {
+    air:   { name: '空气 / 真空', er: 1.0,  color: '#bfe3ff' },
+    wax:   { name: '石蜡',        er: 2.1,  color: '#ffd27a' },
+    glass: { name: '玻璃',        er: 5.0,  color: '#a9e7ff' },
+    mica:  { name: '云母',        er: 6.0,  color: '#b9f0c8' },
+    water: { name: '纯水',        er: 78.0, color: '#5fd0e6' }
+};
+const MAXANG = 55 * Math.PI / 180;
+
+// ---------- 状态 ----------
+const state = {
+    mode: 'charge',        // 'charge' | 'off'
+    A: 500,                // cm²
+    d: 2.0,                // mm
+    material: 'air',       // 当前介质材料 key
+    inserted: false,       // 是否已插入介质
+    V0: 10,                // 电源电压 V（充电模式）
+    Qfix: null             // 断电时冻结的电荷量 C
+};
+
+// 动画显示量（向目标缓动，产生“动态变化”观感）
+const disp = { A: 500, d: 2.0, er: 1.0, slab: 0, V: 10, Q: 0, sigma: 0, E: 0, needle: 0, emFull: 20 };
+
+// 参考量（用于电场线/电荷符号密度归一化）
+const SIG_REF = physRefSigma();          // A500 d2 er1 charge V10 时的 σ
+const E_REF   = physRefE();              // d=1 时最大场强参考
+const Q_REF   = physRefQ();             // 最大电荷参考
+let chargePhase = 0;
+
+// ---------- 纯物理函数（供自检调用） ----------
+function physFromParams(p) {
+    const A = p.A_cm2 * 1e-4, d = p.d_mm * 1e-3;
+    const C = EPS0 * p.er * A / d;
+    let V, Q;
+    if (p.mode === 'charge') { V = p.V0; Q = C * V; }
+    else { Q = (p.Qfix != null ? p.Qfix : C * p.V0); V = Q / C; }
+    const sigma = Q / A, E = V / d;
+    return { A, d, C, V, Q, sigma, E };
+}
+function physRefSigma() { return physFromParams({ A_cm2: 500, d_mm: 2, er: 1, mode: 'charge', V0: 10 }).sigma; }
+function physRefE()     { return physFromParams({ A_cm2: 500, d_mm: 1, er: 1, mode: 'charge', V0: 20 }).E; }
+function physRefQ()     { return physFromParams({ A_cm2: 1000, d_mm: 1, er: 1, mode: 'charge', V0: 20 }).Q; }
+
+// ============================================================
+//  画布与几何
+// ============================================================
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let cssW = 800, cssH = 600, dpr = 1;
+
+function resize() {
+    const r = cv.getBoundingClientRect();
+    cssW = Math.max(320, r.width); cssH = Math.max(320, r.height);
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(resize).observe(cv); }
+else window.addEventListener('resize', resize);
+
+// ---------- 工具 ----------
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function niceCeil(x) {
+    if (x <= 0) return 1;
+    const e = Math.floor(Math.log10(x)), b = Math.pow(10, e), m = x / b;
+    let n; if (m <= 1) n = 1; else if (m <= 2) n = 2; else if (m <= 5) n = 5; else n = 10;
+    return n * b;
+}
+function fmtC(C){ if(C>=1e-9) return (C*1e9).toFixed(2)+' nF'; if(C>=1e-12) return (C*1e12).toFixed(1)+' pF'; return (C*1e15).toFixed(1)+' fF'; }
+function fmtQ(Q){ Q=Math.abs(Q); if(Q>=1e-9) return (Q*1e9).toFixed(2)+' nC'; if(Q>=1e-12) return (Q*1e12).toFixed(1)+' pC'; return (Q*1e15).toFixed(1)+' fC'; }
+function fmtS(s){ s=Math.abs(s); if(s>=1e-6) return (s*1e6).toFixed(2)+' μC/m²'; if(s>=1e-9) return (s*1e9).toFixed(1)+' nC/m²'; return (s*1e12).toFixed(1)+' pC/m²'; }
+function fmtE(E){ if(E>=1000) return (E/1000).toFixed(1)+' kV/m'; return E.toFixed(0)+' V/m'; }
+function fmtV(v){ return v.toFixed(1)+' V'; }
+
+function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+function polyAt(pts, t) {
+    let total = 0; const segs = [];
+    for (let i = 0; i < pts.length - 1; i++) { const L = Math.hypot(pts[i+1].x-pts[i].x, pts[i+1].y-pts[i].y); segs.push(L); total += L; }
+    let d = t * total;
+    for (let i = 0; i < segs.length; i++) {
+        if (d <= segs[i] || i === segs.length - 1) { const f = segs[i] ? d / segs[i] : 0;
+            return { x: pts[i].x + (pts[i+1].x-pts[i].x)*f, y: pts[i].y + (pts[i+1].y-pts[i].y)*f }; }
+        d -= segs[i];
+    }
+    return pts[pts.length - 1];
+}
+
+// ============================================================
+//  绘制
+// ============================================================
+function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, cssH);
+    g.addColorStop(0, 'rgba(20,40,60,0.0)');
+    g.addColorStop(1, 'rgba(4,10,18,0.35)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cssW, cssH);
+    // 台面
+    const by = cssH * 0.86;
+    const bg = ctx.createLinearGradient(0, by, 0, cssH);
+    bg.addColorStop(0, '#3a2c20'); bg.addColorStop(0.06, '#2a2018'); bg.addColorStop(1, '#171210');
+    ctx.fillStyle = bg; ctx.fillRect(0, by, cssW, cssH - by);
+    ctx.strokeStyle = 'rgba(255,220,180,0.10)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(cssW, by); ctx.stroke();
+}
+
+function drawBase(cx, baseY) {
+    const w = cssW * 0.86, x = (cssW - w) / 2;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+    const g = ctx.createLinearGradient(0, baseY, 0, baseY + 16);
+    g.addColorStop(0, '#5a4632'); g.addColorStop(1, '#37291c');
+    ctx.fillStyle = g; roundRect(x, baseY, w, 16, 6); ctx.fill();
+    ctx.restore();
+}
+
+function drawPlate(x, topY, botY, positive) {
+    const w = 16;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 14; ctx.shadowOffsetX = 4;
+    const g = ctx.createLinearGradient(x - w/2, 0, x + w/2, 0);
+    if (positive) { g.addColorStop(0, '#9aa6b4'); g.addColorStop(0.4, '#e7eef6'); g.addColorStop(0.5, '#ffffff'); g.addColorStop(0.6, '#cdd8e4'); g.addColorStop(1, '#7e8a98'); }
+    else { g.addColorStop(0, '#9aa6b4'); g.addColorStop(0.4, '#dfe8f2'); g.addColorStop(0.5, '#f4f8ff'); g.addColorStop(0.6, '#c4d0de'); g.addColorStop(1, '#7e8a98'); }
+    ctx.fillStyle = g; roundRect(x - w/2, topY, w, botY - topY, 4); ctx.fill();
+    ctx.restore();
+    // 内边缘高光
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - w/2 + 2, topY + 2); ctx.lineTo(x - w/2 + 2, botY - 2); ctx.stroke();
+}
+
+function drawSupport(x, topY, baseY) {
+    ctx.save();
+    const g = ctx.createLinearGradient(0, topY, 0, baseY);
+    g.addColorStop(0, '#caa15a'); g.addColorStop(1, '#8a6a32');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 5, topY - 6, 10, baseY - topY + 6);
+    ctx.fillStyle = '#6f5526'; ctx.fillRect(x - 9, baseY - 4, 18, 8);
+    ctx.restore();
+}
+
+function drawDielectric(pxL, pxR, topY, botY) {
+    if (disp.slab <= 0.02) return;
+    const m = MATERIALS[state.material];
+    const x = pxL + 3, w = (pxR - pxL) - 6;
+    const fullH = botY - topY;
+    const covered = topY + fullH * disp.slab;
+    ctx.save();
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, hexA(m.color, 0.28)); g.addColorStop(0.5, hexA(m.color, 0.16)); g.addColorStop(1, hexA(m.color, 0.30));
+    ctx.fillStyle = g; roundRect(x, topY, w, covered - topY, 3); ctx.fill();
+    ctx.strokeStyle = hexA(m.color, 0.55); ctx.lineWidth = 1.2; roundRect(x, topY, w, covered - topY, 3); ctx.stroke();
+    // 斜纹质感
+    ctx.strokeStyle = hexA(m.color, 0.18); ctx.lineWidth = 1;
+    for (let yy = topY + 8; yy < covered - 4; yy += 12) { ctx.beginPath(); ctx.moveTo(x + 3, yy); ctx.lineTo(x + w - 3, yy - 6); ctx.stroke(); }
+    ctx.restore();
+}
+function hexA(hex, a) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function drawCharges(pxL, pxR, pt, topY, botY) {
+    const sp = clamp(70 * Math.sqrt(SIG_REF / Math.max(disp.sigma, 1e-12)), 12, 64);
+    const xP = pxL + pt/2 + 5, xM = pxR - pt/2 - 5;
+    ctx.save(); ctx.lineWidth = 2; ctx.lineCap = 'round';
+    const r = 4.2;
+    for (let y = topY + 12; y <= botY - 12; y += sp) {
+        // + 极板
+        ctx.strokeStyle = '#ff7a7a';
+        ctx.beginPath(); ctx.moveTo(xP - r, y); ctx.lineTo(xP + r, y);
+        ctx.moveTo(xP, y - r); ctx.lineTo(xP, y + r); ctx.stroke();
+        // - 极板
+        ctx.strokeStyle = '#7ab0ff';
+        ctx.beginPath(); ctx.moveTo(xM - r, y); ctx.lineTo(xM + r, y); ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawFieldLines(pxL, pxR, pt, topY, botY) {
+    const nL = Math.round(clamp(4 + 30 * (disp.sigma / SIG_REF), 4, 34));
+    const x0 = pxL + pt/2, x1 = pxR - pt/2;
+    const alpha = clamp(0.25 + 0.55 * (disp.E / E_REF), 0.18, 0.85);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,225,255,' + alpha.toFixed(3) + ')';
+    ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+    for (let i = 0; i < nL; i++) {
+        const y = topY + 8 + (botY - topY - 16) * (i + 0.5) / nL;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+        // 箭头（指向负极）
+        const ax = (x0 + x1) / 2;
+        ctx.beginPath(); ctx.moveTo(ax, y); ctx.lineTo(ax - 5, y - 4); ctx.moveTo(ax, y); ctx.lineTo(ax - 5, y + 4); ctx.stroke();
+    }
+    ctx.restore();
+    return nL;
+}
+
+function drawGlow(pxL, pxR, topY, botY) {
+    const a = clamp(0.05 + 0.20 * (disp.E / E_REF), 0.04, 0.30);
+    const g = ctx.createLinearGradient(pxL, 0, pxR, 0);
+    g.addColorStop(0, 'rgba(255,120,120,' + a + ')');
+    g.addColorStop(0.5, 'rgba(180,220,255,' + (a*0.7) + ')');
+    g.addColorStop(1, 'rgba(120,160,255,' + a + ')');
+    ctx.save(); ctx.fillStyle = g;
+    roundRect(pxL + 8, topY + 4, (pxR - pxL) - 16, botY - topY - 8, 4); ctx.fill();
+    ctx.restore();
+}
+
+function wirePath(pts) {
+    ctx.save();
+    ctx.strokeStyle = '#2c333d'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    ctx.strokeStyle = '#566273'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    ctx.restore();
+}
+function drawBattery(bx, by) {
+    ctx.save();
+    const w = 54, h = 40;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+    const g = ctx.createLinearGradient(bx - w/2, 0, bx + w/2, 0);
+    g.addColorStop(0, '#3a4654'); g.addColorStop(0.5, '#5a6b7d'); g.addColorStop(1, '#2c3744');
+    ctx.fillStyle = g; roundRect(bx - w/2, by - h/2, w, h, 6); ctx.fill();
+    ctx.restore();
+    // 长杆(+) 短杆(-)
+    ctx.fillStyle = '#d9a23a'; ctx.fillRect(bx - 4, by - h/2 - 12, 8, 12);
+    ctx.fillStyle = '#c93a3a'; ctx.fillRect(bx - 14, by + h/2, 8, 6);
+    ctx.strokeStyle = '#e8c87a'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#ffe9b0'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('+', bx - 0, by - h/2 - 16);
+    ctx.fillStyle = '#ffb0b0'; ctx.fillText('−', bx - 0, by + h/2 + 16);
+    ctx.fillStyle = '#cfe0f0'; ctx.font = '11px sans-serif';
+    ctx.fillText(fmtV(state.V0), bx, by + 4);
+}
+function drawBatteryBroken(bx, by) {
+    // 断电：画断开的电源（灰色虚框 + 断开符号）
+    const w = 54, h = 40;
+    ctx.save();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5;
+    roundRect(bx - w/2, by - h/2, w, h, 6); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,200,140,0.85)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('电源断开', bx, by + 4);
+}
+
+function drawElectrometer(ex, ey) {
+    ctx.save();
+    // 外壳
+    const cw = 58, ch = 86;
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+    const g = ctx.createLinearGradient(ex - cw/2, 0, ex + cw/2, 0);
+    g.addColorStop(0, '#2a323c'); g.addColorStop(0.5, '#586676'); g.addColorStop(1, '#222a32');
+    ctx.fillStyle = g; roundRect(ex - cw/2, ey - 10, cw, ch, 10); ctx.fill();
+    ctx.restore();
+    // 顶部金属球
+    const sg = ctx.createRadialGradient(ex - 4, ey - 40, 2, ex, ey - 34, 14);
+    sg.addColorStop(0, '#fff4d8'); sg.addColorStop(1, '#b8902f');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(ex, ey - 34, 13, 0, Math.PI*2); ctx.fill();
+    // 刻度弧
+    ctx.strokeStyle = 'rgba(220,235,255,0.7)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(ex, ey - 6, 30, -Math.PI*0.92, -Math.PI*0.08); ctx.stroke();
+    for (let i = 0; i <= 4; i++) {
+        const a = -Math.PI*0.92 + (Math.PI*0.84) * i / 4;
+        const x1 = ex + Math.cos(a)*26, y1 = (ey - 6) + Math.sin(a)*26;
+        const x2 = ex + Math.cos(a)*32, y2 = (ey - 6) + Math.sin(a)*32;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    // 指针（绕顶部枢轴旋转）
+    const piv = { x: ex, y: ey - 6 };
+    const a = -Math.PI/2 + disp.needle;
+    const nx = piv.x + Math.cos(a) * 30, ny = piv.y + Math.sin(a) * 30;
+    ctx.strokeStyle = '#ff5a5a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(piv.x, piv.y); ctx.lineTo(nx, ny); ctx.stroke();
+    ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(piv.x, piv.y, 3, 0, Math.PI*2); ctx.fill();
+    // 数值
+    ctx.fillStyle = '#eaf2ff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(fmtV(disp.V), ex, ey + ch - 8);
+    ctx.fillStyle = '#9fb6d4'; ctx.font = '10px sans-serif';
+    ctx.fillText('满量程 ' + disp.emFull.toFixed(0) + 'V', ex, ey + ch + 8);
+    ctx.restore();
+}
+
+// ============================================================
+//  主循环
+// ============================================================
+function frame() {
+    // 缓动显示量
+    const tEr = state.inserted ? MATERIALS[state.material].er : 1.0;
+    const tSlab = state.inserted ? 1 : 0;
+    disp.A += (state.A - disp.A) * 0.15;
+    disp.d += (state.d - disp.d) * 0.15;
+    disp.er += (tEr - disp.er) * 0.12;
+    disp.slab += (tSlab - disp.slab) * 0.12;
+
+    const A = disp.A * 1e-4, d = disp.d * 1e-3;
+    const C = EPS0 * disp.er * A / d;
+    let Vtarget, Qtarget;
+    if (state.mode === 'charge') { Vtarget = state.V0; Qtarget = C * Vtarget; }
+    else { if (state.Qfix == null) state.Qfix = C * state.V0; Qtarget = state.Qfix; Vtarget = Qtarget / C; }
+    disp.V += (Vtarget - disp.V) * 0.18;
+    disp.Q += (Qtarget - disp.Q) * 0.18;
+    disp.sigma = disp.Q / A;
+    disp.E = disp.V / d;
+
+    // 静电计
+    const emT = niceCeil(Math.max(5, Math.abs(disp.V) * 1.12));
+    disp.emFull += (emT - disp.emFull) * 0.1;
+    const angT = clamp((disp.V / disp.emFull) * MAXANG, -MAXANG * 0.25, MAXANG);
+    disp.needle += (angT - disp.needle) * 0.15;
+
+    // 是否在“动”（用于充电电流粒子）
+    const moving = Math.abs(state.A - disp.A) > 0.5 || Math.abs(state.d - disp.d) > 0.02 ||
+                   Math.abs(tEr - disp.er) > 0.01 || Math.abs(state.V0 - disp.V) > 0.05 ||
+                   (state.mode === 'off' ? false : false);
+    const charging = state.mode === 'charge' && moving;
+    if (charging) chargePhase = (chargePhase + 0.035) % 1;
+
+    render(charging, chargePhase);
+    updatePanel();
+    requestAnimationFrame(frame);
+}
+
+function render(charging, phase) {
+    ctx.clearRect(0, 0, cssW, cssH);
+    drawBackground();
+
+    const cx = cssW * 0.47, cy = cssH * 0.50;
+    const baseY = cssH * 0.86;
+    const plateH = lerp(cssH * 0.34, cssH * 0.64, (disp.A - 100) / 900);
+    const gap = lerp(cssW * 0.05, cssW * 0.20, (disp.d - 1) / 9);
+    const pt = 16;
+    const pxL = cx - gap/2, pxR = cx + gap/2;
+    const topY = cy - plateH/2, botY = cy + plateH/2;
+
+    drawBase(cx, baseY);
+    drawSupport(pxL, topY, baseY); drawSupport(pxR, topY, baseY);
+
+    // 导线坐标
+    const Lt = { x: pxL, y: topY - 26 };        // 左板顶
+    const Rb = { x: pxR, y: botY + 26 };        // 右板底
+    const bx = cssW * 0.13, by = cy;            // 电池
+    const ex = cssW * 0.88, ey = cy;            // 静电计
+
+    // 电池导线（+ 上 / − 下）
+    const wirePlus  = [ {x:bx, y:by-32}, {x:bx, y:topY-60}, {x:pxL, y:topY-60}, Lt ];
+    const wireMinus = [ {x:bx, y:by+32}, {x:bx, y:botY+60}, {x:pxR, y:botY+60}, Rb ];
+    // 静电计导线（球→左板顶；壳底→右板底）
+    const wireEmPlus  = [ {x:ex, y:ey-44}, {x:ex, y:topY-60}, {x:pxL, y:topY-60}, Lt ];
+    const wireEmMinus = [ {x:ex, y:ey+46}, {x:ex, y:botY+60}, {x:pxR, y:botY+60}, Rb ];
+
+    // 先画静电计导线（始终连接）
+    wirePath(wireEmPlus); wirePath(wireEmMinus);
+
+    if (state.mode === 'charge') {
+        wirePath(wirePlus); wirePath(wireMinus);
+        drawBattery(bx, by);
+        if (charging) drawChargeFlow(wirePlus, phase, '#ff9a9a'), drawChargeFlow(wireMinus, phase, '#9ac4ff');
+    } else {
+        drawBatteryBroken(bx, by);
+        // 断开的导线残端
+        drawOpenEnd(wirePlus[0], wirePlus[1], '+');
+        drawOpenEnd(wireMinus[0], wireMinus[1], '−');
+    }
+
+    // 介质
+    drawDielectric(pxL, pxR, topY, botY);
+    // 板间辉光与电场线
+    drawGlow(pxL, pxR, topY, botY);
+    drawFieldLines(pxL, pxR, pt, topY, botY);
+    // 极板
+    drawPlate(pxL, topY, botY, true);
+    drawPlate(pxR, topY, botY, false);
+    // 电荷符号
+    drawCharges(pxL, pxR, pt, topY, botY);
+    // 静电计
+    drawElectrometer(ex, ey);
+
+    // 介质标签
+    if (disp.slab > 0.5) {
+        const m = MATERIALS[state.material];
+        ctx.fillStyle = hexA(m.color, 0.9); ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(m.name + '  εᵣ=' + m.er, cx, topY - 8);
+    }
+}
+function drawChargeFlow(pts, phase, color) {
+    ctx.save(); ctx.fillStyle = color;
+    for (let i = 0; i < 5; i++) {
+        const t = (phase + i / 5) % 1;
+        const p = polyAt(pts, t);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+}
+function drawOpenEnd(a, b, sign) {
+    ctx.save();
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    ctx.fillStyle = 'rgba(255,160,120,0.9)'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('✕', mx, my + 2);
+    ctx.restore();
+}
+
+// ============================================================
+//  数据面板
+// ============================================================
+const el = id => document.getElementById(id);
+function updatePanel() {
+    const A = disp.A * 1e-4, d = disp.d * 1e-3;
+    const C = EPS0 * disp.er * A / d;
+    el('oC').textContent = fmtC(C);
+    el('oV').textContent = fmtV(disp.V);
+    el('oQ').textContent = fmtQ(disp.Q);
+    el('oS').textContent = fmtS(disp.sigma);
+    el('oE').textContent = fmtE(disp.E);
+    el('oEps').textContent = disp.er.toFixed(2);
+    el('barQ').style.width = clamp(disp.Q / Q_REF, 0, 1) * 100 + '%';
+    el('barS').style.width = clamp(disp.sigma / SIG_REF, 0, 1) * 100 + '%';
+    el('barE').style.width = clamp(disp.E / E_REF, 0, 1) * 100 + '%';
+    el('modeTag').textContent = state.mode === 'charge' ? '充电' : '断电';
+    el('modeTag').className = 'tag ' + (state.mode === 'charge' ? 'charge' : 'off');
+    el('noteText').innerHTML = noteHTML();
+}
+function noteHTML() {
+    if (state.mode === 'charge') {
+        return '<b>充电（电源接通）</b>：电压 U 被电源锁定为 <b>U = V₀</b> 不变。' +
+            '改变 A、d、εᵣ 时，电容 C = ε₀εᵣA/d 变化，电荷量 <b>Q = C·U</b> 随之变化，电荷从电源流入/流出。' +
+            '注意：此时 σ = Q/A = ε₀εᵣU/d 与面积 A 无关；插电介质会使 Q、σ 增大，电场线变密。';
+    }
+    return '<b>断电（电源断开）</b>：极板与外界绝缘，<b>电荷量 Q 守恒不变</b>。' +
+        '改变 A、d、εᵣ 时，电压 <b>U = Q/C</b> 与场强 <b>E = σ/ε₀εᵣ</b> 随之变化。' +
+        '增大面积 A → σ = Q/A 减小 → 电场线变稀疏、电压降低；插入电介质 → C 增大 → 电压降低、场强减小。';
+}
+
+// ============================================================
+//  交互
+// ============================================================
+function postEdit() { try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'phys-edit' }, '*'); } catch (_) {} }
+function setMode(m) {
+    if (m === 'off' && state.mode !== 'off') {
+        const A = state.A * 1e-4, d = state.d * 1e-3, er = state.inserted ? MATERIALS[state.material].er : 1.0;
+        state.Qfix = EPS0 * er * A / d * state.V0;
+    }
+    state.mode = m;
+    el('mCharge').classList.toggle('active', m === 'charge');
+    el('mOff').classList.toggle('active', m === 'off');
+    el('sV').disabled = (m === 'off');
+    el('statusPill').innerHTML = m === 'charge' ? '充电模式 · 电压恒定 (U=V₀)' : '断电模式 · 电荷守恒 (Q 不变)';
+    el('bInsert').textContent = state.inserted ? '抽出电介质' : '插入电介质';
+    postEdit(); saveLocal();
+}
+el('mCharge').onclick = () => setMode('charge');
+el('mOff').onclick = () => setMode('off');
+
+el('sA').oninput = e => { state.A = +e.target.value; el('vA').textContent = state.A + ' cm²'; postEdit(); saveLocal(); };
+el('sD').oninput = e => { state.d = +e.target.value; el('vD').textContent = state.d.toFixed(1) + ' mm'; postEdit(); saveLocal(); };
+el('sV').oninput = e => { state.V0 = +e.target.value; el('vV').textContent = state.V0 + ' V'; postEdit(); saveLocal(); };
+
+document.querySelectorAll('.mat').forEach(b => {
+    b.onclick = () => {
+        state.material = b.dataset.m;
+        document.querySelectorAll('.mat').forEach(x => x.classList.toggle('active', x === b));
+        if (state.material === 'air') { state.inserted = false; }
+        else { state.inserted = true; }
+        el('bInsert').textContent = state.inserted ? '抽出电介质' : '插入电介质';
+        postEdit(); saveLocal();
+    };
+});
+el('bInsert').onclick = () => {
+    state.inserted = !state.inserted;
+    el('bInsert').textContent = state.inserted ? '抽出电介质' : '插入电介质';
+    if (state.material === 'air' && state.inserted) { /* 空气也是一种介质，允许插入展示 */ }
+    postEdit(); saveLocal();
+};
+
+// 演示预设
+el('p1').onclick = () => { setMode('charge'); state.A = 500; state.d = 2; state.inserted = false; state.material = 'air'; syncMatUI(); state.V0 = 10; el('sV').value = 10; el('vV').textContent = '10 V';
+    setTimeout(() => { state.d = 8; el('sD').value = 8; el('vD').textContent = '8.0 mm'; postEdit(); }, 250); };
+el('p2').onclick = () => { setMode('off'); state.A = 500; state.d = 2; state.material = 'glass'; syncMatUI(); state.inserted = false; el('bInsert').textContent = '插入电介质';
+    setTimeout(() => { state.inserted = true; el('bInsert').textContent = '抽出电介质'; postEdit(); }, 300); };
+el('p3').onclick = () => { setMode('off'); state.A = 500; state.d = 2; state.inserted = false; state.material = 'air'; syncMatUI(); el('bInsert').textContent = '插入电介质';
+    setTimeout(() => { state.A = 1000; el('sA').value = 1000; el('vA').textContent = '1000 cm²'; postEdit(); }, 300); };
+function syncMatUI() { document.querySelectorAll('.mat').forEach(x => x.classList.toggle('active', x.dataset.m === state.material)); }
+
+el('bReset').onclick = () => {
+    state.mode = 'charge'; state.A = 500; state.d = 2.0; state.material = 'air'; state.inserted = false; state.V0 = 10; state.Qfix = null;
+    el('sA').value = 500; el('vA').textContent = '500 cm²';
+    el('sD').value = 2; el('vD').textContent = '2.0 mm';
+    el('sV').value = 10; el('vV').textContent = '10 V'; el('sV').disabled = false;
+    syncMatUI(); el('bInsert').textContent = '插入电介质';
+    setMode('charge'); saveLocal();
+};
+
+// 浮层开关
+el('tMeter').onclick = () => toggleOverlay('tMeter', 'panelData');
+el('tData').onclick  = () => toggleOverlay('tData',  'panelData');
+el('tNote').onclick  = () => toggleOverlay('tNote',  'panelNote');
+function toggleOverlay(btnId, panelId) {
+    const b = el(btnId), p = el(panelId);
+    const on = !b.classList.contains('active');
+    b.classList.toggle('active', on);
+    p.style.display = on ? '' : 'none';
+}
+
+// ---------- 本地保存 / 恢复 ----------
+const LS_KEY = 'phys_cap_config_v1';
+function saveLocal() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, JSON.stringify({ mode: state.mode, A: state.A, d: state.d, material: state.material, inserted: state.inserted, V0: state.V0 })); } catch (_) {} }
+function loadLocal() {
+    try {
+        if (typeof localStorage === 'undefined') return;
+        const raw = localStorage.getItem(LS_KEY); if (!raw) return;
+        const o = JSON.parse(raw); const isNum = v => typeof v === 'number' && isFinite(v);
+        if (o.mode === 'charge' || o.mode === 'off') state.mode = o.mode;
+        if (isNum(o.A)) state.A = clamp(o.A, 100, 1000);
+        if (isNum(o.d)) state.d = clamp(o.d, 1, 10);
+        if (o.material && MATERIALS[o.material]) state.material = o.material;
+        if (typeof o.inserted === 'boolean') state.inserted = o.inserted;
+        if (isNum(o.V0)) state.V0 = clamp(o.V0, 1, 20);
+    } catch (_) {}
+}
+function syncUIFromState() {
+    el('sA').value = state.A; el('vA').textContent = state.A + ' cm²';
+    el('sD').value = state.d; el('vD').textContent = state.d.toFixed(1) + ' mm';
+    el('sV').value = state.V0; el('vV').textContent = state.V0 + ' V';
+    el('sV').disabled = (state.mode === 'off');
+    syncMatUI();
+    el('bInsert').textContent = state.inserted ? '抽出电介质' : '插入电介质';
+    setMode(state.mode);
+}
+
+// ============================================================
+//  启动
+// ============================================================
+loadLocal();
+resize();
+syncUIFromState();
+requestAnimationFrame(frame);
+
+// 暴露给自检
+window.__sim = { physFromParams, physRefSigma, physRefE, physRefQ, state, MATERIALS, EPS0, SIG_REF, E_REF, Q_REF, get disp() { return disp; } };
+</script>
+</body>
+</html>
