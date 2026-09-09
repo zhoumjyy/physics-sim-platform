@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 13,
+  "manifestVersion": 14,
   "categories": [
     {
       "id": "mechanics",
@@ -72,10 +72,17 @@
           "name": "多点电荷电场 · 电场线与等势面",
           "description": "手动添加/拖动点电荷 · 实时生成电场线与等势面",
           "icon": "🔆",
-          "src": "simulations/multi-charge-field.html"
-        },
-        {
-          "id": "magnetic-field",
+                "src": "simulations/multi-charge-field.html"
+            },
+            {
+                "id": "capacitor-dynamics",
+                "name": "平行板电容器 · 动态变化",
+                "description": "充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态",
+                "icon": "🔋",
+                "src": "simulations/capacitor-dynamics.html"
+            },
+            {
+                "id": "magnetic-field",
           "name": "磁场可视化",
           "description": "磁感线 · 安培定则",
           "icon": "🧲",
