@@ -1179,7 +1179,7 @@
                 let hasOverride = false;
                 try { hasOverride = !!localStorage.getItem('phys_manifest_override'); } catch (_) {}
                 if (platformDirty || hasOverride) {
-                    const msg = '您有尚未同步到云端的修改。\n点击"留在此页"可继续编辑；离开后可由我（AI 代理）帮您上传到云端。';
+                    const msg = '您在本机浏览器中的修改（电荷布局、参数、视图等）已自动保存，刷新或重开都会恢复。\n如需同步到公网云端，可离开后直接对我说"帮我同步到云端"。\n（点击"留在此页"可继续编辑）';
                     e.preventDefault();
                     e.returnValue = msg;
                     return msg;
