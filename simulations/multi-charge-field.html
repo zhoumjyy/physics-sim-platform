@@ -329,29 +329,84 @@ const SOFT = 0.02;         // 软化半径，避免 r→0 发散
 const HIT = 16;            // 命中/拖拽像素阈值
 
 // ---------- 学生参数本地保存 / 导入导出（纯静态下的"参数上云"可行方式） ----------
-const LS_KEY = 'phys_mc_config_v1';
+// 自动保存：电荷布局 + 相机视角 + 显示开关，全部写回本机浏览器，关页面/刷新后自动恢复
+const LS_KEY = 'phys_mc_config_v2';
+let restored = null;            // 从本地读出的上次会话（含 view/state），供 resize 后还原
+let saveTimer = null;           // 防抖计时器
 // 注意：typeof NaN === 'number'，必须用 isFinite 才能挡掉 NaN/Infinity
 const isGoodCharge = c => c && isFinite(c.x) && isFinite(c.y) && isFinite(c.q);
 function saveConfigLocal() {
-    try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, JSON.stringify(charges)); } catch (_) {}
+    try {
+        if (typeof localStorage === 'undefined') return;
+        const data = {
+            v: 2,
+            charges,
+            view: { cx: view.cx, cy: view.cy, z: view.z },
+            state: {
+                showLines: state.showLines, showEqui: state.showEqui,
+                showLabels: state.showLabels, flow: state.flow, mode: state.mode,
+                ovStatus: document.getElementById('ovStatus').checked,
+                ovLegend: document.getElementById('ovLegend').checked,
+                ovInfo: document.getElementById('ovInfo').checked
+            }
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+    } catch (_) {}
+}
+function scheduleSave() {        // 编辑时防抖写盘，避免拖动过程频繁写 localStorage
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveConfigLocal, 250);
 }
 function loadConfigLocal() {
     try {
         if (typeof localStorage === 'undefined') return;
         const raw = localStorage.getItem(LS_KEY);
         if (!raw) return;
-        const arr = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        // 兼容旧版（仅电荷数组）
+        const arr = Array.isArray(parsed) ? parsed : (parsed && parsed.charges);
         if (!Array.isArray(arr)) return;
         const cleaned = arr.filter(isGoodCharge).map(c => ({ x: c.x, y: c.y, q: c.q }));
         const dropped = arr.length - cleaned.length;
         if (cleaned.length > 0) charges = cleaned;
         if (dropped > 0) console.warn('已自动跳过 ' + dropped + ' 个无效电荷数据（NaN/非数/缺字段）');
+        if (!Array.isArray(parsed) && parsed) restored = parsed;   // 新版：记住 view/state 待还原
     } catch (_) {}
+}
+// 还原显示开关 / 模式 + 复选框、浮层状态
+function applyStateObj(s) {
+    if (!s) return;
+    const setToggle = (id, key) => {
+        if (typeof s[key] === 'boolean') {
+            state[key] = s[key];
+            const el = document.getElementById(id);
+            if (el) el.checked = s[key];
+        }
+    };
+    setToggle('tLines', 'showLines');
+    setToggle('tEqui', 'showEqui');
+    setToggle('tLabels', 'showLabels');
+    setToggle('tFlow', 'flow');
+    if (typeof s.ovStatus === 'boolean') setOverlay('statusOverlay', s.ovStatus);
+    if (typeof s.ovLegend === 'boolean') setOverlay('legendOverlay', s.ovLegend);
+    if (typeof s.ovInfo === 'boolean') setOverlay('infoOverlay', s.ovInfo);
+    if (typeof s.mode === 'string' && modeButtons[s.mode]) setMode(s.mode);
+}
+// resize 之后调用：把上次保存的相机与显示状态套用回来
+function applyRestored() {
+    if (!restored) return;
+    if (restored.view && isFinite(restored.view.cx) && isFinite(restored.view.cy) && isFinite(restored.view.z)) {
+        view.cx = restored.view.cx;
+        view.cy = restored.view.cy;
+        view.z = Math.max(0.25, Math.min(8, restored.view.z));
+    }
+    applyStateObj(restored.state);
+    rebuild();
 }
 function postEdit() {   // 通知父页面（平台）：本地参数有改动，用于关闭前询问是否同步
     try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'phys-edit' }, '*'); } catch (_) {}
 }
-function rebuildAndNotify() { rebuild(); postEdit(); }   // 电荷真正变化时才提示"有未同步修改"
+function rebuildAndNotify() { rebuild(); postEdit(); scheduleSave(); }   // 变化即自动存本机 + 标记待同步
 
 // ---------- 物理：电势与场强 ----------
 function potential(wx, wy) {
@@ -785,7 +840,7 @@ window.addEventListener('keydown', (e) => {
         c.x = Math.max(-CLAMP, Math.min(CLAMP, c.x));
         c.y = Math.max(-CLAMP, Math.min(CLAMP, c.y));
         e.preventDefault();     // 避免页面滚动
-        rebuild();
+        rebuildAndNotify();     // 方向键移动电荷也属于"改动"，需自动保存
     }
 });
 
@@ -895,7 +950,7 @@ document.getElementById('mImportFile').onchange = (e) => {
 };
 
 function loadPreset(arr) {
-    charges = arr.filter(isGoodCharge).map(c => ({ x: c[0], y: c[1], q: c[2] }));
+    charges = arr.map(c => ({ x: c[0], y: c[1], q: c[2] })).filter(isGoodCharge);
     rebuildAndNotify();
 }
 // 预设示例均以世界原点 (0,0) 为中心对称布置，配合"正中心即 (0,0)"的默认视图
@@ -956,14 +1011,19 @@ if (typeof ResizeObserver !== 'undefined') {
     new ResizeObserver(() => { resize(); }).observe(cv);
 }
 
+// 关闭 / 离开页面时同步落盘：即便防抖未触发，也把最新电荷/视图/开关写回本机
+window.addEventListener('pagehide', saveConfigLocal);
+window.addEventListener('beforeunload', saveConfigLocal);
+
 // ---------- 自检导出（供 Node DOM stub 调用，不影响浏览器运行） ----------
 function _selfData() { return { fieldLines, equiPaths, zeroPath, phiGrid, worldW, gw, gh, charges, view }; }
 function _setCharges(arr) { charges = arr; }
 function _rebuild() { rebuild(); }
 
 // 启动
-loadConfigLocal();   // 恢复上次本地保存的学生参数
-resize();
+loadConfigLocal();   // 恢复电荷 + 记录上次保存的相机/显示状态
+resize();            // 量算画布、初始化相机（默认对准原点）
+applyRestored();     // 套用上次保存的相机位置与显示开关
 requestAnimationFrame(loop);
 
 // 暴露到全局（便于自动化/自检）
