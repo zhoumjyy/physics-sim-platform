@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>⚡ 电场可视化模拟器</title>
+<style>
+    /* ===== 全局深色毛玻璃风格（与平台其它模拟器一致） ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        min-height: 100vh;
+        background: rgba(10, 20, 32, 0.6);
+        font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+        display: flex; justify-content: center; align-items: center;
+        padding: 16px; font-size: 18px; color: #eef4fc;
+    }
+    .sim-card {
+        width: 100%; max-width: 1800px; height: 96vh; min-height: 800px;
+        background: rgba(18, 34, 50, 0.40);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    .header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 28px;
+        background: rgba(0,0,0,0.15);
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        flex-shrink: 0; flex-wrap: wrap; gap: 10px;
+    }
+    .header .title {
+        font-size: 24px; font-weight: 600; color: #d6e6ff;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .header .title span { opacity: 0.5; font-weight: 300; font-size: 16px; }
+    .header .status {
+        font-size: 15px; color: #8aacd4;
+        background: rgba(255,255,255,0.03);
+        padding: 4px 20px; border-radius: 40px;
+        border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    /* ===== 主体：左(参数) | 中(画布) | 右(信息) ===== */
+    .main { display: flex; flex: 1; min-height: 0; }
+
+    .panel-left, .panel-right {
+        background: rgba(0,0,0,0.12);
+        padding: 16px 16px 18px;
+        overflow-y: auto; flex-shrink: 0;
+        backdrop-filter: blur(4px);
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .panel-left { width: 300px; min-width: 250px; border-right: 1px solid rgba(255,255,255,0.04); }
+    .panel-right { width: 330px; min-width: 280px; border-left: 1px solid rgba(255,255,255,0.04); }
+    .panel-left::-webkit-scrollbar, .panel-right::-webkit-scrollbar { width: 4px; }
+    .panel-left::-webkit-scrollbar-thumb, .panel-right::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.08); border-radius: 10px;
+    }
+    .section-title {
+        font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;
+        color: #6a8fb0; opacity: 0.55; margin-bottom: 2px; font-weight: 600;
+    }
+    .ctrl-group {
+        background: rgba(255,255,255,0.02);
+        border-radius: 16px; padding: 10px 14px 12px;
+        border: 1px solid rgba(255,255,255,0.03);
+    }
+    .ctrl-group label {
+        display: flex; justify-content: space-between;
+        font-size: 15px; font-weight: 500; color: #c0d6f0; margin-bottom: 4px;
+    }
+    .ctrl-group label b { color: #7fc4ff; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    input[type=range] {
+        -webkit-appearance: none; appearance: none;
+        width: 100%; height: 4px; border-radius: 10px;
+        background: rgba(255,255,255,0.08); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 16px; height: 16px; border-radius: 50%;
+        background: #7fc4ff; cursor: pointer;
+        box-shadow: 0 0 10px rgba(64,175,255,0.5);
+    }
+    input[type=range]::-moz-range-thumb {
+        width: 16px; height: 16px; border-radius: 50%; border: none;
+        background: #7fc4ff; cursor: pointer;
+    }
+
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn {
+        flex: 1; padding: 8px 0; border-radius: 40px;
+        font-size: 14px; font-weight: 600;
+        background: rgba(255,255,255,0.04); color: #c0d6f0;
+        cursor: pointer; transition: all 0.2s;
+        border: 1px solid rgba(255,255,255,0.04);
+        letter-spacing: 0.3px; min-width: 50px;
+    }
+    .btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.09); }
+    .btn.on {
+        background: rgba(64,175,255,0.16); border-color: rgba(64,175,255,0.35);
+        color: #7fc4ff; box-shadow: 0 0 12px rgba(64,175,255,0.12) inset;
+    }
+    .btn-secondary { background: rgba(255,255,255,0.03); }
+
+    /* 预设电荷按钮：两列网格 */
+    .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .preset-grid .btn { font-size: 13px; padding: 9px 2px; line-height: 1.35; }
+
+    /* ===== 中央画布 ===== */
+    .canvas-wrap {
+        flex: 1; min-width: 0; position: relative;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+    }
+    canvas { display: block; cursor: crosshair; }
+    canvas.grabbing { cursor: grabbing; }
+    .canvas-hint {
+        position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+        font-size: 13px; color: #6a8fb0; opacity: 0.75;
+        background: rgba(0,0,0,0.25); padding: 5px 16px; border-radius: 40px;
+        border: 1px solid rgba(255,255,255,0.04);
+        pointer-events: none; white-space: nowrap;
+    }
+    /* 色标 */
+    .legend {
+        position: absolute; right: 14px; top: 14px;
+        background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 14px; padding: 9px 12px; font-size: 12px; color: #9ab8d6;
+        pointer-events: none;
+    }
+    .legend .bar {
+        width: 110px; height: 8px; border-radius: 6px; margin: 5px 0 3px;
+        background: linear-gradient(90deg, #4a96ff 0%, #1e2a3a 50%, #ff785a 100%);
+    }
+    .legend .ends { display: flex; justify-content: space-between; }
+
+    /* ===== 右侧信息栏 ===== */
+    .data-list { display: flex; flex-direction: column; gap: 7px; }
+    .data-row {
+        display: flex; justify-content: space-between; align-items: baseline;
+        font-size: 15px; color: #a8c4e0;
+        padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.035);
+    }
+    .data-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .data-row .k { color: #7e9dbd; font-size: 14px; }
+    .data-row .v { color: #eaf3ff; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 16px; }
+    .data-row .v.pos { color: #ff9b7a; }
+    .data-row .v.neg { color: #7fb5ff; }
+    .data-row .v.zero { color: #9fb4c8; }
+
+    .tag {
+        display: inline-block; font-size: 12px; font-weight: 600;
+        padding: 2px 10px; border-radius: 40px; margin-left: 6px;
+        border: 1px solid transparent; vertical-align: middle;
+    }
+    .tag.hi { color: #ff9b7a; background: rgba(255,120,90,0.12); border-color: rgba(255,120,90,0.25); }
+    .tag.lo { color: #7fb5ff; background: rgba(74,150,255,0.12); border-color: rgba(74,150,255,0.25); }
+    .tag.mid { color: #9fb4c8; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); }
+
+    /* 电势高低指示条 */
+    .vbar-wrap { margin-top: 4px; }
+    .vbar {
+        position: relative; height: 10px; border-radius: 6px;
+        background: linear-gradient(90deg, #4a96ff 0%, #1e2a3a 50%, #ff785a 100%);
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+    .vbar .marker {
+        position: absolute; top: -4px; width: 3px; height: 18px;
+        background: #fff; border-radius: 2px; box-shadow: 0 0 8px rgba(255,255,255,0.8);
+        transform: translateX(-50%); transition: left 0.08s linear;
+    }
+    .vbar-scale {
+        display: flex; justify-content: space-between;
+        font-size: 11px; color: #6a8fb0; margin-top: 3px;
+    }
+
+    .note {
+        font-size: 13px; line-height: 1.65; color: #85a3c2;
+        background: rgba(255,255,255,0.02); border-radius: 14px;
+        padding: 10px 13px; border: 1px solid rgba(255,255,255,0.03);
+    }
+    .note b { color: #a9c8e8; }
+    .note .fl { color: #ffcf6a; }
+    .note .eq { color: #7fd4c0; }
+
+    .charge-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+        font-size: 13px; padding: 5px 12px; border-radius: 40px; cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03);
+        color: #b8d0ea; transition: all .18s; font-variant-numeric: tabular-nums;
+    }
+    .chip.sel { border-color: rgba(64,175,255,0.5); background: rgba(64,175,255,0.14); color: #9ed4ff; }
+    .chip.p { color: #ff9b7a; }
+    .chip.n { color: #7fb5ff; }
+    .chip.sel.p { border-color: rgba(255,120,90,0.5); background: rgba(255,120,90,0.14); }
+    .chip.sel.n { border-color: rgba(74,150,255,0.5); background: rgba(74,150,255,0.16); }
+
+    @media (max-width: 1400px) {
+        .panel-left { width: 260px; }
+        .panel-right { width: 290px; }
+    }
+</style>
+</head>
+<body>
+<div class="sim-card">
+
+    <div class="header">
+        <div class="title">⚡ 电场可视化 <span>电场线 · 等势面 · 试探电荷</span></div>
+        <div class="status" id="statusBar">单个正点电荷 · 俯视图</div>
+    </div>
+
+    <div class="main">
+
+        <!-- ================= 左侧：控制面板 ================= -->
+        <div class="panel-left">
+
+            <div class="section-title">电荷组合</div>
+            <div class="preset-grid" id="presetGrid">
+                <button class="btn on"    data-preset="single-pos">单个正电荷</button>
+                <button class="btn"       data-preset="single-neg">单个负电荷</button>
+                <button class="btn"       data-preset="same-eq">等量同种</button>
+                <button class="btn"       data-preset="diff-eq">等量异种</button>
+                <button class="btn"       data-preset="same-uneq">不等量同种</button>
+                <button class="btn"       data-preset="diff-uneq">不等量异种</button>
+            </div>
+
+            <div class="section-title" style="margin-top:4px">视图模式</div>
+            <div class="btn-row">
+                <button class="btn on" id="viewTop">俯视图</button>
+                <button class="btn"    id="view3d">剖面图</button>
+            </div>
+
+            <div class="section-title" style="margin-top:4px">等势显示</div>
+            <div class="btn-row">
+                <button class="btn"    data-pot="none">关闭</button>
+                <button class="btn on" data-pot="fill">等势面</button>
+                <button class="btn"    data-pot="contour">等高线</button>
+            </div>
+
+            <div class="section-title" style="margin-top:4px">图层开关</div>
+            <div class="btn-row">
+                <button class="btn on" id="tglLines">电场线</button>
+                <button class="btn on" id="tglTest">试探电荷</button>
+            </div>
+
+            <div class="section-title" style="margin-top:4px">选中电荷</div>
+            <div class="ctrl-group">
+                <div class="charge-chips" id="chargeChips"></div>
+                <label style="margin-top:10px">电荷量 q <b id="qVal">+4.0 nC</b></label>
+                <input type="range" id="qSlider" min="-10" max="10" step="0.5" value="4" />
+            </div>
+
+            <div class="section-title" style="margin-top:4px">试探电荷</div>
+            <div class="ctrl-group">
+                <label>电荷量 q₀ <b id="q0Val">+1.0 nC</b></label>
+                <input type="range" id="q0Slider" min="-3" max="3" step="0.1" value="1" />
+            </div>
+
+            <div class="btn-row" style="margin-top:2px">
+                <button class="btn btn-secondary" id="resetBtn">↺ 复位</button>
+            </div>
+        </div>
+
+        <!-- ================= 中央：画布 ================= -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="cv"></canvas>
+            <div class="legend">
+                <div>电势 V</div>
+                <div class="bar"></div>
+                <div class="ends"><span>低(负)</span><span>0</span><span>高(正)</span></div>
+            </div>
+            <div class="canvas-hint" id="hint">拖动电荷或试探电荷可移动 · 点击空白处放置试探电荷</div>
+        </div>
+
+        <!-- ================= 右侧：信息栏 ================= -->
+        <div class="panel-right">
+            <div class="section-title">试探电荷所在处</div>
+            <div class="ctrl-group">
+                <div class="data-list">
+                    <div class="data-row">
+                        <span class="k">位置 (x, y)</span>
+                        <span class="v" id="rPos">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">电场强度 E</span>
+                        <span class="v" id="rE">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">E 方向</span>
+                        <span class="v" id="rEdir">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">受力 F = q₀E</span>
+                        <span class="v" id="rF">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">F 方向</span>
+                        <span class="v" id="rFdir">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">电势与电势能</div>
+            <div class="ctrl-group">
+                <div class="data-list">
+                    <div class="data-row">
+                        <span class="k">电势 φ</span>
+                        <span class="v" id="rV">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">电势高低</span>
+                        <span class="v" id="rVtag">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">电势能 E<sub>p</sub> = q₀φ</span>
+                        <span class="v" id="rEp">—</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="k">E<sub>p</sub> 性质</span>
+                        <span class="v" id="rEptag">—</span>
+                    </div>
+                </div>
+                <div class="vbar-wrap">
+                    <div class="vbar"><div class="marker" id="vMarker" style="left:50%"></div></div>
+                    <div class="vbar-scale"><span id="vLo">—</span><span>0</span><span id="vHi">—</span></div>
+                </div>
+            </div>
+
+            <div class="section-title">读图要点</div>
+            <div class="note" id="noteBox">
+                <b>电场线</b><span class="fl">（黄色）</span>：始于正电荷、终于负电荷，切线方向即该点 <b>E</b> 的方向；<b>疏密表示强弱</b>。<br />
+                <b>等势面</b><span class="eq">（俯视=色块/等高线，剖面=嵌套半球壳层）</span>：同一面上各点电势相等，<b>处处与电场线垂直</b>；剖面图沿视线切开，可见内部嵌套的半球壳层，颜色越红电势越高。<br />
+                沿电场线方向 <b>电势降低</b>；相邻等势线越密，说明该处电场越强。
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+'use strict';
+/* ==================================================================
+   ⚡ 电场可视化模拟器  —  自包含单文件，无任何外部依赖
+   坐标与单位约定：
+     · 世界坐标 x, y 单位 cm（画布中心为原点，y 轴向上为正）
+     · 电荷量 q 单位 nC (1e-9 C)
+     · 电势 V 单位 V；场强 E 单位 V/m；力 F 单位 N；电势能 Ep 单位 J
+   ================================================================== */
+
+const K_E = 8.99e9;          // 静电力常量 N·m²/C²
+const CM = 0.01;             // cm -> m
+const NC = 1e-9;             // nC -> C
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+
+// ---------------- 预设电荷组合 ----------------
+const PRESETS = {
+    'single-pos': { name: '单个正点电荷', charges: [{ q:  4, x: 0, y: 0 }] },
+    'single-neg': { name: '单个负点电荷', charges: [{ q: -4, x: 0, y: 0 }] },
+    'same-eq':    { name: '等量同种电荷', charges: [{ q:  4, x: -4, y: 0 }, { q:  4, x: 4, y: 0 }] },
+    'diff-eq':    { name: '等量异种电荷', charges: [{ q:  4, x: -4, y: 0 }, { q: -4, x: 4, y: 0 }] },
+    'same-uneq':  { name: '不等量同种电荷', charges: [{ q:  6, x: -4, y: 0 }, { q:  2, x: 4, y: 0 }] },
+    'diff-uneq':  { name: '不等量异种电荷', charges: [{ q:  6, x: -4, y: 0 }, { q: -2, x: 4, y: 0 }] }
+};
+
+const state = {
+    preset: 'single-pos',
+    charges: [],
+    test: { q: 1, x: 3.6, y: 3.6 },
+    view: 'top',            // 'top' | '3d'
+    pot: 'fill',            // 'none' | 'fill' | 'contour'
+    showLines: true,
+    showTest: true,
+    selected: 0,            // 选中的场源电荷下标
+    yaw: -0.62,             // 剖面图方位角
+    elev: 0.60,             // 剖面图俯仰角(弧度)，π/2 = 正上方
+    dragging: null,         // {type:'charge',i} | {type:'test'} | {type:'rotate',...}
+    dirty: true
+};
+
+let W = 900, H = 620;        // 画布 CSS 尺寸
+let halfH = 10;              // 世界半高 cm
+let halfW = 15;              // 世界半宽 cm（按宽高比推算）
+let scale = 30;              // px / cm
+
+// 缓存
+let cache = { lines: null, contours: null, potCanvas: null, isoTris: null, isoLines: null, Vref: 1 };
+
+// ---------------- 单位换算与格式化 ----------------
+function toScreen(x, y) { return [W / 2 + x * scale, H / 2 - y * scale]; }
+function toWorld(px, py) { return [(px - W / 2) / scale, (H / 2 - py) / scale]; }
+
+function fmtV(v) {
+    const a = Math.abs(v);
+    if (a >= 1000) return (v / 1000).toFixed(2) + ' kV';
+    if (a >= 1) return v.toFixed(1) + ' V';
+    return v.toFixed(3) + ' V';
+}
+function fmtE(v) {
+    const a = Math.abs(v);
+    if (a >= 1e6) return (v / 1e6).toFixed(2) + ' MV/m';
+    if (a >= 1000) return (v / 1000).toFixed(2) + ' kV/m';
+    return v.toFixed(1) + ' V/m';
+}
+function fmtF(v) {                 // 入参 N
+    const a = Math.abs(v);
+    if (a >= 1e-3) return (v * 1e3).toFixed(2) + ' mN';
+    if (a >= 1e-6) return (v * 1e6).toFixed(2) + ' μN';
+    return (v * 1e9).toFixed(2) + ' nN';
+}
+function fmtEp(v) {                // 入参 J
+    const a = Math.abs(v);
+    if (a >= 1e-3) return (v * 1e3).toFixed(3) + ' mJ';
+    if (a >= 1e-6) return (v * 1e6).toFixed(3) + ' μJ';
+    return (v * 1e9).toFixed(2) + ' nJ';
+}
+function fmtQ(q) { return (q >= 0 ? '+' : '') + q.toFixed(1) + ' nC'; }
+function fmtAngle(rad) {
+    let d = rad * 180 / Math.PI;
+    if (d < 0) d += 360;
+    return d.toFixed(1) + '°';
+}
+
+// ---------------- 物理核心 ----------------
+// 电势：φ = Σ kq/r（以无穷远为零电势）
+function potentialAt(x, y) {
+    let V = 0;
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const dx = (x - c.x) * CM, dy = (y - c.y) * CM;
+        let r = Math.sqrt(dx * dx + dy * dy);
+        if (r < 2e-4) r = 2e-4;                 // 避免奇点
+        V += K_E * c.q * NC / r;
+    }
+    return V;
+}
+
+// 场强矢量：E = Σ kq/r² · r̂   （返回世界坐标分量，单位 V/m）
+function fieldAt(x, y) {
+    let ex = 0, ey = 0;
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const dx = (x - c.x) * CM, dy = (y - c.y) * CM;
+        let r2 = dx * dx + dy * dy;
+        let r = Math.sqrt(r2);
+        if (r < 2e-4) { r = 2e-4; r2 = r * r; }
+        const f = K_E * c.q * NC / (r2 * r);
+        ex += f * dx; ey += f * dy;
+    }
+    return [ex, ey];
+}
+
+// 参考电势：距最大电荷 2cm 处的电势，用于色阶与等高线定标
+function computeVref() {
+    let qm = 0;
+    for (const c of state.charges) qm = Math.max(qm, Math.abs(c.q));
+    if (qm === 0) qm = 1;
+    return K_E * qm * NC / (2 * CM);
+}
+
+/* ==================================================================
+   一、电场线追踪（RK4 沿场方向积分）
+   规则：从正电荷向外发出，从负电荷反向追踪（只保留"来自无穷远"的那些，
+        避免与正电荷发出的线重复），条数与 |q| 成正比。
+   ================================================================== */
+const HIT_R = 0.20;     // cm，进入此半径视为落到该电荷上
+const SEED_R = 0.24;    // cm，起始播种半径
+const DS = 0.07;        // cm，积分步长
+
+function unitDir(x, y, sgn) {
+    const e = fieldAt(x, y);
+    const m = Math.hypot(e[0], e[1]);
+    if (m < 1e-12) return null;
+    return [sgn * e[0] / m, sgn * e[1] / m];
+}
+
+function traceLine(x0, y0, sgn) {
+    const pts = [];
+    let x = x0, y = y0;
+    const maxSteps = 4200;
+    const bx = halfW * 1.35, by = halfH * 1.35;
+    let end = 'max', hit = -1;
+
+    for (let s = 0; s < maxSteps; s++) {
+        pts.push(x, y);
+        // --- RK4 ---
+        const k1 = unitDir(x, y, sgn); if (!k1) { end = 'stall'; break; }
+        const k2 = unitDir(x + DS * 0.5 * k1[0], y + DS * 0.5 * k1[1], sgn); if (!k2) { end = 'stall'; break; }
+        const k3 = unitDir(x + DS * 0.5 * k2[0], y + DS * 0.5 * k2[1], sgn); if (!k3) { end = 'stall'; break; }
+        const k4 = unitDir(x + DS * k3[0], y + DS * k3[1], sgn); if (!k4) { end = 'stall'; break; }
+        x += DS * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]) / 6;
+        y += DS * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]) / 6;
+
+        // 越界 → 视为去（来）自无穷远
+        if (x < -bx || x > bx || y < -by || y > by) { pts.push(x, y); end = 'inf'; break; }
+        // 落到某个电荷上
+        for (let i = 0; i < state.charges.length; i++) {
+            const c = state.charges[i];
+            if (Math.hypot(x - c.x, y - c.y) < HIT_R) { pts.push(c.x, c.y); end = 'charge'; hit = i; break; }
+        }
+        if (end === 'charge') break;
+    }
+    return { pts: pts, end: end, hit: hit };
+}
+
+function buildFieldLines(quick) {
+    const lines = [];
+    const chs = state.charges;
+    if (!chs.length) return lines;
+
+    let qmax = 0;
+    for (const c of chs) qmax = Math.max(qmax, Math.abs(c.q));
+    if (qmax === 0) return lines;
+
+    const base = quick ? 12 : 20;
+    for (let i = 0; i < chs.length; i++) {
+        const c = chs[i];
+        if (c.q === 0) continue;
+        // 条数 ∝ |q|，体现"电场线疏密表示强弱"
+        let n = Math.round(base * Math.abs(c.q) / qmax);
+        n = Math.max(quick ? 6 : 8, Math.min(40, n));
+        const sgn = c.q > 0 ? 1 : -1;
+        // 对称播种：每个电荷统一用 (k+0.5)*2π/n 的均匀角度。
+        // off=0.5 使单电荷自身关于水平轴上下对称；等量同种电荷两侧种子集合互为
+        // 镜像，整体关于中垂线左右对称。原 (i*0.37+0.08) 随电荷序号变化的偏移会让
+        // 左右两电荷的起始方向错开，导致等量同种电场线左右不对称——已修正。
+        const off = 0.5;
+
+        for (let k = 0; k < n; k++) {
+            const th = (k + off) * 2 * Math.PI / n;
+            const sx = c.x + SEED_R * Math.cos(th);
+            const sy = c.y + SEED_R * Math.sin(th);
+            const res = traceLine(sx, sy, sgn);
+            if (res.pts.length < 6) continue;
+
+            if (c.q > 0) {
+                // 正电荷发出：正向即场方向
+                lines.push({ pts: res.pts, rev: false, end: res.end });
+            } else {
+                // 负电荷：反向追踪。若终点落在某正电荷上，说明这条完整的线
+                // 已由那个正电荷发出过 → 丢弃，避免重复绘制。
+                // 反之（跑出边界）说明它的另一半在画面之外，必须保留，
+                // 否则偶极子外侧的大回环电场线在画面边缘会缺失。
+                if (res.end === 'charge' && chs[res.hit] && chs[res.hit].q > 0) continue;
+                lines.push({ pts: res.pts, rev: true, end: res.end });
+            }
+        }
+    }
+    return lines;
+}
+
+/* ==================================================================
+   二、等势线（Marching Squares）
+   ================================================================== */
+function buildVGrid(nx, ny) {
+    const vals = new Float64Array(nx * ny);
+    const dx = (2 * halfW) / (nx - 1), dy = (2 * halfH) / (ny - 1);
+    for (let j = 0; j < ny; j++) {
+        const y = -halfH + j * dy;
+        for (let i = 0; i < nx; i++) {
+            vals[j * nx + i] = potentialAt(-halfW + i * dx, y);
+        }
+    }
+    return { vals: vals, nx: nx, ny: ny, x0: -halfW, y0: -halfH, dx: dx, dy: dy };
+}
+
+// 返回线段数组 [x1,y1,x2,y2, ...]（世界坐标）
+function marchingSquares(g, level) {
+    const out = [];
+    const { vals, nx, ny, x0, y0, dx, dy } = g;
+    for (let j = 0; j < ny - 1; j++) {
+        for (let i = 0; i < nx - 1; i++) {
+            const v00 = vals[j * nx + i], v10 = vals[j * nx + i + 1];
+            const v11 = vals[(j + 1) * nx + i + 1], v01 = vals[(j + 1) * nx + i];
+            let idx = 0;
+            if (v00 > level) idx |= 1;
+            if (v10 > level) idx |= 2;
+            if (v11 > level) idx |= 4;
+            if (v01 > level) idx |= 8;
+            if (idx === 0 || idx === 15) continue;
+
+            const x = x0 + i * dx, y = y0 + j * dy;
+            const ip = (a, b) => {
+                const d = b - a;
+                if (Math.abs(d) < 1e-12) return 0.5;
+                return Math.max(0, Math.min(1, (level - a) / d));
+            };
+            const eB = [x + dx * ip(v00, v10), y];
+            const eR = [x + dx, y + dy * ip(v10, v11)];
+            const eT = [x + dx * ip(v01, v11), y + dy];
+            const eL = [x, y + dy * ip(v00, v01)];
+            const push = (a, b) => out.push(a[0], a[1], b[0], b[1]);
+
+            switch (idx) {
+                case 1: case 14: push(eL, eB); break;
+                case 2: case 13: push(eB, eR); break;
+                case 3: case 12: push(eL, eR); break;
+                case 4: case 11: push(eR, eT); break;
+                case 6: case 9:  push(eB, eT); break;
+                case 7: case 8:  push(eL, eT); break;
+                case 5:  push(eL, eB); push(eR, eT); break;
+                case 10: push(eB, eR); push(eT, eL); break;
+            }
+        }
+    }
+    return out;
+}
+
+function buildContours(quick) {
+    const Vref = cache.Vref;
+    const hasPos = state.charges.some(c => c.q > 0);
+    const hasNeg = state.charges.some(c => c.q < 0);
+    const mult = [0.15, 0.25, 0.4, 0.65, 1, 1.6, 2.6, 4.2, 7];
+    const levels = [];
+    for (const m of mult) {
+        if (hasPos) levels.push(Vref * m);
+        if (hasNeg) levels.push(-Vref * m);
+    }
+    if (hasPos && hasNeg) levels.push(0);       // V=0 等势面（异种电荷的中垂面）
+
+    const g = quick ? buildVGrid(120, 88) : buildVGrid(190, 140);
+    const res = [];
+    for (const lv of levels) {
+        res.push({ level: lv, segs: marchingSquares(g, lv) });
+    }
+    return res;
+}
+
+/* ==================================================================
+   三、等势面色阶（离屏低分辨率渲染后放大，保证流畅）
+   ================================================================== */
+function potColor(t) {          // t ∈ [-1,1]
+    const a = Math.min(1, Math.abs(t));
+    const e = Math.pow(a, 0.55);
+    if (t >= 0) return [20 + (255 - 20) * e, 32 + (118 - 32) * e, 46 + (88 - 46) * e];
+    return [20 + (72 - 20) * e, 32 + (152 - 32) * e, 46 + (255 - 46) * e];
+}
+
+function buildPotCanvas(quick) {
+    const step = quick ? 5 : 3;                      // 每 N 个 css px 采样一次
+    const w = Math.max(2, Math.ceil(W / step));
+    const h = Math.max(2, Math.ceil(H / step));
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const octx = off.getContext('2d');
+    const img = octx.createImageData(w, h);
+    const d = img.data;
+    const Vs = cache.Vref;
+
+    for (let j = 0; j < h; j++) {
+        const py = (j + 0.5) * step;
+        const y = (H / 2 - py) / scale;
+        for (let i = 0; i < w; i++) {
+            const px = (i + 0.5) * step;
+            const x = (px - W / 2) / scale;
+            const t = Math.tanh(potentialAt(x, y) / Vs);
+            const c = potColor(t);
+            const o = (j * w + i) * 4;
+            d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+        }
+    }
+    octx.putImageData(img, 0, 0);
+    return off;
+}
+
+/* ==================================================================
+   四、绘图工具
+   ================================================================== */
+function rgbStr(c, mul) {
+    const m = mul === undefined ? 1 : mul;
+    return 'rgb(' + Math.round(Math.min(255, c[0] * m)) + ',' +
+                    Math.round(Math.min(255, c[1] * m)) + ',' +
+                    Math.round(Math.min(255, c[2] * m)) + ')';
+}
+
+function drawArrowHead(px, py, ang, size, color) {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(size, 0);
+    ctx.lineTo(-size * 0.72, size * 0.55);
+    ctx.lineTo(-size * 0.72, -size * 0.55);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+}
+
+// 画一个矢量箭头（从 px,py 出发，长 len，方向 ang）
+function drawVector(px, py, ang, len, color, width, label) {
+    const ex = px + Math.cos(ang) * len, ey = py + Math.sin(ang) * len;
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.lineTo(ex, ey);
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+    ctx.stroke();
+    drawArrowHead(ex, ey, ang, width * 3.1, color);
+    if (label) {
+        ctx.font = '600 14px "Segoe UI", "PingFang SC", sans-serif';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(label, ex + Math.cos(ang) * 15, ey + Math.sin(ang) * 15);
+    }
+}
+
+// 场源电荷（2D）
+function drawCharge(c, px, py, selected) {
+    const r = 11 + Math.min(9, Math.abs(c.q) * 0.85);
+    const pos = c.q >= 0;
+    const main = pos ? '#ff7a55' : '#4a96ff';
+    const glow = pos ? 'rgba(255,110,70,0.45)' : 'rgba(74,150,255,0.45)';
+
+    ctx.save();
+    ctx.shadowColor = glow; ctx.shadowBlur = 22;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, 2 * Math.PI);
+    const g = ctx.createRadialGradient(px - r * 0.3, py - r * 0.3, r * 0.15, px, py, r);
+    g.addColorStop(0, pos ? '#ffb59a' : '#a8ccff');
+    g.addColorStop(1, main);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+
+    if (selected) {
+        ctx.beginPath(); ctx.arc(px, py, r + 6, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // 正负号
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px - r * 0.42, py); ctx.lineTo(px + r * 0.42, py);
+    if (pos) { ctx.moveTo(px, py - r * 0.42); ctx.lineTo(px, py + r * 0.42); }
+    ctx.stroke();
+
+    ctx.font = '600 13px "Segoe UI", "PingFang SC", sans-serif';
+    ctx.fillStyle = pos ? '#ffb59a' : '#a8ccff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(fmtQ(c.q), px, py + r + 5);
+}
+
+/* ==================================================================
+   五、俯视图（2D）渲染
+   ================================================================== */
+function drawGrid2D() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = Math.ceil(-halfW / 2) * 2; x <= halfW; x += 2) {
+        const p = toScreen(x, 0);
+        ctx.moveTo(p[0], 0); ctx.lineTo(p[0], H);
+    }
+    for (let y = Math.ceil(-halfH / 2) * 2; y <= halfH; y += 2) {
+        const p = toScreen(0, y);
+        ctx.moveTo(0, p[1]); ctx.lineTo(W, p[1]);
+    }
+    ctx.stroke();
+}
+
+function drawFieldLines2D() {
+    const lines = cache.lines;
+    if (!lines) return;
+    ctx.strokeStyle = 'rgba(255,207,106,0.68)';
+    ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+
+    for (const ln of lines) {
+        const p = ln.pts;
+        if (p.length < 4) continue;
+        ctx.beginPath();
+        let s = toScreen(p[0], p[1]);
+        ctx.moveTo(s[0], s[1]);
+        for (let i = 2; i < p.length; i += 2) {
+            s = toScreen(p[i], p[i + 1]);
+            ctx.lineTo(s[0], s[1]);
+        }
+        ctx.stroke();
+    }
+    // 箭头：沿线等间隔放置，方向始终指向场方向
+    const step = 46;
+    for (const ln of lines) {
+        const p = ln.pts;
+        const n = p.length / 2;
+        if (n < step * 0.6) continue;
+        for (let i = Math.round(step * 0.55); i < n - 2; i += step) {
+            const a = toScreen(p[i * 2], p[i * 2 + 1]);
+            const b = toScreen(p[(i + 2) * 2], p[(i + 2) * 2 + 1]);
+            let ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+            if (ln.rev) ang += Math.PI;                 // 负电荷反向追踪 → 箭头反指
+            if (a[0] < -20 || a[0] > W + 20 || a[1] < -20 || a[1] > H + 20) continue;
+            drawArrowHead(a[0], a[1], ang, 5.4, 'rgba(255,214,120,0.92)');
+        }
+    }
+}
+
+function drawContours2D() {
+    const cs = cache.contours;
+    if (!cs) return;
+    const labels = [];
+    for (const c of cs) {
+        const isZero = Math.abs(c.level) < 1e-9;
+        ctx.strokeStyle = isZero ? 'rgba(255,255,255,0.62)' : 'rgba(127,224,204,0.78)';
+        ctx.lineWidth = isZero ? 1.8 : 1.3;
+        if (isZero) ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        const s = c.segs;
+        for (let i = 0; i < s.length; i += 4) {
+            const a = toScreen(s[i], s[i + 1]);
+            const b = toScreen(s[i + 2], s[i + 3]);
+            ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 数值标注：取该等势线最右侧的一段
+        let best = -1, bx = -1e9, by = 0;
+        for (let i = 0; i < s.length; i += 4) {
+            if (s[i] > bx) { bx = s[i]; by = s[i + 1]; best = i; }
+        }
+        if (best >= 0) {
+            const p = toScreen(bx, by);
+            if (p[0] > 30 && p[0] < W - 34 && p[1] > 20 && p[1] < H - 20) {
+                let ok = true;
+                for (const L of labels) {
+                    if (Math.hypot(L[0] - p[0], L[1] - p[1]) < 42) { ok = false; break; }
+                }
+                if (ok) {
+                    labels.push(p);
+                    ctx.font = '600 11px "Segoe UI", sans-serif';
+                    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                    const txt = isZero ? '0 V' : fmtV(c.level);
+                    const tw = ctx.measureText(txt).width;
+                    ctx.fillStyle = 'rgba(6,14,22,0.72)';
+                    ctx.fillRect(p[0] + 3, p[1] - 7, tw + 8, 14);
+                    ctx.fillStyle = isZero ? 'rgba(255,255,255,0.9)' : 'rgba(150,240,220,0.95)';
+                    ctx.fillText(txt, p[0] + 7, p[1]);
+                }
+            }
+        }
+    }
+}
+
+function drawTestCharge2D() {
+    const t = state.test;
+    const p = toScreen(t.x, t.y);
+    const E = fieldAt(t.x, t.y);
+    const Em = Math.hypot(E[0], E[1]);
+
+    // E 矢量（青白）与 F 矢量（品红）。长度用 log 压缩，避免近电荷处过长
+    if (Em > 1e-9) {
+        const angE = Math.atan2(-E[1], E[0]);                 // 屏幕 y 向下
+        const len = 30 + 34 * Math.log10(1 + Em / 2000);
+        drawVector(p[0], p[1], angE, Math.min(120, len), 'rgba(180,240,255,0.92)', 2.2, 'E');
+        if (Math.abs(t.q) > 1e-6) {
+            const angF = t.q >= 0 ? angE : angE + Math.PI;
+            drawVector(p[0], p[1], angF, Math.min(104, len * 0.82), 'rgba(255,140,220,0.95)', 2.6, 'F');
+        }
+    }
+
+    // 试探电荷本体
+    const r = 8;
+    const pos = t.q >= 0;
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,255,255,0.55)'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 2 * Math.PI);
+    ctx.fillStyle = pos ? '#ffd9c8' : '#c8e2ff';
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.strokeStyle = pos ? '#c74a20' : '#1e5aa8'; ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(p[0] - r * 0.45, p[1]); ctx.lineTo(p[0] + r * 0.45, p[1]);
+    if (pos) { ctx.moveTo(p[0], p[1] - r * 0.45); ctx.lineTo(p[0], p[1] + r * 0.45); }
+    ctx.stroke();
+
+    ctx.font = '600 12px "Segoe UI", "PingFang SC", sans-serif';
+    ctx.fillStyle = 'rgba(230,244,255,0.95)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('q₀ ' + fmtQ(t.q), p[0], p[1] - r - 4);
+}
+
+function render2D() {
+    // 背景
+    if (state.pot === 'fill' && cache.potCanvas) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(cache.potCanvas, 0, 0, W, H);
+    } else {
+        ctx.fillStyle = 'rgba(12,22,34,0.85)';
+        ctx.fillRect(0, 0, W, H);
+        drawGrid2D();
+    }
+    if (state.pot === 'contour') drawContours2D();
+    if (state.showLines) drawFieldLines2D();
+
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const p = toScreen(c.x, c.y);
+        drawCharge(c, p[0], p[1], i === state.selected);
+    }
+    if (state.showTest) drawTestCharge2D();
+
+    // 比例尺
+    ctx.font = '500 12px "Segoe UI", sans-serif';
+    ctx.fillStyle = 'rgba(150,180,210,0.6)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    const barLen = 2 * scale;
+    ctx.strokeStyle = 'rgba(150,180,210,0.6)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(16, H - 22); ctx.lineTo(16 + barLen, H - 22);
+    ctx.moveTo(16, H - 26); ctx.lineTo(16, H - 18);
+    ctx.moveTo(16 + barLen, H - 26); ctx.lineTo(16 + barLen, H - 18);
+    ctx.stroke();
+    ctx.fillText('2 cm', 16, H - 28);
+}
+
+/* ==================================================================
+   六、剖面图（Cross-Section）渲染 —— 三维等势面沿视线切开
+        正电荷 → 高电势(红)壳层；负电荷 → 低电势(蓝)壳层
+   ================================================================== */
+let scale3 = 26, OY = 0;
+
+function proj3(x, y, z) {
+    const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+    const X = x * cy - y * sy;
+    const Y = x * sy + y * cy;
+    const se = Math.sin(state.elev), ce = Math.cos(state.elev);
+    return [W / 2 + X * scale3, H / 2 + OY - (Y * se + z * ce) * scale3];
+}
+function depth3(x, y) {
+    return x * Math.sin(state.yaw) + y * Math.cos(state.yaw);
+}
+// 屏幕坐标 → 底面(z=0 平面)世界坐标，用于 3D 下拖动电荷
+function unproj3(px, py) {
+    const se = Math.sin(state.elev);
+    if (Math.abs(se) < 1e-4) return null;
+    const X = (px - W / 2) / scale3;
+    const Y = -((py - H / 2 - OY) / scale3) / se;
+    const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+    return [X * cy + Y * sy, -X * sy + Y * cy];
+}
+
+// 三维电势 V(x,y,z)，剖面图在 y=0 切面上取样
+function potential3D(x, y, z3) {
+    let V = 0;
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const dx = (x - c.x) * CM, dy = (y - c.y) * CM, dz = z3 * CM;
+        let r = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (r < 2e-4) r = 2e-4;
+        V += K_E * c.q * NC / r;
+    }
+    return V;
+}
+
+// ============================================================
+//  剖面视图（Cross-Section / 嵌套半球壳层）
+//  提取三维电势场 V(x,y,z) 的等势面为封闭曲面，
+//  沿「视线方向过原点」的平面切开（只保留远离相机的一半），
+//  于是看到一组嵌套的半球壳层——如俄罗斯套娃。
+//  颜色越红电势越高（沿用色阶）；单点电荷呈同心半球，
+//  异种电荷呈经典哑铃状嵌套壳层。旋转视角即转动整个套娃。
+// ============================================================
+
+// 光照方向（世界坐标，前-上-右），双面着色
+const LX = 0.30, LY = 0.42, LZ = 0.85;
+const LNM = Math.hypot(LX, LY, LZ);
+const Lx = LX / LNM, Ly = LY / LNM, Lz = LZ / LNM;
+
+// 三维场强 E = Σ kq r̂ / r²
+function field3D(x, y, z) {
+    let ex = 0, ey = 0, ez = 0;
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const dx = (x - c.x) * CM, dy = (y - c.y) * CM, dz = z * CM;
+        let r2 = dx * dx + dy * dy + dz * dz;
+        let r = Math.sqrt(r2);
+        if (r < 2e-4) { r = 2e-4; r2 = r * r; }
+        const f = K_E * c.q * NC / (r2 * r);
+        ex += f * dx; ey += f * dy; ez += f * dz;
+    }
+    return [ex, ey, ez];
+}
+
+// 等势面档位：单点电荷等势面半径 r = kq/|V|，取若干电势档
+function isoLevels() {
+    const hasPos = state.charges.some(c => c.q > 0);
+    const hasNeg = state.charges.some(c => c.q < 0);
+    const mult = [0.18, 0.3, 0.5, 0.8, 1.3, 2.1, 3.4, 5.5, 9];
+    const levels = [];
+    for (const m of mult) {
+        if (hasPos) levels.push(cache.Vref * m);
+        if (hasNeg) levels.push(-cache.Vref * m);
+    }
+    if (hasPos && hasNeg) levels.push(0);
+    return levels;
+}
+
+// Marching Tetrahedra（6 条边：0:(0,1) 1:(0,2) 2:(0,3) 3:(1,2) 4:(1,3) 5:(2,3)）
+const MT_TRI = {
+    0: [], 15: [],
+    1: [[0, 2, 1]], 2: [[0, 3, 4]], 4: [[1, 3, 5]], 8: [[2, 4, 5]],
+    14: [[0, 1, 2]], 13: [[0, 4, 3]], 11: [[1, 5, 3]], 7: [[2, 5, 4]],
+    3: [[1, 3, 4], [1, 4, 2]], 12: [[1, 4, 3], [1, 2, 4]],
+    5: [[0, 3, 5], [0, 5, 2]], 10: [[0, 5, 3], [0, 2, 5]],
+    6: [[0, 1, 5], [0, 5, 4]], 9: [[0, 5, 1], [0, 4, 5]]
+};
+const MT_EDGES = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+const MT_TETRA = [[0, 1, 3, 7], [0, 1, 7, 5], [0, 5, 7, 4], [0, 3, 2, 7], [0, 2, 6, 7], [0, 5, 6, 7]];
+const MT_CO = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
+
+function mtTetra(p, vv, L, out) {
+    let idx = 0;
+    for (let t = 0; t < 4; t++) if (vv[t] < L) idx |= (1 << t);
+    const tris = MT_TRI[idx];
+    if (!tris || tris.length === 0) return;
+    for (const tri of tris) {
+        const verts = [];
+        for (const e of tri) {
+            const a = MT_EDGES[e][0], b = MT_EDGES[e][1];
+            const t = (L - vv[a]) / (vv[b] - vv[a]);
+            verts.push(
+                p[a][0] + (p[b][0] - p[a][0]) * t,
+                p[a][1] + (p[b][1] - p[a][1]) * t,
+                p[a][2] + (p[b][2] - p[a][2]) * t
+            );
+        }
+        out.push({ level: L, v: verts });
+    }
+}
+
+// 提取所有等势面三角片（完整双半球，绘制时再按视线裁剪）
+function buildIsoSurfaces3D(quick) {
+    const N = quick ? 14 : 22;
+    const XR = halfW, YR = halfH, ZR = Math.min(halfW, halfH) * 0.95;
+    const gx = N, gy = N, gz = N;
+    const V = new Float64Array(gx * gy * gz);
+    const I = (i, j, k) => i + gx * (j + gy * k);
+    for (let k = 0; k < gz; k++) {
+        const az = -ZR + 2 * ZR * k / (gz - 1);
+        for (let j = 0; j < gy; j++) {
+            const ay = -YR + 2 * YR * j / (gy - 1);
+            for (let i = 0; i < gx; i++) {
+                const ax = -XR + 2 * XR * i / (gx - 1);
+                V[I(i, j, k)] = potential3D(ax, ay, az);
+            }
+        }
+    }
+    const levels = isoLevels();
+    const out = [];
+    for (let k = 0; k < gz - 1; k++) {
+        for (let j = 0; j < gy - 1; j++) {
+            for (let i = 0; i < gx - 1; i++) {
+                const vals = new Array(8), pos = new Array(8);
+                let mn = 1e30, mx = -1e30;
+                for (let c = 0; c < 8; c++) {
+                    const ii = i + MT_CO[c][0], jj = j + MT_CO[c][1], kk = k + MT_CO[c][2];
+                    const val = V[I(ii, jj, kk)];
+                    vals[c] = val;
+                    if (val < mn) mn = val;
+                    if (val > mx) mx = val;
+                    pos[c] = [
+                        -XR + 2 * XR * ii / (gx - 1),
+                        -YR + 2 * YR * jj / (gy - 1),
+                        -ZR + 2 * ZR * kk / (gz - 1)
+                    ];
+                }
+                for (const L of levels) {
+                    if (L <= mn || L >= mx) continue;
+                    for (const t of MT_TETRA) {
+                        mtTetra([pos[t[0]], pos[t[1]], pos[t[2]], pos[t[3]]],
+                                [vals[t[0]], vals[t[1]], vals[t[2]], vals[t[3]]], L, out);
+                    }
+                }
+            }
+        }
+    }
+    return out;
+}
+
+// 沿「视线方向过原点」的平面裁剪：仅保留远离相机的一半（viewDepth<=0）
+function clipFar(tri) {
+    const out = [];
+    const n = tri.length;
+    for (let i = 0; i < n; i++) {
+        const A = tri[i], B = tri[(i + 1) % n];
+        const da = depth3(A[0], A[1]), db = depth3(B[0], B[1]);
+        if (da <= 0) out.push(A);
+        if ((da < 0 && db > 0) || (da > 0 && db < 0)) {
+            const t = da / (da - db);
+            out.push([A[0] + t * (B[0] - A[0]), A[1] + t * (B[1] - A[1]), A[2] + t * (B[2] - A[2])]);
+        }
+    }
+    return out;
+}
+
+function isoColor(level) {
+    const t = Math.max(-1, Math.min(1, level / (3 * cache.Vref)));
+    return potColor(t);
+}
+function projPoly(poly) {
+    const s = [];
+    for (let i = 0; i < poly.length; i++) s.push(proj3(poly[i][0], poly[i][1], poly[i][2]));
+    return s;
+}
+function strokePoly(s) {
+    ctx.beginPath();
+    for (let i = 0; i < s.length; i++) { if (i === 0) ctx.moveTo(s[i][0], s[i][1]); else ctx.lineTo(s[i][0], s[i][1]); }
+    ctx.closePath();
+}
+
+function drawIsoTris(tris, mode) {
+    const polys = [];
+    for (const T of tris) {
+        const v = T.v, nt = v.length / 9;
+        for (let f = 0; f < nt; f++) {
+            const o = f * 9;
+            const tri = [[v[o], v[o + 1], v[o + 2]], [v[o + 3], v[o + 4], v[o + 5]], [v[o + 6], v[o + 7], v[o + 8]]];
+            const cl = clipFar(tri);
+            if (cl.length < 3) continue;
+            let vd = 0;
+            for (const p of cl) vd += depth3(p[0], p[1]);
+            vd /= cl.length;
+            const a = cl[0], b = cl[1], c = cl[2];
+            const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+            const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+            let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+            const nm = Math.hypot(nx, ny, nz) || 1; nx /= nm; ny /= nm; nz /= nm;
+            polys.push({ cl: cl, vd: vd, nx: nx, ny: ny, nz: nz, level: T.level });
+        }
+    }
+    polys.sort((p, q) => p.vd - q.vd);
+    for (const P of polys) {
+        const col = isoColor(P.level);
+        const shade = 0.45 + 0.55 * Math.abs(P.nx * Lx + P.ny * Ly + P.nz * Lz);
+        const s = projPoly(P.cl);
+        if (mode === 'fill') {
+            ctx.fillStyle = 'rgba(' + (col[0] * shade | 0) + ',' + (col[1] * shade | 0) + ',' + (col[2] * shade | 0) + ',0.9)';
+            strokePoly(s); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 0.5; strokePoly(s); ctx.stroke();
+        } else {
+            ctx.strokeStyle = 'rgba(' + (col[0] | 0) + ',' + (col[1] | 0) + ',' + (col[2] | 0) + ',0.8)';
+            ctx.lineWidth = 1; strokePoly(s); ctx.stroke();
+        }
+    }
+}
+
+// 三维电场线（仅远端半球）
+function buildIsoFieldLines(quick) {
+    const chs = state.charges;
+    if (!chs.length) return [];
+    let qmax = 0; for (const c of chs) qmax = Math.max(qmax, Math.abs(c.q));
+    if (qmax === 0) return [];
+    const lines = [];
+    const base = quick ? 7 : 14;
+    for (let i = 0; i < chs.length; i++) {
+        const c = chs[i]; if (c.q === 0) continue;
+        const sgn = c.q > 0 ? 1 : -1;
+        let n = Math.round(base * Math.abs(c.q) / qmax);
+        n = Math.max(6, Math.min(34, n));
+        for (let k = 0; k < n; k++) {
+            const phi = Math.acos(1 - 2 * (k + 0.5) / n);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * k;
+            let x = c.x + SEED_R * Math.sin(phi) * Math.cos(theta);
+            let y = c.y + SEED_R * Math.sin(phi) * Math.sin(theta);
+            let z = SEED_R * Math.cos(phi);
+            const pts = []; let end = 'max', hit = -1;
+            for (let s = 0; s < 3000; s++) {
+                pts.push(x, y, z);
+                const f = (X, Y, Z) => {
+                    const E = field3D(X, Y, Z);
+                    const mm = Math.hypot(E[0], E[1], E[2]) || 1;
+                    return [sgn * E[0] / mm, sgn * E[1] / mm, sgn * E[2] / mm];
+                };
+                const k1 = f(x, y, z);
+                const k2 = f(x + DS * 0.5 * k1[0], y + DS * 0.5 * k1[1], z + DS * 0.5 * k1[2]);
+                const k3 = f(x + DS * 0.5 * k2[0], y + DS * 0.5 * k2[1], z + DS * 0.5 * k2[2]);
+                const k4 = f(x + DS * k3[0], y + DS * k3[1], z + DS * k3[2]);
+                x += DS * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]) / 6;
+                y += DS * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]) / 6;
+                z += DS * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]) / 6;
+                if (Math.abs(x) > halfW * 1.4 || Math.abs(y) > halfH * 1.4 || Math.abs(z) > halfW * 1.4) { pts.push(x, y, z); end = 'inf'; break; }
+                for (let ci = 0; ci < chs.length; ci++) {
+                    const cc = chs[ci];
+                    if (Math.hypot(x - cc.x, y - cc.y, z) < HIT_R) { pts.push(cc.x, cc.y, 0); end = 'charge'; hit = ci; break; }
+                }
+                if (end === 'charge') break;
+            }
+            if (pts.length >= 6) lines.push({ pts: pts });
+        }
+    }
+    return lines;
+}
+function drawIsoFieldLines(lines) {
+    ctx.strokeStyle = 'rgba(255,207,106,0.6)';
+    ctx.lineWidth = 1.3;
+    for (const ln of lines) {
+        const p = ln.pts;
+        if (p.length < 6) continue;
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < p.length; i += 3) {
+            const x = p[i], y = p[i + 1], z = p[i + 2];
+            if (Math.abs(x) > halfW * 1.4 || Math.abs(y) > halfH * 1.4 || Math.abs(z) > halfW * 1.4) { started = false; continue; }
+            if (depth3(x, y) > 0) { started = false; continue; }
+            const s = proj3(x, y, z);
+            if (!started) { ctx.moveTo(s[0], s[1]); started = true; } else ctx.lineTo(s[0], s[1]);
+        }
+        ctx.stroke();
+    }
+}
+
+function drawSectionMarkers() {
+    const order = state.charges
+        .map((c, i) => ({ c: c, i: i, d: depth3(c.x, c.y) }))
+        .sort((a, b) => b.d - a.d);
+    for (const it of order) {
+        const c = it.c;
+        const p = proj3(c.x, c.y, 0);
+        drawCharge(c, p[0], p[1], it.i === state.selected);
+    }
+    if (state.showTest) {
+        const t = state.test;
+        const V = potentialAt(t.x, t.y);
+        const p = proj3(t.x, t.y, 0);
+        ctx.beginPath(); ctx.arc(p[0], p[1], 8, 0, 2 * Math.PI);
+        ctx.fillStyle = t.q >= 0 ? '#ffd9c8' : '#c8e2ff'; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.font = '600 12px "Segoe UI","PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(230,244,255,0.95)';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('q₀  φ = ' + fmtV(V), p[0], p[1] - 11);
+    }
+}
+
+function renderSection() {
+    ctx.fillStyle = 'rgba(10,19,30,0.92)';
+    ctx.fillRect(0, 0, W, H);
+
+    if (state.pot !== 'none' && cache.isoTris) drawIsoTris(cache.isoTris, state.pot);
+    if (state.showLines && cache.isoLines) drawIsoFieldLines(cache.isoLines);
+    drawSectionMarkers();
+
+    ctx.font = '500 13px "Segoe UI","PingFang SC",sans-serif';
+    ctx.fillStyle = 'rgba(150,185,215,0.7)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('剖面图 · 嵌套等势半球壳层（沿视线切开，可见内部）', 16, 14);
+    ctx.fillStyle = 'rgba(150,185,215,0.45)';
+    const sub = state.pot === 'none'
+        ? '仅电场线：远端半球的放射状场线'
+        : '颜色越红电势越高 · 单点电荷呈同心半球（俄罗斯套娃）';
+    ctx.fillText(sub, 16, 34);
+}
+
+
+/* ==================================================================
+   七、缓存重建与总渲染
+   ================================================================== */
+function rebuild(quick) {
+    cache.Vref = computeVref();
+    cache.lines = state.showLines ? buildFieldLines(quick) : null;
+    cache.contours = (state.pot === 'contour') ? buildContours(quick) : null;
+    cache.potCanvas = (state.view === 'top' && state.pot === 'fill') ? buildPotCanvas(quick) : null;
+    cache.isoTris = (state.view === '3d' && state.pot !== 'none') ? buildIsoSurfaces3D(quick) : null;
+    cache.isoLines = (state.view === '3d' && state.showLines) ? buildIsoFieldLines(quick) : null;
+}
+
+function render() {
+    ctx.clearRect(0, 0, W, H);
+    if (state.view === 'top') render2D(); else renderSection();
+    updateInfo();
+    updateStatus();
+}
+
+function refresh(quick) { rebuild(quick); render(); }
+
+/* ==================================================================
+   八、信息栏
+   ================================================================== */
+const el = {
+    rPos: document.getElementById('rPos'), rE: document.getElementById('rE'),
+    rEdir: document.getElementById('rEdir'), rF: document.getElementById('rF'),
+    rFdir: document.getElementById('rFdir'), rV: document.getElementById('rV'),
+    rVtag: document.getElementById('rVtag'), rEp: document.getElementById('rEp'),
+    rEptag: document.getElementById('rEptag'), vMarker: document.getElementById('vMarker'),
+    vLo: document.getElementById('vLo'), vHi: document.getElementById('vHi'),
+    statusBar: document.getElementById('statusBar'), hint: document.getElementById('hint'),
+    qVal: document.getElementById('qVal'), qSlider: document.getElementById('qSlider'),
+    q0Val: document.getElementById('q0Val'), q0Slider: document.getElementById('q0Slider'),
+    chargeChips: document.getElementById('chargeChips')
+};
+
+function setCls(node, cls) { node.className = 'v ' + cls; }
+
+function updateInfo() {
+    const t = state.test;
+    if (!state.showTest) {
+        ['rPos', 'rE', 'rEdir', 'rF', 'rFdir', 'rV', 'rVtag', 'rEp', 'rEptag'].forEach(k => {
+            el[k].textContent = '—'; setCls(el[k], '');
+        });
+        el.vMarker.style.left = '50%';
+        return;
+    }
+
+    const E = fieldAt(t.x, t.y);
+    const Em = Math.hypot(E[0], E[1]);
+    const V = potentialAt(t.x, t.y);
+    const q0 = t.q * NC;                  // C
+    const F = Math.abs(q0) * Em;          // N，大小
+    const Ep = q0 * V;                    // J
+    const Vref = cache.Vref;
+
+    el.rPos.textContent = '(' + t.x.toFixed(2) + ', ' + t.y.toFixed(2) + ') cm';
+    setCls(el.rPos, '');
+
+    el.rE.textContent = fmtE(Em);
+    setCls(el.rE, '');
+
+    if (Em > 1e-9) {
+        el.rEdir.textContent = fmtAngle(Math.atan2(E[1], E[0]));
+        setCls(el.rEdir, '');
+    } else { el.rEdir.textContent = '—'; setCls(el.rEdir, ''); }
+
+    el.rF.textContent = fmtF(F);
+    setCls(el.rF, '');
+
+    if (Math.abs(t.q) < 1e-6) {
+        el.rFdir.textContent = 'q₀ = 0，不受力';
+        setCls(el.rFdir, 'zero');
+    } else if (t.q > 0) {
+        el.rFdir.textContent = '与 E 同向';
+        setCls(el.rFdir, 'pos');
+    } else {
+        el.rFdir.textContent = '与 E 反向';
+        setCls(el.rFdir, 'neg');
+    }
+
+    el.rV.textContent = fmtV(V);
+    setCls(el.rV, V > 0 ? 'pos' : (V < 0 ? 'neg' : 'zero'));
+
+    const thr = Vref * 0.02;
+    if (V > thr) { el.rVtag.innerHTML = '高电势 <span class="tag hi">φ &gt; 0</span>'; setCls(el.rVtag, 'pos'); }
+    else if (V < -thr) { el.rVtag.innerHTML = '低电势 <span class="tag lo">φ &lt; 0</span>'; setCls(el.rVtag, 'neg'); }
+    else { el.rVtag.innerHTML = '≈ 零电势 <span class="tag mid">φ ≈ 0</span>'; setCls(el.rVtag, 'zero'); }
+
+    el.rEp.textContent = fmtEp(Ep);
+    setCls(el.rEp, Ep > 0 ? 'pos' : (Ep < 0 ? 'neg' : 'zero'));
+
+    const epThr = Math.abs(q0) * thr;
+    if (Ep > epThr) { el.rEptag.textContent = '正值（离开时电场做正功）'; setCls(el.rEptag, 'pos'); }
+    else if (Ep < -epThr) { el.rEptag.textContent = '负值（被束缚在场中）'; setCls(el.rEptag, 'neg'); }
+    else { el.rEptag.textContent = '≈ 0'; setCls(el.rEptag, 'zero'); }
+
+    el.vMarker.style.left = (50 + 50 * Math.tanh(V / Vref)) + '%';
+    el.vLo.textContent = fmtV(-2 * Vref);
+    el.vHi.textContent = '+' + fmtV(2 * Vref);
+}
+
+function updateStatus() {
+    const potName = { none: '仅电场线', fill: '等势面', contour: '等高线' }[state.pot];
+    const viewName = state.view === 'top' ? '俯视图' : '剖面图';
+    el.statusBar.textContent = PRESETS[state.preset].name + ' · ' + viewName + ' · ' + potName;
+    el.hint.textContent = state.view === 'top'
+        ? '拖动电荷或试探电荷可移动 · 点击空白处放置试探电荷'
+        : '拖动旋转剖切视角 · 切换到「俯视图」可移动电荷';
+}
+
+function renderChips() {
+    let html = '';
+    for (let i = 0; i < state.charges.length; i++) {
+        const c = state.charges[i];
+        const cls = 'chip ' + (c.q >= 0 ? 'p' : 'n') + (i === state.selected ? ' sel' : '');
+        html += '<div class="' + cls + '" data-ci="' + i + '">Q' + (i + 1) + ' ' + fmtQ(c.q) + '</div>';
+    }
+    el.chargeChips.innerHTML = html;
+}
+
+function syncSliders() {
+    const c = state.charges[state.selected];
+    if (c) { el.qSlider.value = c.q; el.qVal.textContent = fmtQ(c.q); }
+    el.q0Slider.value = state.test.q;
+    el.q0Val.textContent = fmtQ(state.test.q);
+}
+
+/* ==================================================================
+   九、交互：拖动电荷 / 试探电荷 / 旋转立体视角
+   ================================================================== */
+function clampX(x) { return Math.max(-halfW * 0.96, Math.min(halfW * 0.96, x)); }
+function clampY(y) { return Math.max(-halfH * 0.94, Math.min(halfH * 0.94, y)); }
+
+function screenOfCharge(c) {
+    return state.view === 'top' ? toScreen(c.x, c.y) : proj3(c.x, c.y, 0);
+}
+function screenOfTest() {
+    const t = state.test;
+    if (state.view === 'top') return toScreen(t.x, t.y);
+    return proj3(t.x, t.y, 0);
+}
+function worldOfPointer(px, py) {
+    if (state.view === 'top') return toWorld(px, py);
+    return unproj3(px, py);
+}
+
+function hitTest(px, py) {
+    if (state.showTest) {
+        const tp = screenOfTest();
+        if (Math.hypot(px - tp[0], py - tp[1]) < 16) return { type: 'test' };
+    }
+    for (let i = state.charges.length - 1; i >= 0; i--) {
+        const c = state.charges[i];
+        const p = screenOfCharge(c);
+        const r = 11 + Math.min(9, Math.abs(c.q) * 0.85) + 7;
+        if (Math.hypot(px - p[0], py - p[1]) < r) return { type: 'charge', i: i };
+    }
+    return null;
+}
+
+function pointerPos(e) {
+    const r = cv.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+}
+
+cv.addEventListener('pointerdown', function (e) {
+    const p = pointerPos(e);
+    const h = hitTest(p[0], p[1]);
+    if (state.view === 'top') {
+        if (h) {
+            state.dragging = h;
+            if (h.type === 'charge') {
+                state.selected = h.i;
+                renderChips(); syncSliders();
+            }
+            render();
+        } else if (state.showTest) {
+            // 点击空白：把试探电荷放到该处
+            const w = toWorld(p[0], p[1]);
+            state.test.x = clampX(w[0]);
+            state.test.y = clampY(w[1]);
+            state.dragging = { type: 'test' };
+            render();
+        }
+    } else {
+        // 剖面图：拖动旋转视角；点到电荷则同时选中（供滑块调节 q）
+        if (h && h.type === 'charge') {
+            state.selected = h.i;
+            renderChips(); syncSliders();
+        }
+        state.dragging = { type: 'rotate', px: p[0], py: p[1], yaw: state.yaw, elev: state.elev };
+        render();
+    }
+    if (state.dragging) {
+        cv.classList.add('grabbing');
+        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    }
+});
+
+cv.addEventListener('pointermove', function (e) {
+    const d = state.dragging;
+    if (!d) return;
+    const p = pointerPos(e);
+
+    if (d.type === 'rotate') {
+        state.yaw = d.yaw - (p[0] - d.px) * 0.009;
+        state.elev = Math.max(0.14, Math.min(1.45, d.elev + (p[1] - d.py) * 0.006));
+        render();                       // 几何未变，无需重算场
+        return;
+    }
+    const w = worldOfPointer(p[0], p[1]);
+    if (!w) return;
+
+    if (d.type === 'test') {
+        state.test.x = clampX(w[0]);
+        state.test.y = clampY(w[1]);
+        render();                       // 试探电荷不产生场，只需重画
+        return;
+    }
+    if (d.type === 'charge') {
+        const c = state.charges[d.i];
+        c.x = clampX(w[0]);
+        c.y = clampY(w[1]);
+        refresh(true);                  // 场源移动 → 低精度快速重算
+    }
+});
+
+function endDrag() {
+    if (!state.dragging) return;
+    const wasCharge = state.dragging.type === 'charge';
+    state.dragging = null;
+    cv.classList.remove('grabbing');
+    // 场源移动过 → 松手后恢复高精度；旋转结束也要用高精度网格重画一次
+    if (wasCharge) refresh(false); else render();
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+/* ==================================================================
+   十、控件绑定
+   ================================================================== */
+function applyPreset(key) {
+    const p = PRESETS[key];
+    if (!p) return;
+    state.preset = key;
+    state.charges = p.charges.map(c => ({ q: c.q, x: c.x, y: c.y }));
+    state.selected = 0;
+    renderChips(); syncSliders(); refresh(false);
+}
+
+document.getElementById('presetGrid').addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-preset]');
+    if (!b) return;
+    this.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    applyPreset(b.dataset.preset);
+});
+
+const btnTop = document.getElementById('viewTop');
+const btn3d = document.getElementById('view3d');
+btnTop.addEventListener('click', function () {
+    if (state.view === 'top') return;
+    state.view = 'top';
+    btnTop.classList.add('on'); btn3d.classList.remove('on');
+    refresh(false);
+});
+btn3d.addEventListener('click', function () {
+    if (state.view === '3d') return;
+    state.view = '3d';
+    btn3d.classList.add('on'); btnTop.classList.remove('on');
+    refresh(false);
+});
+
+document.querySelectorAll('button[data-pot]').forEach(function (b) {
+    b.addEventListener('click', function () {
+        document.querySelectorAll('button[data-pot]').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        state.pot = b.dataset.pot;
+        refresh(false);
+    });
+});
+
+const tglLines = document.getElementById('tglLines');
+tglLines.addEventListener('click', function () {
+    state.showLines = !state.showLines;
+    tglLines.classList.toggle('on', state.showLines);
+    refresh(false);
+});
+const tglTest = document.getElementById('tglTest');
+tglTest.addEventListener('click', function () {
+    state.showTest = !state.showTest;
+    tglTest.classList.toggle('on', state.showTest);
+    render();
+});
+
+el.qSlider.addEventListener('input', function () {
+    const c = state.charges[state.selected];
+    if (!c) return;
+    c.q = parseFloat(this.value);
+    el.qVal.textContent = fmtQ(c.q);
+    renderChips();
+    refresh(true);
+});
+el.qSlider.addEventListener('change', function () { refresh(false); });
+
+el.q0Slider.addEventListener('input', function () {
+    state.test.q = parseFloat(this.value);
+    el.q0Val.textContent = fmtQ(state.test.q);
+    render();
+});
+
+el.chargeChips.addEventListener('click', function (e) {
+    const c = e.target.closest('[data-ci]');
+    if (!c) return;
+    state.selected = parseInt(c.dataset.ci, 10);
+    renderChips(); syncSliders(); render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', function () {
+    state.test = { q: 1, x: 3.6, y: 3.6 };
+    state.yaw = -0.62; state.elev = 0.60;
+    syncSliders();
+    applyPreset(state.preset);
+});
+
+/* ==================================================================
+   十一、尺寸自适应与启动
+   ================================================================== */
+function resize() {
+    const rect = canvasWrap.getBoundingClientRect();
+    W = Math.max(320, Math.floor(rect.width));
+    H = Math.max(320, Math.floor(rect.height));
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    halfH = 10;                      // 世界半高固定 10 cm
+    scale = (H / 2) / halfH;
+    halfW = (W / 2) / scale;
+    scale3 = scale * 0.76;
+    OY = H * 0.05;
+    refresh(false);
+}
+
+if (window.ResizeObserver) {
+    let rafId = null;
+    new ResizeObserver(function () {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(function () { rafId = null; resize(); });
+    }).observe(canvasWrap);
+} else {
+    window.addEventListener('resize', resize);
+}
+
+applyPreset('single-pos');
+resize();
+</script>
+</body>
+</html>

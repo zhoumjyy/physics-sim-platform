@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🛠 模拟器工作台 · 物理实验室</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 20% 30%, #162b3a, #0a1420);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            color: #eef4fc;
+            font-size: 18px;
+            padding: 24px;
+        }
+        .wrap {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: rgba(18, 34, 50, 0.45);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 32px; background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.06); gap: 16px; flex-wrap: wrap;
+        }
+        .topbar .brand { font-size: 28px; font-weight: 700; color: #f0f6ff; letter-spacing: 1px; }
+        .topbar .brand span { font-weight: 300; font-size: 18px; color: #8aacd4; margin-left: 8px; }
+        .btn {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+            color: #c0d6f0; padding: 9px 20px; border-radius: 40px; font-size: 16px; font-weight: 500;
+            cursor: pointer; backdrop-filter: blur(4px); transition: all .2s; letter-spacing: .3px; text-decoration: none; display: inline-block;
+        }
+        .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #fff; transform: translateY(-1px); }
+        .btn.accent { background: rgba(64,175,255,0.14); border-color: rgba(64,175,255,0.3); color: #7fc4ff; }
+        .btn.accent:hover { background: rgba(64,175,255,0.22); color: #fff; }
+        .btn.danger { border-color: rgba(255,90,90,0.3); color: #ff9a9a; }
+        .btn.danger:hover { background: rgba(255,90,90,0.14); }
+        .btn.sm { padding: 5px 14px; font-size: 14px; border-radius: 30px; }
+        .main { display: flex; min-height: 70vh; }
+        .tree {
+            width: 320px; min-width: 280px; background: rgba(0,0,0,0.15);
+            border-right: 1px solid rgba(255,255,255,0.04); padding: 20px 14px; overflow-y: auto; max-height: 78vh;
+        }
+        .tree h4 { font-size: 14px; color: #7a9fc9; letter-spacing: 2px; text-transform: uppercase; margin: 6px 8px 12px; }
+        .cat { margin-bottom: 10px; }
+        .cat-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; color: #cfe2ff; padding: 8px 10px; border-radius: 10px; }
+        .cat-title .ic { font-size: 20px; }
+        .cat-sims { padding: 2px 0 4px 8px; }
+        .sim-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; cursor: pointer; transition: background .15s; color: #c8daf0; }
+        .sim-row:hover { background: rgba(255,255,255,0.05); }
+        .sim-row.active { background: rgba(64,175,255,0.08); color: #fff; }
+        .sim-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+        .sim-row .soon { font-size: 11px; color: #d4b05a; opacity: .8; }
+        .sim-row .acts { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+        .sim-row:hover .acts { opacity: 1; }
+        .tree-actions { display: flex; gap: 8px; margin: 8px 8px 16px; }
+        .editor { flex: 1; padding: 24px 28px; overflow-y: auto; max-height: 78vh; }
+        .editor h3 { font-size: 22px; color: #e0edff; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field.full { grid-column: 1 / -1; }
+        .field label { font-size: 14px; color: #8aacd4; letter-spacing: .5px; }
+        .field input, .field select, .field textarea {
+            background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); color: #eef4fc;
+            padding: 10px 14px; border-radius: 12px; font-size: 16px; font-family: inherit; outline: none; transition: border-color .2s;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: rgba(64,175,255,0.4); }
+        .field textarea { resize: vertical; min-height: 180px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 13px; line-height: 1.5; }
+        .hint { font-size: 13px; color: #6a8fb0; margin-top: 4px; }
+        .row-btns { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+        .save-big {
+            flex: 1 1 auto; min-width: 280px; padding: 14px 24px; font-size: 18px; font-weight: 700;
+            background: rgba(64,175,255,0.18) !important; border-color: rgba(64,175,255,0.45) !important; color: #eaf4ff !important;
+            box-shadow: 0 8px 24px -8px rgba(64,175,255,0.5); letter-spacing: .5px;
+        }
+        .save-big:hover { background: rgba(64,175,255,0.28) !important; color: #fff !important; }
+        .preview-box { margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+        .preview-box h4 { font-size: 16px; color: #b0cef0; margin-bottom: 10px; }
+        .preview-frame { width: 100%; height: 420px; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; background: #0a1420; display: block; }
+        .toast {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: rgba(20,40,60,0.95); border: 1px solid rgba(64,175,255,0.3); color: #d6e6ff;
+            padding: 12px 24px; border-radius: 40px; font-size: 15px; opacity: 0; pointer-events: none;
+            transition: all .3s; z-index: 100; backdrop-filter: blur(8px);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .newcat { display: none; gap: 10px; margin-top: 8px; }
+        .newcat.show { display: grid; grid-template-columns: 1fr 80px; }
+        .empty { color: #6a8fb0; font-size: 15px; padding: 30px; text-align: center; opacity: .7; }
+        @media (max-width: 900px) {
+            .main { flex-direction: column; }
+            .tree { width: 100%; max-height: 320px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        /* ===== 登录 / AI 助手 ===== */
+        .login-mask { position: fixed; inset: 0; background: rgba(4,10,18,0.72); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 200; }
+        .login-mask.show { display: flex; }
+        .login-card { width: 380px; max-width: 92vw; background: rgba(18,34,50,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 28px; padding: 30px; backdrop-filter: blur(24px); box-shadow: 0 30px 70px -20px rgba(0,0,0,0.8); }
+        .login-card h3 { font-size: 22px; color: #e0edff; margin-bottom: 6px; }
+        .login-card p { font-size: 14px; color: #8aacd4; margin-bottom: 16px; line-height: 1.6; }
+        .login-card .row { display: flex; gap: 10px; }
+        .login-card .row .btn { flex: 1; text-align: center; text-decoration: none; }
+        .login-card .err { color: #ff9a9a; font-size: 13px; min-height: 16px; margin-bottom: 10px; }
+        .login-card .lbl { display:block; font-size: 13px; color: #8aacd4; margin: 10px 0 4px; letter-spacing: .5px; }
+        .login-card input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #eef4fc; padding: 11px 14px; border-radius: 13px; font-size: 15px; outline: none; }
+        .login-card input:focus { border-color: rgba(64,175,255,0.4); }
+        .ai-box { margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+        .ai-head { display: flex; gap: 10px; margin-bottom: 12px; }
+        .ai-body.hidden { display: none; }
+        .ai-chat { background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 14px; height: 280px; overflow-y: auto; margin-bottom: 12px; }
+        .ai-empty { color: #6a8fb0; font-size: 14px; line-height: 1.7; opacity: .85; }
+        .ai-msg { margin-bottom: 12px; font-size: 14px; line-height: 1.6; }
+        .ai-msg.user { color: #cfe2ff; }
+        .ai-msg.user b { color: #7fc4ff; }
+        .ai-msg.bot { color: #c8daf0; }
+        .ai-msg.bot .code-link { color: #5aaa7a; font-size: 13px; }
+        .ai-input { display: flex; gap: 10px; align-items: stretch; }
+        .ai-input textarea { flex: 1; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); color: #eef4fc; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; resize: none; min-height: 52px; }
+        .ai-input textarea:focus { border-color: rgba(64,175,255,0.4); }
+        .ai-actions { display: flex; gap: 10px; margin-top: 10px; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="topbar">
+            <div class="brand">🛠 模拟器工作台 <span>Workbench</span></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="btn" href="index.html" target="_blank">← 返回平台</a>
+                <button class="btn" id="exportBtn">⬇ 导出 sims.json</button>
+                <button class="btn" id="copyBtn">📋 复制清单</button>
+                <button class="btn danger" id="resetBtn">↺ 重载清单</button>
+            </div>
+        </div>
+        <div class="main">
+            <div class="tree">
+                <h4>模拟器清单</h4>
+                <div class="tree-actions">
+                    <button class="btn accent sm" id="addCatBtn">＋ 分类</button>
+                    <button class="btn accent sm" id="addSimBtn">＋ 模拟器</button>
+                    <button class="btn sm" id="importBtn">📂 导入HTML</button>
+                    <input type="file" id="fileInput" accept=".html,.htm" style="display:none" />
+                </div>
+                <div id="treeList"></div>
+            </div>
+            <div class="editor">
+                <h3 id="editTitle">➕ 新增模拟器</h3>
+                <div class="grid">
+                    <div class="field">
+                        <label>所属分类</label>
+                        <select id="fCat"></select>
+                        <div class="newcat" id="newCat">
+                            <input id="fNewCatName" placeholder="新分类名称，如：热学" />
+                            <input id="fNewCatIcon" placeholder="图标" value="🔥" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>图标（emoji）</label>
+                        <input id="fIcon" value="🚀" maxlength="4" />
+                    </div>
+                    <div class="field">
+                        <label>名称</label>
+                        <input id="fName" placeholder="如：平抛运动" />
+                    </div>
+                    <div class="field">
+                        <label>描述</label>
+                        <input id="fDesc" placeholder="简短描述" />
+                    </div>
+                    <div class="field full">
+                        <label>文件位置（src）</label>
+                        <input id="fSrc" placeholder="simulations/your-sim.html" />
+                        <div class="hint">建议放在 <code>simulations/</code> 目录下；留空表示「即将上线」占位。</div>
+                    </div>
+                    <div class="field full">
+                        <label>HTML 源码（可直接粘贴 AI 生成的完整 HTML）</label>
+                        <textarea id="fCode" placeholder="在此粘贴模拟器的完整 HTML（含 &lt;style&gt; 与 &lt;script&gt;）…"></textarea>
+                        <div class="hint">若已把 .html 文件放入 simulations/ 并填写了上面的「文件位置」，此框可留空（将直接引用该文件）。</div>
+                    </div>
+                </div>
+                <div class="row-btns">
+                    <button class="btn accent save-big" id="saveBtn">💾 保存（写入文件 · 更新清单 · 刷新界面）</button>
+                    <button class="btn" id="previewBtn">👁 预览</button>
+                    <button class="btn danger" id="cancelBtn">✕ 取消</button>
+                </div>
+                <div class="preview-box">
+                    <h4>实时预览</h4>
+                    <iframe class="preview-frame" id="previewFrame" src="about:blank"></iframe>
+                </div>
+                <div class="ai-box" id="aiBox">
+                    <div class="ai-head">
+                        <button class="btn sm accent" id="aiToggle">🤖 AI 助手：自然语言修改模拟器</button>
+                        <button class="btn sm" id="aiSettingsBtn">⚙ 设置</button>
+                    </div>
+                    <div class="ai-body hidden" id="aiBody">
+                        <div class="ai-chat" id="aiChat">
+                            <div class="ai-empty">用自然语言描述你想修改的内容，例如：「把背景改成深色、加上速度矢量箭头」。AI 会返回修改后的完整 HTML 并实时预览。</div>
+                        </div>
+                        <div class="ai-input">
+                            <textarea id="aiInput" placeholder="描述你的修改需求…（Enter 发送，Shift+Enter 换行）"></textarea>
+                            <button class="btn accent" id="aiSend">发送</button>
+                        </div>
+                        <div class="ai-actions">
+                            <button class="btn accent sm" id="aiApply">✓ 应用到编辑器并预览</button>
+                            <button class="btn sm" id="aiReset">↺ 重置对话</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <!-- 管理员登录门禁 -->
+    <div class="login-mask" id="adminLoginMask">
+        <div class="login-card">
+            <h3>🔐 管理员登录</h3>
+            <p>工作台用于编辑、增删模拟器，需要管理员身份。</p>
+            <input type="password" id="adminPwd" placeholder="管理员密码" />
+            <div class="err" id="adminPwdErr"></div>
+            <div class="row">
+                <button class="btn accent" id="adminLoginOk">登录</button>
+                <a class="btn" href="index.html">返回平台</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 接口设置 -->
+    <div class="login-mask" id="aiSettingsMask">
+        <div class="login-card" style="width:440px">
+            <h3>⚙ AI 接口设置</h3>
+            <p>填写一个 OpenAI 兼容的接口地址。API Key 仅保存在本机浏览器，不会上传平台。</p>
+            <label class="lbl">接口地址（Base URL）</label>
+            <input id="aiBase" placeholder="https://api.openai.com/v1" />
+            <label class="lbl">模型名</label>
+            <input id="aiModel" placeholder="gpt-4o-mini" />
+            <label class="lbl">API Key</label>
+            <input id="aiKey" type="password" placeholder="sk-..." />
+            <div class="err" id="aiSettingsErr"></div>
+            <div class="row">
+                <button class="btn accent" id="aiSettingsSave">保存</button>
+                <button class="btn" id="aiSettingsClose">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LS_KEY = 'phys_sims_draft_v1';
+        let manifest = [];
+        let manifestVersion = 0; // 随 sims.json 的 manifestVersion 同步，保存时一并写入
+        let editing = null; // {catId, simId} when editing existing
+
+        const $ = id => document.getElementById(id);
+        function toast(msg) {
+            const t = $('toast'); t.textContent = msg; t.classList.add('show');
+            clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2200);
+        }
+        function slug(s) { return (s || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || ('sim-' + Date.now().toString(36)); }
+        function fileBase(src) { const m = (src || '').split('/').pop(); return m || ''; }
+
+        async function loadManifest() {
+            try {
+                const res = await fetch('sims.json?t=' + Date.now(), { cache: 'no-store' });
+                if (res.ok) {
+                    const parsed = await res.json();
+                    const cats = Array.isArray(parsed) ? parsed : (parsed && parsed.categories);
+                    if (Array.isArray(cats) && cats.length) {
+                        manifest = cats;
+                        manifestVersion = (parsed && parsed.manifestVersion) || 0;
+                        saveDraft(); return;
+                    }
+                }
+            } catch (e) { /* fall through */ }
+            const draft = localStorage.getItem(LS_KEY);
+            if (draft) {
+                try {
+                    const d = JSON.parse(draft);
+                    manifest = Array.isArray(d) ? d : (d.categories || []);
+                    manifestVersion = Array.isArray(d) ? 0 : (d.manifestVersion || 0);
+                } catch (e) {}
+            }
+            if (!Array.isArray(manifest)) manifest = [];
+        }
+        function saveDraft() { try { localStorage.setItem(LS_KEY, JSON.stringify(manifest)); } catch (e) {} }
+
+        function renderTree() {
+            const list = $('treeList'); list.innerHTML = '';
+            if (!manifest.length) { list.innerHTML = '<div class="empty">清单为空，点击「＋ 模拟器」开始添加。</div>'; return; }
+            manifest.forEach(cat => {
+                const c = document.createElement('div'); c.className = 'cat';
+                const title = document.createElement('div'); title.className = 'cat-title';
+                const icon = (cat.name || '').split(' ')[0] || '📁';
+                title.innerHTML = `<span class="ic">${icon}</span><span>${cat.name.replace(icon, '').trim() || cat.name}</span>`;
+                c.appendChild(title);
+                const sims = document.createElement('div'); sims.className = 'cat-sims';
+                (cat.sims || []).forEach(sim => {
+                    const row = document.createElement('div');
+                    row.className = 'sim-row' + (editing && editing.simId === sim.id ? ' active' : '');
+                    row.innerHTML = `<span class="nm">${sim.icon || '📄'} ${sim.name}</span>` +
+                        (sim.src ? '' : '<span class="soon">soon</span>') +
+                        `<span class="acts">
+                            <button class="btn sm" data-edit="${sim.id}">✎</button>
+                            <button class="btn sm danger" data-del="${sim.id}">🗑</button>
+                        </span>`;
+                    row.addEventListener('click', e => {
+                        if (e.target.dataset.edit) { editSim(cat.id, sim.id); }
+                        else if (e.target.dataset.del) { delSim(cat.id, sim.id); }
+                        else { /* preview existing */ previewExisting(sim); }
+                    });
+                    sims.appendChild(row);
+                });
+                c.appendChild(sims);
+                list.appendChild(c);
+            });
+        }
+
+        function fillCatSelect(keepValue) {
+            const sel = $('fCat'); sel.innerHTML = '';
+            manifest.forEach(cat => {
+                const o = document.createElement('option'); o.value = cat.id; o.textContent = cat.name; sel.appendChild(o);
+            });
+            const n = document.createElement('option'); n.value = '__new__'; n.textContent = '✚ 新建分类…'; sel.appendChild(n);
+            if (keepValue) sel.value = keepValue;
+            toggleNewCat();
+        }
+        function toggleNewCat() {
+            $('newCat').classList.toggle('show', $('fCat').value === '__new__');
+        }
+
+        function clearEditor() {
+            editing = null;
+            $('editTitle').textContent = '➕ 新增模拟器';
+            $('fName').value = ''; $('fDesc').value = ''; $('fIcon').value = '🚀';
+            $('fSrc').value = ''; $('fCode').value = '';
+            fillCatSelect();
+            $('previewFrame').src = 'about:blank';
+        }
+
+        function editSim(catId, simId) {
+            const cat = manifest.find(c => c.id === catId); if (!cat) return;
+            const sim = (cat.sims || []).find(s => s.id === simId); if (!sim) return;
+            editing = { catId, simId };
+            $('editTitle').textContent = '✎ 编辑：' + sim.name;
+            fillCatSelect(catId);
+            $('fIcon').value = sim.icon || '🚀';
+            $('fName').value = sim.name; $('fDesc').value = sim.description || '';
+            $('fSrc').value = sim.src || '';
+            $('fCode').value = ''; // 源码从文件加载，见下方
+            if (sim.src) loadSrcIntoEditor(sim.src);
+            renderTree();
+        }
+        async function loadSrcIntoEditor(src) {
+            try {
+                const res = await fetch(src, { cache: 'no-store' });
+                if (res.ok) $('fCode').value = await res.text();
+            } catch (e) { /* 跨域/离线时忽略，用户可手动粘贴 */ }
+        }
+
+        function delSim(catId, simId) {
+            const cat = manifest.find(c => c.id === catId); if (!cat) return;
+            if (!confirm('确定删除该模拟器？')) return;
+            cat.sims = (cat.sims || []).filter(s => s.id !== simId);
+            if (!cat.sims.length) manifest = manifest.filter(c => c.id !== catId);
+            saveDraft(); renderTree(); toast('已删除');
+        }
+
+        // ---- 加入清单 ----
+        function addToList() {
+            const name = $('fName').value.trim();
+            if (!name) { toast('请填写名称'); return; }
+            const icon = $('fIcon').value.trim() || '🚀';
+            const desc = $('fDesc').value.trim();
+            let src = $('fSrc').value.trim();
+            if (!src && !$('fCode').value.trim()) src = ''; // 占位
+            const code = $('fCode').value;
+
+            // 处理分类
+            let catId, catName;
+            if ($('fCat').value === '__new__') {
+                catName = $('fNewCatName').value.trim() || '新分类';
+                const cicon = $('fNewCatIcon').value.trim() || '📁';
+                catId = slug(catName);
+                catName = cicon + ' ' + catName;
+                let cat = manifest.find(c => c.id === catId);
+                if (!cat) { cat = { id: catId, name: catName, sims: [] }; manifest.push(cat); }
+                else cat.name = catName;
+            } else {
+                catId = $('fCat').value;
+            }
+            const cat = manifest.find(c => c.id === catId);
+            if (!cat) { toast('分类无效'); return; }
+
+            const id = editing ? editing.simId : slug(name);
+            const sim = { id, name, description: desc, icon, src };
+            const existIdx = (cat.sims || []).findIndex(s => s.id === id);
+            if (existIdx >= 0) cat.sims[existIdx] = sim; else (cat.sims = cat.sims || []).push(sim);
+
+            // 若粘贴了源码，自动建议下载文件名
+            if (code && !src) {
+                src = 'simulations/' + id + '.html';
+                sim.src = src; $('fSrc').value = src;
+                toast('已建议文件位置：' + src + '（记得点「下载 HTML 文件」）');
+            }
+            saveDraft(); renderTree(); fillCatSelect(catId);
+            editing = { catId, simId: id };
+            $('editTitle').textContent = '✎ 编辑：' + name;
+            // 写入平台覆盖层：使首页刷新后即时反映本次编辑（仅本机/本浏览器生效）
+            try { localStorage.setItem('phys_manifest_override', JSON.stringify({ manifestVersion, categories: manifest })); } catch (e) {}
+            return { catId, simId: id };
+        }
+
+        // ---- 保存：写入文件 + 更新清单 + 刷新界面 ----
+        function saveAll() {
+            const name = $('fName').value.trim();
+            if (!name) { toast('请先填写「名称」'); return; }
+            const code = $('fCode').value;
+            if (!code.trim() && !$('fSrc').value.trim()) {
+                toast('请粘贴 HTML 源码，或填写「文件位置」');
+                return;
+            }
+            // 有源码但未指定位置时，自动建议文件位置
+            let src = $('fSrc').value.trim();
+            if (!src && code.trim()) {
+                src = 'simulations/' + (editing ? editing.simId : slug(name)) + '.html';
+                $('fSrc').value = src;
+            }
+            // 1) 更新清单（含平台覆盖层）
+            addToList();
+            // 2) 写出系统文件（下载 HTML 与 sims.json）
+            if (code.trim()) saveHtmlFile();
+            exportJson();
+            // 3) 刷新界面
+            renderTree();
+            if ($('fSrc').value.trim()) $('previewFrame').src = $('fSrc').value.trim();
+            else if (code.trim()) $('previewFrame').srcdoc = code;
+            toast('✅ 已保存：HTML 与 sims.json 已下载到本机，清单与平台已更新。请将文件放入对应目录并重新部署，即可对所有设备生效。');
+        }
+
+        function saveHtmlFile() {
+            const code = $('fCode').value;
+            if (!code.trim()) { toast('源码为空，无可下载内容'); return; }
+            let src = $('fSrc').value.trim();
+            let fname = src ? fileBase(src) : (slug($('fName').value) + '.html');
+            if (!fname.endsWith('.html')) fname += '.html';
+            const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = fname; a.click(); URL.revokeObjectURL(a.href);
+            toast('已下载：' + fname + '（请放入 simulations/ 目录）');
+        }
+
+        function previewExisting(sim) {
+            if (sim.src) { $('previewFrame').src = sim.src; $('editTitle').textContent = '👁 预览：' + sim.name; }
+            else toast('该模拟器尚未配置 src');
+        }
+        function previewCode() {
+            const code = $('fCode').value;
+            if (code.trim()) $('previewFrame').srcdoc = code;
+            else if ($('fSrc').value.trim()) $('previewFrame').src = $('fSrc').value.trim();
+            else toast('没有可预览的内容');
+        }
+
+        function exportJson() {
+            const payload = { manifestVersion, categories: manifest };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = 'sims.json'; a.click(); URL.revokeObjectURL(a.href);
+            toast('已导出 sims.json');
+        }
+        async function copyJson() {
+            try { await navigator.clipboard.writeText(JSON.stringify(manifest, null, 2)); toast('清单已复制到剪贴板'); }
+            catch (e) { toast('复制失败，请用「导出」'); }
+        }
+
+        // ---- 导入外部 HTML 文件 ----
+        function onFilePicked(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const code = reader.result;
+                clearEditor();
+                $('fName').value = file.name.replace(/\.html?$/i, '');
+                $('fCode').value = code;
+                const id = slug($('fName').value);
+                $('fSrc').value = 'simulations/' + id + '.html';
+                $('editTitle').textContent = '📂 导入：' + $('fName').value;
+                toast('已载入文件，选择分类后「加入清单」并「下载 HTML 文件」');
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        // ============================================================
+        //  🔐 管理员门禁
+        // ============================================================
+        const ADMIN_PWD = localStorage.getItem('phys_admin_pwd') || 'physics2026';
+        const LS_ADMIN = 'phys_admin_logged';
+        function isAdmin() { return localStorage.getItem(LS_ADMIN) === '1'; }
+        (function gate() {
+            const mask = $('adminLoginMask');
+            if (isAdmin()) { mask.classList.remove('show'); return; }
+            mask.classList.add('show');
+            $('adminLoginOk').addEventListener('click', () => {
+                if ($('adminPwd').value === ADMIN_PWD) {
+                    localStorage.setItem(LS_ADMIN, '1'); mask.classList.remove('show'); toast('已登录管理员');
+                } else { $('adminPwdErr').textContent = '密码错误'; }
+            });
+            $('adminPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('adminLoginOk').click(); });
+        })();
+
+        // ============================================================
+        //  🤖 AI 助手（自然语言修改现有模拟器）
+        // ============================================================
+        const AI_CFG_KEY = 'phys_ai_cfg';
+        function getAiCfg() {
+            try { return JSON.parse(localStorage.getItem(AI_CFG_KEY)) || {}; } catch (e) { return {}; }
+        }
+        function setAiCfg(c) { localStorage.setItem(AI_CFG_KEY, JSON.stringify(c)); }
+        function escapeHtml(s) { return (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+        const AI_SYSTEM = '你是一名精通 HTML+CSS+JS(Canvas) 的物理教学动画前端开发者。用户会给出一段【现有模拟器代码】和自然语言修改需求，请返回修改后的【完整、可直接运行的单文件 HTML】（深色毛玻璃视觉风格，内联全部 CSS/JS，不依赖任何外部资源）。只输出代码本身，放在 ```html ... ``` 代码块中，不要额外解释。';
+        let aiHistory = [];       // {role:'user'|'assistant', content}
+        let aiLastHtml = '';
+
+        function aiAddMsg(role, html) {
+            const chat = $('aiChat');
+            const empty = chat.querySelector('.ai-empty'); if (empty) empty.remove();
+            const div = document.createElement('div');
+            div.className = 'ai-msg ' + role;
+            div.innerHTML = (role === 'user' ? '<b>你：</b>' : '<b>AI：</b>') + html;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        function aiExtractCode(text) {
+            const m = text.match(/```html\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
+            return m ? m[1].trim() : text.trim();
+        }
+        async function aiSend() {
+            const input = $('aiInput');
+            const req = input.value.trim();
+            if (!req) return;
+            input.value = '';
+            const cfg = getAiCfg();
+            if (!cfg.base || !cfg.key) { aiAddMsg('bot', '请先点击「⚙ 设置」填写 AI 接口地址与 API Key。'); $('aiSettingsBtn').click(); return; }
+            const code = $('fCode').value;
+            aiHistory.push({ role: 'user', content: '【当前模拟器代码】\n' + (code || '(空)') + '\n\n【修改需求】' + req });
+            aiAddMsg('user', escapeHtml(req));
+            const msgs = [{ role: 'system', content: AI_SYSTEM }].concat(aiHistory);
+            aiAddMsg('bot', '<span class="code-link">AI 正在生成…</span>');
+            const busyEl = $('aiChat').lastChild;
+            try {
+                const res = await fetch(cfg.base.replace(/\/$/, '') + '/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+                    body: JSON.stringify({ model: cfg.model || 'gpt-4o-mini', messages: msgs, temperature: 0.3 })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+                aiHistory.push({ role: 'assistant', content });
+                aiLastHtml = aiExtractCode(content);
+                if (busyEl) busyEl.remove();
+                aiAddMsg('bot', '已生成修改后的代码（<span class="code-link">' + aiLastHtml.length + ' 字符</span>）。点「应用到编辑器并预览」查看效果。');
+                $('previewFrame').srcdoc = aiLastHtml;
+            } catch (e) {
+                if (busyEl) busyEl.remove();
+                aiHistory.pop();
+                aiAddMsg('bot', '调用失败：' + escapeHtml(e.message) + '。可能是接口不支持跨域(CORS)，或密钥/地址有误。');
+            }
+        }
+
+        // ---- 绑定 ----
+        $('fCat').addEventListener('change', toggleNewCat);
+        $('addSimBtn').addEventListener('click', clearEditor);
+        $('addCatBtn').addEventListener('click', () => {
+            clearEditor(); $('fCat').value = '__new__'; toggleNewCat(); $('fNewCatName').focus();
+        });
+        $('importBtn').addEventListener('click', () => $('fileInput').click());
+        $('fileInput').addEventListener('change', onFilePicked);
+        $('saveBtn').addEventListener('click', saveAll);
+        $('previewBtn').addEventListener('click', previewCode);
+        $('cancelBtn').addEventListener('click', clearEditor);
+        $('exportBtn').addEventListener('click', exportJson);
+        $('copyBtn').addEventListener('click', copyJson);
+        $('resetBtn').addEventListener('click', async () => {
+            await loadManifest(); editing = null; clearEditor(); renderTree(); toast('已重载清单');
+        });
+
+        // ---- AI 助手绑定 ----
+        $('aiToggle').addEventListener('click', () => $('aiBody').classList.toggle('hidden'));
+        $('aiSend').addEventListener('click', aiSend);
+        $('aiInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); } });
+        $('aiApply').addEventListener('click', () => {
+            if (!aiLastHtml) { toast('还没有 AI 生成的代码'); return; }
+            $('fCode').value = aiLastHtml; previewCode(); toast('已应用到编辑器并预览');
+        });
+        $('aiReset').addEventListener('click', () => {
+            aiHistory = []; aiLastHtml = ''; $('aiChat').innerHTML = '<div class="ai-empty">对话已重置。</div>';
+        });
+        $('aiSettingsBtn').addEventListener('click', () => {
+            const cfg = getAiCfg();
+            $('aiBase').value = cfg.base || ''; $('aiModel').value = cfg.model || ''; $('aiKey').value = cfg.key || '';
+            $('aiSettingsMask').classList.add('show');
+        });
+        $('aiSettingsSave').addEventListener('click', () => {
+            setAiCfg({ base: $('aiBase').value.trim(), model: $('aiModel').value.trim(), key: $('aiKey').value.trim() });
+            $('aiSettingsMask').classList.remove('show'); toast('AI 接口已保存（仅本机）');
+        });
+        $('aiSettingsClose').addEventListener('click', () => $('aiSettingsMask').classList.remove('show'));
+        $('aiSettingsMask').addEventListener('click', e => { if (e.target === $('aiSettingsMask')) $('aiSettingsMask').classList.remove('show'); });
+
+        (async function init() {
+            await loadManifest();
+            renderTree();
+            clearEditor();
+        })();
+    </script>
+</body>
+</html>

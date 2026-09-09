@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚗 追及相遇模拟器</title>
+    <style>
+        /* ===== 全局深色毛玻璃风格（与抛体运动模拟器一致） ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: rgba(10, 20, 32, 0.6);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            font-size: 18px;
+            color: #eef4fc;
+        }
+        .sim-card {
+            width: 100%;
+            max-width: 1800px;
+            height: 96vh;
+            min-height: 800px;
+            background: rgba(18, 34, 50, 0.40);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(0, 0, 0, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #d6e6ff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header .title span {
+            opacity: 0.5;
+            font-weight: 300;
+            font-size: 16px;
+        }
+        .header .status {
+            font-size: 16px;
+            color: #8aacd4;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .header .status.running { color: #7fc4ff; border-color: rgba(64,175,255,0.15); }
+        .header .status.met { color: #ffcf6a; border-color: rgba(200,180,50,0.2); }
+        .header .status.finished { color: #9be8bf; border-color: rgba(90,170,122,0.15); }
+
+        /* ===== 主体：左(参数) | 中(画布) | 右(图表) ===== */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ===== 左侧参数面板 ===== */
+        .panel-left {
+            width: 320px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.12);
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 16px 16px 18px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .panel-left::-webkit-scrollbar { width: 4px; }
+        .panel-left::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+        .panel-left .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6a8fb0;
+            opacity: 0.5;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .ctrl-group {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 10px 14px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .ctrl-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 500;
+            color: #c0d6f0;
+            margin-bottom: 2px;
+        }
+        .ctrl-group label span {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #8aacd4;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #2a4a6a, #4a8ab5);
+            border-radius: 10px;
+            outline: none;
+            margin: 4px 0 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            box-shadow: 0 2px 10px rgba(0,20,40,0.4);
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: #c0d6f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            letter-spacing: 0.3px;
+            min-width: 50px;
+        }
+        .btn-primary {
+            background: rgba(64, 175, 255, 0.12);
+            border-color: rgba(64, 175, 255, 0.15);
+            color: #7fc4ff;
+        }
+        .btn-primary:hover {
+            background: rgba(64, 175, 255, 0.2);
+            border-color: rgba(64, 175, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.03); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255,255,255,0.08); }
+        .btn-warning {
+            background: rgba(200, 180, 50, 0.08);
+            border-color: rgba(200, 180, 50, 0.1);
+            color: #d4c05a;
+        }
+        .btn-warning:hover { background: rgba(200, 180, 50, 0.15); }
+        /* 约束开关：开启时的高亮 */
+        .btn-brake.on {
+            background: rgba(224, 122, 122, 0.18);
+            border-color: rgba(224, 122, 122, 0.4);
+            color: #e07a7a;
+            box-shadow: 0 0 12px rgba(224,122,122,0.12) inset;
+        }
+        .btn-limit.on {
+            background: rgba(90, 138, 208, 0.18);
+            border-color: rgba(90, 138, 208, 0.4);
+            color: #7fa8e0;
+            box-shadow: 0 0 12px rgba(90,138,208,0.12) inset;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 14px;
+            font-size: 15px;
+            color: #c8daf0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 14px;
+            padding: 8px 14px;
+        }
+        .data-grid .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .data-grid .item:last-child,
+        .data-grid .item:nth-last-child(2) { border-bottom: none; }
+        .data-grid .label { opacity: 0.5; font-weight: 400; }
+        .data-grid .value { font-weight: 600; color: #d6e6ff; font-variant-numeric: tabular-nums; }
+        .data-grid .value.highlight { color: #ffcf6a; }
+
+        .conclusion {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #c8daf0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 14px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .conclusion .tag {
+            display: inline-block;
+            font-weight: 700;
+            padding: 1px 10px;
+            border-radius: 30px;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        .conclusion .tag.yes { color: #ffcf6a; background: rgba(200,180,50,0.12); }
+        .conclusion .tag.no  { color: #9be8bf; background: rgba(90,170,122,0.12); }
+        .conclusion b { color: #d6e6ff; }
+
+        /* ===== 中间画布 ===== */
+        .canvas-wrap {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        .canvas-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: rgba(8, 18, 30, 0.5);
+            cursor: grab;
+        }
+        .canvas-wrap canvas:active { cursor: grabbing; }
+
+        /* ===== 右侧图表面板 ===== */
+        .panel-right {
+            width: 350px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.08);
+            border-left: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 10px 12px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .panel-right .chart-box {
+            flex: 1;
+            min-height: 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 6px 8px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-right .chart-box .chart-title {
+            font-size: 13px;
+            color: #8aacd4;
+            opacity: 0.6;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .panel-right .chart-box canvas {
+            flex: 1;
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            min-height: 0;
+        }
+
+        /* ===== 响应式布局 ===== */
+        @media (max-width: 1400px) {
+            .panel-left { width: 280px; min-width: 200px; padding: 12px 12px; }
+            .panel-right { width: 300px; min-width: 200px; padding: 8px 10px; }
+        }
+        @media (max-width: 1100px) {
+            .main { flex-direction: column; }
+            .panel-left { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); max-height: 340px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+            .panel-left .ctrl-group { flex: 1; min-width: 180px; }
+            .panel-right { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); flex-direction: row; height: 160px; }
+            .panel-right .chart-box { flex: 1; min-width: 0; }
+            .panel-right .chart-box:first-child { border-right: 1px solid rgba(255,255,255,0.04); }
+            .canvas-wrap { min-height: 300px; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .sim-card { border-radius: 20px; height: auto; min-height: 90vh; }
+            .header { padding: 10px 16px; }
+            .header .title { font-size: 18px; }
+            .header .status { font-size: 13px; padding: 2px 14px; }
+            .panel-left .ctrl-group { min-width: 140px; }
+            .panel-right { height: 140px; flex-direction: column; }
+            .panel-right .chart-box:first-child { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+            .data-grid { grid-template-columns: 1fr; font-size: 13px; }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sim-card" id="app">
+    <!-- 顶部栏 -->
+    <div class="header">
+        <div class="title">🚗 追及相遇模拟器 <span>Chase &amp; Meet</span></div>
+        <div class="status" id="statusBadge">⏸ 待开始</div>
+    </div>
+
+    <!-- 主体：左 | 中 | 右 -->
+    <div class="main">
+        <!-- 左侧参数面板 -->
+        <div class="panel-left" id="panelLeft">
+            <!-- 控制按钮 -->
+            <div class="ctrl-group">
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="startBtn">▶ 开始</button>
+                    <button class="btn btn-secondary" id="resetBtn">⟳ 重置</button>
+                    <button class="btn btn-warning" id="pauseBtn">⏸ 暂停</button>
+                </div>
+            </div>
+
+            <!-- 视图操作：拖拽平移 + 缩放 -->
+            <div class="ctrl-group">
+                <div class="section-title">🎯 视图操作</div>
+                <label>视图缩放 <span id="zoomDisplay">1.0×</span></label>
+                <input type="range" id="zoomSlider" min="0.2" max="4" step="0.1" value="1" />
+                <div class="btn-row" style="margin-top:8px;">
+                    <button class="btn btn-secondary" id="resetViewBtn">↺ 复位视图</button>
+                </div>
+                <div style="font-size:12px;opacity:.5;margin-top:8px;line-height:1.5;">
+                    💡 可直接用鼠标<b>拖动画布平移</b>、<b>滚轮缩放</b>，便于跟随驶出视野的车辆。
+                </div>
+            </div>
+
+            <!-- 运动约束：刹车 / 限速 -->
+            <div class="ctrl-group">
+                <div class="section-title">🛠 运动约束</div>
+                <div class="btn-row">
+                    <button class="btn btn-brake" id="brakeBtn">🛑 考虑刹车：关</button>
+                    <button class="btn btn-limit" id="limitBtn">🚦 考虑限速：关</button>
+                </div>
+                <label style="margin-top:8px;">限速 v_max <span id="vmaxDisplay">20 m/s</span></label>
+                <input type="range" id="vmaxSlider" min="5" max="40" step="1" value="20" />
+            </div>
+
+            <!-- 红车（后车） -->
+            <div class="ctrl-group">
+                <div class="section-title" style="color:#e07a7a;opacity:.8;">🔴 红车（后车·追赶）</div>
+                <label>初速度 v₀ <span id="va0Display">12.0 m/s</span></label>
+                <input type="range" id="va0Slider" min="0" max="25" step="0.5" value="12" />
+                <label style="margin-top:6px;">加速度 a <span id="aaDisplay">1.5 m/s²</span></label>
+                <input type="range" id="aaSlider" min="-8" max="8" step="0.1" value="1.5" />
+            </div>
+
+            <!-- 蓝车（前车） -->
+            <div class="ctrl-group">
+                <div class="section-title" style="color:#5a8ad0;opacity:.85;">🔵 蓝车（前车·被追）</div>
+                <label>初速度 v₀ <span id="vb0Display">10.0 m/s</span></label>
+                <input type="range" id="vb0Slider" min="0" max="25" step="0.5" value="10" />
+                <label style="margin-top:6px;">加速度 a <span id="abDisplay">0.0 m/s²</span></label>
+                <input type="range" id="abSlider" min="-8" max="8" step="0.1" value="0" />
+            </div>
+
+            <!-- 初始间距 -->
+            <div class="ctrl-group">
+                <div class="section-title">📏 初始间距</div>
+                <label>红蓝车初始距离 d <span id="dDisplay">40 m</span></label>
+                <input type="range" id="dSlider" min="5" max="80" step="1" value="40" />
+            </div>
+
+            <!-- 实时数据 -->
+            <div class="ctrl-group" style="padding-bottom:8px;">
+                <div class="section-title">📊 实时数据</div>
+                <div class="data-grid" id="dataGrid">
+                    <div class="item"><span class="label">红车速度</span><span class="value" id="vaVal">0.0</span></div>
+                    <div class="item"><span class="label">蓝车速度</span><span class="value" id="vbVal">0.0</span></div>
+                    <div class="item"><span class="label">红车位移</span><span class="value" id="saVal">0.0 m</span></div>
+                    <div class="item"><span class="label">蓝车位移</span><span class="value" id="sbVal">0.0 m</span></div>
+                    <div class="item"><span class="label">间距 D</span><span class="value highlight" id="dVal">0.0 m</span></div>
+                    <div class="item"><span class="label">时间 t</span><span class="value" id="tVal">0.00 s</span></div>
+                    <div class="item"><span class="label">相遇次数</span><span class="value highlight" id="meetCountVal">0</span></div>
+                </div>
+            </div>
+
+            <!-- 追及结论 -->
+            <div class="ctrl-group" style="padding-bottom:10px;">
+                <div class="section-title">📌 追及结论</div>
+                <div class="conclusion" id="conclusion">调整参数后点击「开始」模拟…</div>
+            </div>
+        </div>
+
+        <!-- 中间画布 -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <!-- 右侧图表面板 -->
+        <div class="panel-right" id="panelRight">
+            <div class="chart-box">
+                <div class="chart-title">📈 速度 - 时间 图像</div>
+                <canvas id="velocityChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">📉 位置 - 时间 图像（原点 = 红车起点）</div>
+                <canvas id="displacementChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    //  🚗 追及相遇模拟器 — 双车匀变速直线运动，平行公路向右
+    // ================================================================
+    (function() {
+        'use strict';
+
+        // ---------- DOM 引用 ----------
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrap = document.getElementById('canvasWrap');
+
+        const va0Slider = document.getElementById('va0Slider');
+        const aaSlider  = document.getElementById('aaSlider');
+        const vb0Slider = document.getElementById('vb0Slider');
+        const abSlider  = document.getElementById('abSlider');
+        const dSlider   = document.getElementById('dSlider');
+
+        const va0Display = document.getElementById('va0Display');
+        const aaDisplay  = document.getElementById('aaDisplay');
+        const vb0Display = document.getElementById('vb0Display');
+        const abDisplay  = document.getElementById('abDisplay');
+        const dDisplay   = document.getElementById('dDisplay');
+
+        const brakeBtn   = document.getElementById('brakeBtn');
+        const limitBtn   = document.getElementById('limitBtn');
+        const vmaxSlider = document.getElementById('vmaxSlider');
+        const vmaxDisplay = document.getElementById('vmaxDisplay');
+
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const statusBadge = document.getElementById('statusBadge');
+
+        const vaVal = document.getElementById('vaVal');
+        const vbVal = document.getElementById('vbVal');
+        const saVal = document.getElementById('saVal');
+        const sbVal = document.getElementById('sbVal');
+        const dVal  = document.getElementById('dVal');
+        const tVal  = document.getElementById('tVal');
+        const meetCountVal = document.getElementById('meetCountVal');
+        const conclusionEl = document.getElementById('conclusion');
+
+        const velChartCanvas = document.getElementById('velocityChart');
+        const dispChartCanvas = document.getElementById('displacementChart');
+        const velCtx = velChartCanvas.getContext('2d');
+        const dispCtx = dispChartCanvas.getContext('2d');
+
+        // ---------- 颜色 ----------
+        const COL_A = '#e07a7a';     // 红车
+        const COL_B = '#5a8ad0';     // 蓝车
+        const COL_D = '#ffcf6a';     // 间距高亮
+
+        // ---------- 常量 ----------
+        const DT = 1 / 30;
+        const ORIGIN_X = 64;         // x=0 对应的像素 x
+        const PADX = 64;
+        const MAX_T = 50;            // 模拟总时长（秒），达到即停止
+        const SAMPLE_DT = 0.1;       // 图表采样间隔（秒）
+        const STEPS_PER_FRAME = 3;   // 每帧物理子步数（加快播放，50s 约 8s 放完）
+        const maxHistory = 2000;
+
+        // ---------- 运动约束开关（全局） ----------
+        let brakeOn = false;         // 考虑刹车：速度减到 0 即停住，不反向
+        let limitOn = false;         // 考虑限速：速度达到 v_max 后以该速度匀速
+
+        // ---------- 画布尺寸 ----------
+        let W = 900, H = 620;
+        let zoom = 1;                // 视图缩放系数（1 = 自适应原始比例，可拖拽/滚轮调整）
+        let panX = 0;                // 视图水平平移（画布像素，拖拽改变）
+
+        // ---------- 状态 ----------
+        let SCALE = 5;               // 1m = 5px（start 时按范围自适应）
+        let state = {
+            d: 40, va0: 12, aa: 1.5, vb0: 10, ab: 0, vmax: 20,
+            xA: 0, xB: 40, vA: 12, vB: 10, D: 40,
+            time: 0, maxTime: MAX_T, meets: [], _meets: [],
+            stoppedA: false, stoppedB: false,
+            running: false, paused: false, finished: false,
+            trailA: [], trailB: [],
+            history: { time: [], xA: [], xB: [], vA: [], vB: [] },
+            _sampleAcc: 0,
+            chartDirty: true,
+        };
+
+        // ---------- 单车一步推进（含刹车 / 限速约束） ----------
+        // 返回下一时刻的 { x, v, stopped }
+        function advance(x, v, a, dt, brake, limit, vmax, stopped) {
+            if (stopped && brake) return { x: x, v: 0, stopped: true };
+            let vn = v + a * dt;
+            if (brake && vn <= 0) {           // 刹车：速度减到 0 即停住，不再反向
+                return { x: x, v: 0, stopped: true };
+            }
+            if (limit && vn > vmax) vn = vmax; // 限速：达到上限后以该速度匀速
+            return { x: x + vn * dt, v: vn, stopped: false };
+        }
+
+        // 预分析：前向数值模拟求相遇时刻、相遇位置、最大位移（用于自适应缩放）
+        function analyze() {
+            let xA = 0, xB = state.d, vA = state.va0, vB = state.vb0;
+            let stoppedA = false, stoppedB = false;
+            let t = 0;
+            let maxX = Math.max(0, state.d);
+            const meets = [];
+            let prevD = xB - xA; // 初始间距 d > 0
+            const N = Math.ceil(MAX_T / DT);
+            for (let i = 0; i <= N; i++) {
+                if (i > 0) {
+                    const D = xB - xA;
+                    // 相对距离 D 跨过 0（红追上蓝 / 蓝反追红）即一次相遇，双向都算
+                    if ((prevD > 0 && D <= 0) || (prevD < 0 && D >= 0)) {
+                        const frac = prevD / (prevD - D);
+                        const tMeet = t - DT + frac * DT;
+                        meets.push({ t: tMeet, x: (xA + xB) / 2 });
+                    }
+                    prevD = D;
+                }
+                if (xA > maxX) maxX = xA;
+                if (xB > maxX) maxX = xB;
+                const rA = advance(xA, vA, state.aa, DT, brakeOn, limitOn, state.vmax, stoppedA);
+                xA = rA.x; vA = rA.v; stoppedA = rA.stopped;
+                const rB = advance(xB, vB, state.ab, DT, brakeOn, limitOn, state.vmax, stoppedB);
+                xB = rB.x; vB = rB.v; stoppedB = rB.stopped;
+                t += DT;
+            }
+            // 自适应缩放：以「可观察范围」为准，避免 50s 末端把初始间距压缩得过小
+            // （保证初始距离 d 至少约占画面 1/7，且单车长度≈4.2m 明显小于 d）
+            let range = maxX;
+            const minRange = Math.max(state.d * 7, 140);
+            const capRange = Math.max(state.d * 14, 480);
+            if (range < minRange) range = minRange;
+            if (range > capRange) range = capRange;
+            SCALE = (W - 2 * PADX) / (range + 12);
+            if (!isFinite(SCALE) || SCALE <= 0) SCALE = 5;
+            state._maxX = maxX;
+            state._displayRange = range;
+            state._meets = meets;
+            state.maxTime = MAX_T;
+        }
+
+        // ---------- 准备一次运行（不启动）----------
+        function prepareRun() {
+            state.xA = 0; state.xB = state.d;
+            state.vA = state.va0; state.vB = state.vb0;
+            state.D = state.d;
+            state.time = 0;
+            state.meets = [];
+            state.stoppedA = false; state.stoppedB = false;
+            state._sampleAcc = 0;
+            state.running = false; state.paused = false; state.finished = false;
+            state.trailA = []; state.trailB = [];
+            state.history = { time: [], xA: [], xB: [], vA: [], vB: [] };
+            analyze();
+            state.chartDirty = true;
+            startBtn.disabled = false;
+            pauseBtn.textContent = '⏸ 暂停';
+            pauseBtn.classList.remove('btn-primary');
+            pauseBtn.classList.add('btn-warning');
+            updateStatus();
+            updateData();
+            updateConclusion();
+        }
+
+        function startSim() {
+            prepareRun();
+            state.running = true;
+            updateStatus();
+        }
+
+        function resetSim() {
+            prepareRun();
+            render();
+            drawCharts();
+        }
+
+        function togglePause() {
+            if (!state.running && !state.finished) { startSim(); return; }
+            if (state.finished) return;
+            state.paused = !state.paused;
+            pauseBtn.textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
+            pauseBtn.classList.toggle('btn-primary', state.paused);
+            pauseBtn.classList.toggle('btn-warning', !state.paused);
+            updateStatus();
+        }
+
+        // ---------- 物理推进 ----------
+        function step() {
+            for (let s = 0; s < STEPS_PER_FRAME; s++) {
+                const rA = advance(state.xA, state.vA, state.aa, DT, brakeOn, limitOn, state.vmax, state.stoppedA);
+                state.xA = rA.x; state.vA = rA.v; state.stoppedA = rA.stopped;
+                const rB = advance(state.xB, state.vB, state.ab, DT, brakeOn, limitOn, state.vmax, state.stoppedB);
+                state.xB = rB.x; state.vB = rB.v; state.stoppedB = rB.stopped;
+                state.time += DT;
+                const Dnew = state.xB - state.xA;
+                // 相遇仅作标记（相对距离 D 跨过 0 即一次相遇），不终止模拟；支持多次相遇逐一记录
+                if ((state.D > 0 && Dnew <= 0) || (state.D < 0 && Dnew >= 0)) {
+                    state.meets.push({ t: state.time, x: (state.xA + state.xB) / 2, n: state.meets.length + 1 });
+                    updateStatus();
+                }
+                state.D = Dnew;
+
+                // 轨迹
+                state.trailA.push(state.xA);
+                state.trailB.push(state.xB);
+                if (state.trailA.length > 3000) { state.trailA.shift(); state.trailB.shift(); }
+
+                // 历史（按固定时间间隔采样，控制长度）
+                state._sampleAcc += DT;
+                if (state._sampleAcc >= SAMPLE_DT) {
+                    state._sampleAcc -= SAMPLE_DT;
+                    const h = state.history;
+                    h.time.push(state.time);
+                    h.xA.push(state.xA);
+                    h.xB.push(state.xB);
+                    h.vA.push(state.vA);
+                    h.vB.push(state.vB);
+                    if (h.time.length > maxHistory) {
+                        h.time.shift(); h.xA.shift(); h.xB.shift();
+                        h.vA.shift(); h.vB.shift();
+                    }
+                    state.chartDirty = true;
+                }
+
+                // 仅当时间达到 100s 才停止
+                if (state.time >= state.maxTime) {
+                    state.running = false;
+                    state.finished = true;
+                    startBtn.disabled = false;
+                    updateStatus();
+                    break;
+                }
+            }
+        }
+
+        function updatePhysics() {
+            if (!state.running || state.paused || state.finished) return;
+            step();
+        }
+
+        // ---------- 状态/数据 ----------
+        function updateStatus() {
+            const b = statusBadge;
+            const nMet = state.meets.length;
+            if (state.running && state.paused) { b.textContent = '⏸ 已暂停'; b.className = 'status'; }
+            else if (state.running) { b.textContent = nMet ? ('🚗 运动中 · 已相遇 ' + nMet + ' 次') : '🚗 运动中'; b.className = 'status running'; }
+            else if (state.finished && nMet) { b.textContent = '✅ 相遇 ' + nMet + ' 次 · 达 50s 终点'; b.className = 'status met'; }
+            else if (state.finished) { b.textContent = '🏁 未相遇 · 达 50s 终点'; b.className = 'status finished'; }
+            else { b.textContent = '⏸ 待开始'; b.className = 'status'; }
+        }
+
+        function fmt(v) { return (v >= 0 ? '' : '-') + Math.abs(v).toFixed(1); }
+
+        function updateData() {
+            vaVal.textContent = fmt(state.vA) + ' m/s';
+            vbVal.textContent = fmt(state.vB) + ' m/s';
+            saVal.textContent = state.xA.toFixed(1) + ' m';
+            sbVal.textContent = (state.xB - state.d).toFixed(1) + ' m';
+            dVal.textContent = state.D.toFixed(1) + ' m';
+            tVal.textContent = state.time.toFixed(2) + ' s';
+            meetCountVal.textContent = state.meets.length;
+        }
+
+        function updateConclusion() {
+            const meets = state._meets || [];
+            let html;
+            if (meets.length) {
+                html = '<span class="tag yes">可相遇 · 共 ' + meets.length + ' 次</span><br>' +
+                       '50s 内两车相遇 <b>' + meets.length + '</b> 次：<br>';
+                meets.forEach((m, i) => {
+                    html += '第' + (i + 1) + '次：<b>t = ' + m.t.toFixed(2) + ' s</b>，位置 <b>x ≈ ' + m.x.toFixed(1) + ' m</b><br>';
+                });
+                html += '<span style="opacity:.55;font-size:12px;">每次相遇均已标在动画与位置-时间图中</span>';
+            } else {
+                html = '<span class="tag no">不相遇</span><br>' +
+                       '红车在 50s 内始终追不上（也未反被追上）蓝车。<br>' +
+                       '（可检查刹车 / 限速约束或较大的初始间距）';
+            }
+            conclusionEl.innerHTML = html;
+        }
+
+        // ---------- 绘制：小车 ----------
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+        // 小车像素长度：按物理长度 4.2m 与当前比例换算，并限制可见范围
+        function carLenPx() {
+            const L = 4.2 * SCALE;
+            return Math.max(12, Math.min(64, L));
+        }
+        function drawCar(cx, cy, body, roof) {
+            const L = carLenPx();
+            const Hh = Math.max(12, L * 0.40);
+            const wr = Math.max(4, L * 0.14);     // 车轮半径
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+            // 车身
+            ctx.fillStyle = body;
+            roundRect(cx - L / 2, cy - Hh / 2, L, Hh, 7); ctx.fill();
+            // 车顶
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = roof;
+            roundRect(cx - L / 2 + L * 0.22, cy - Hh / 2 - Hh * 0.5, L * 0.56, Hh * 0.5, 5); ctx.fill();
+            // 车窗高光
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            roundRect(cx - L / 2 + L * 0.28, cy - Hh / 2 - Hh * 0.32, L * 0.44, Hh * 0.22, 3); ctx.fill();
+            // 车轮
+            ctx.fillStyle = '#15181c';
+            ctx.beginPath(); ctx.arc(cx - L / 2 + L * 0.25, cy + Hh / 2, wr, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + L / 2 - L * 0.25, cy + Hh / 2, wr, 0, Math.PI * 2); ctx.fill();
+            // 前进方向三角（向右）
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.beginPath();
+            ctx.moveTo(cx + L / 2 - L * 0.04, cy - Hh * 0.22);
+            ctx.lineTo(cx + L / 2 + L * 0.16, cy);
+            ctx.lineTo(cx + L / 2 - L * 0.04, cy + Hh * 0.22);
+            ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+
+        // ---------- 绘制主画布 ----------
+        function render() {
+            ctx.clearRect(0, 0, W, H);
+
+            // 背景竖向网格
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+            }
+            ctx.restore();
+
+            const laneA_y = H * 0.40;   // 红车（上）
+            const laneB_y = H * 0.66;   // 蓝车（下）
+            const yMid = (laneA_y + laneB_y) / 2;
+
+            // 视图变换：screenX = panX + zoom * (ORIGIN_X + m * SCALE)
+            const zx = m => panX + zoom * (ORIGIN_X + m * SCALE);
+
+            // 公路
+            [laneA_y, laneB_y].forEach(ly => {
+                ctx.strokeStyle = 'rgba(180,200,230,0.22)';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(W, ly); ctx.stroke();
+                // 中线虚线
+                ctx.save();
+                ctx.setLineDash([10, 12]);
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(0, ly + 9); ctx.lineTo(W, ly + 9); ctx.stroke();
+                ctx.restore();
+            });
+            // 车道标签
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = COL_A; ctx.fillText('🔴 红车（后车）', 12, laneA_y - 26);
+            ctx.fillStyle = COL_B; ctx.fillText('🔵 蓝车（前车）', 12, laneB_y - 26);
+
+            // 起点 x=0 刻度
+            ctx.strokeStyle = 'rgba(200,220,255,0.15)';
+            ctx.setLineDash([4, 6]);
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(zx(0), 40); ctx.lineTo(zx(0), H - 20); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(200,220,255,0.3)';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('起点 x=0（位置原点）', zx(0), H - 8);
+
+            // 像素坐标
+            const xA_px = zx(state.xA);
+            const xB_px = zx(state.xB);
+
+            // 轨迹（虚线）
+            if (state.trailA.length > 1) {
+                ctx.save();
+                ctx.setLineDash([4, 6]);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(224,122,122,0.45)';
+                ctx.beginPath();
+                for (let i = 0; i < state.trailA.length; i++) {
+                    const px = zx(state.trailA[i]);
+                    if (i === 0) ctx.moveTo(px, laneA_y); else ctx.lineTo(px, laneA_y);
+                }
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(90,138,208,0.45)';
+                ctx.beginPath();
+                for (let i = 0; i < state.trailB.length; i++) {
+                    const px = zx(state.trailB[i]);
+                    if (i === 0) ctx.moveTo(px, laneB_y); else ctx.lineTo(px, laneB_y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 间距标注（连接两车的水平双箭头，位于两车道中间）
+            ctx.save();
+            const dimY = yMid;
+            const xL = Math.min(xA_px, xB_px), xR = Math.max(xA_px, xB_px);
+            ctx.strokeStyle = COL_D;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath(); ctx.moveTo(xL, dimY); ctx.lineTo(xR, dimY); ctx.stroke();
+            ctx.setLineDash([]);
+            // 箭头
+            function arrowHead(x, dir) {
+                ctx.fillStyle = COL_D;
+                ctx.beginPath();
+                ctx.moveTo(x, dimY);
+                ctx.lineTo(x - dir * 9, dimY - 5);
+                ctx.lineTo(x - dir * 9, dimY + 5);
+                ctx.closePath(); ctx.fill();
+            }
+            arrowHead(xL, 1);
+            arrowHead(xR, -1);
+            // 标签
+            ctx.fillStyle = COL_D;
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const dTxt = '间距 D = ' + Math.abs(state.D).toFixed(1) + ' m' + (state.D < 0 ? '（红车已超前）' : '');
+            ctx.fillText(dTxt, (xL + xR) / 2, dimY - 6);
+            ctx.restore();
+
+            // ---------- 位移矢量箭头（实时显示位移大小）----------
+            function drawDisplacement(startM, curM, laneY, color, prefix, labelDy) {
+                const x1 = zx(startM), x2 = zx(curM);
+                if (Math.abs(curM - startM) < 0.4) return;   // 位移过小(米)不画
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 4;
+                ctx.globalAlpha = 0.55;
+                ctx.beginPath(); ctx.moveTo(x1, laneY); ctx.lineTo(x2, laneY); ctx.stroke();
+                ctx.globalAlpha = 1;
+                const dir = x2 >= x1 ? 1 : -1;        // 箭头指向当前位置
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x2, laneY);
+                ctx.lineTo(x2 - dir * 11, laneY - 5);
+                ctx.lineTo(x2 - dir * 11, laneY + 5);
+                ctx.closePath(); ctx.fill();
+                const s = Math.abs(curM - startM);
+                const txt = prefix + s.toFixed(1) + ' m';
+                ctx.font = 'bold 12px sans-serif';
+                const tw = ctx.measureText(txt).width;
+                const bw = tw + 12, bh = 20;
+                let bx = (x1 + x2) / 2 - bw / 2;
+                bx = Math.max(2, Math.min(bx, W - bw - 2));
+                const by = laneY + labelDy;
+                ctx.fillStyle = 'rgba(8,18,30,0.85)';
+                roundRect(bx, by, bw, bh, 6); ctx.fill();
+                ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = color;
+                ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                ctx.fillText(txt, bx + 6, by + bh / 2);
+                ctx.restore();
+            }
+            // 红车位移：从起点 0 → 当前 xA；蓝车位移：从初位 d → 当前 xB
+            drawDisplacement(0, state.xA, laneA_y, COL_A, '位移 s红 =', -30);
+            drawDisplacement(state.d, state.xB, laneB_y, COL_B, '位移 s蓝 =', 8);
+
+            // 车辆速度标注
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = COL_A;
+            ctx.fillText('v = ' + fmt(state.vA) + ' m/s', xA_px, laneA_y - 14);
+            ctx.fillStyle = COL_B;
+            ctx.fillText('v = ' + fmt(state.vB) + ' m/s', xB_px, laneB_y + 30);
+
+            // 小车
+            drawCar(xA_px, laneA_y, COL_A, '#a04040');
+            drawCar(xB_px, laneB_y, COL_B, '#2a4a9a');
+
+            // 刹车停住标记
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            if (state.stoppedA) { ctx.fillStyle = COL_A; ctx.fillText('停', xA_px, laneA_y + 34); }
+            if (state.stoppedB) { ctx.fillStyle = COL_B; ctx.fillText('停', xB_px, laneB_y + 34); }
+
+            // 相遇高亮（支持多次相遇，逐一标记；最后一次更醒目）
+            state.meets.forEach((m, idx) => {
+                const mx_px = zx(m.x);
+                const isLast = idx === state.meets.length - 1;
+                ctx.save();
+                if (isLast) { ctx.shadowColor = COL_D; ctx.shadowBlur = 18; }
+                ctx.strokeStyle = COL_D;
+                ctx.lineWidth = isLast ? 2.5 : 1.8;
+                ctx.globalAlpha = isLast ? 1 : 0.82;
+                ctx.setLineDash([8, 6]);
+                ctx.beginPath(); ctx.moveTo(mx_px, laneA_y - 30); ctx.lineTo(mx_px, laneB_y + 30); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = COL_D;
+                ctx.beginPath(); ctx.arc(mx_px, yMid, 7, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'center';
+                const label = (state.meets.length > 1 ? ('第' + (idx + 1) + '次相遇 ') : '相遇 ') + 't=' + m.t.toFixed(2) + 's';
+                const ly = laneA_y - 40 - (idx % 3) * 18;
+                ctx.fillText(label, mx_px, ly);
+                ctx.restore();
+            });
+        }
+
+        // ---------- 绘制图表 ----------
+        function drawCharts() {
+            if (!state.chartDirty) return;
+            drawChart(velCtx, velChartCanvas, '速度 (m/s)',
+                [{ key: 'vA', color: COL_A, sym: 'v红' }, { key: 'vB', color: COL_B, sym: 'v蓝' }],
+                {});
+            drawChart(dispCtx, dispChartCanvas, '位置 (m)',
+                [{ key: 'xA', color: COL_A, sym: 'x红' }, { key: 'xB', color: COL_B, sym: 'x蓝' }],
+                { gap: true, meet: true });
+            state.chartDirty = false;
+        }
+
+        // opts.series: [{key,color,sym}]
+        // opts.gap: 在 s-t 图上突出两曲线竖直间距（即两车距离）
+        // opts.meet: 在 s-t 图上标出两车位置坐标的交点（相遇点）
+        function drawChart(c, canvas, yLabel, series, opts) {
+            const cw = canvas.clientWidth;
+            const ch = canvas.clientHeight;
+            if (cw === 0 || ch === 0) return;
+            c.clearRect(0, 0, cw, ch);
+
+            const data = state.history;
+            const len = data.time.length;
+            if (len < 2) {
+                c.fillStyle = 'rgba(200,220,255,0.28)';
+                c.font = '13px "Segoe UI", sans-serif';
+                c.textAlign = 'center'; c.textBaseline = 'middle';
+                c.fillText('开始后显示曲线…', cw / 2, ch / 2);
+                return;
+            }
+
+            const margin = { top: 30, bottom: 28, left: 48, right: 14 };
+            const plotW = cw - margin.left - margin.right;
+            const plotH = ch - margin.top - margin.bottom;
+
+            // 取值范围
+            let minVal = Infinity, maxVal = -Infinity;
+            series.forEach(s => {
+                for (let v of data[s.key]) {
+                    if (v < minVal) minVal = v;
+                    if (v > maxVal) maxVal = v;
+                }
+            });
+            if (minVal > 0) minVal = 0;
+            if (maxVal < 0) maxVal = 0;
+            const range = maxVal - minVal;
+            if (range < 0.1) { minVal -= 0.5; maxVal += 0.5; }
+            else { minVal -= range * 0.12; maxVal += range * 0.12; }
+
+            const tData = data.time;
+            const tMin = tData[0], tMax = tData[len - 1];
+            const tRange = (tMax - tMin) || 0.1;
+
+            const tx = t => margin.left + (t - tMin) / tRange * plotW;
+            const vy = v => margin.top + plotH * (1 - (v - minVal) / (maxVal - minVal));
+
+            // 横向网格 + Y 刻度
+            c.strokeStyle = 'rgba(255,255,255,0.07)';
+            c.lineWidth = 1;
+            c.fillStyle = 'rgba(200,220,255,0.5)';
+            c.font = '11px "Segoe UI", sans-serif';
+            c.textAlign = 'right'; c.textBaseline = 'middle';
+            for (let i = 0; i <= 4; i++) {
+                const y = margin.top + plotH * (1 - i / 4);
+                c.beginPath(); c.moveTo(margin.left, y); c.lineTo(margin.left + plotW, y); c.stroke();
+                const val = minVal + (maxVal - minVal) * i / 4;
+                c.fillText(val.toFixed(1), margin.left - 6, y);
+            }
+            // 坐标轴
+            c.strokeStyle = 'rgba(255,255,255,0.22)';
+            c.lineWidth = 1.3;
+            c.beginPath();
+            c.moveTo(margin.left, margin.top);
+            c.lineTo(margin.left, margin.top + plotH);
+            c.lineTo(margin.left + plotW, margin.top + plotH);
+            c.stroke();
+            // X 刻度
+            c.fillStyle = 'rgba(200,220,255,0.5)';
+            c.textAlign = 'center'; c.textBaseline = 'top';
+            for (let i = 0; i <= 4; i++) {
+                const x = margin.left + plotW * i / 4;
+                const tv = tMin + tRange * i / 4;
+                c.fillText(tv.toFixed(1), x, margin.top + plotH + 6);
+            }
+            c.fillStyle = 'rgba(200,220,255,0.42)';
+            c.fillText('t (s)', margin.left + plotW / 2, ch - 12);
+
+            // 原点线 y=0（红车起点），仅当 0 在纵轴范围内
+            if (minVal <= 0 && maxVal >= 0) {
+                const y0 = vy(0);
+                c.save();
+                c.strokeStyle = 'rgba(255,255,255,0.22)';
+                c.setLineDash([4, 5]); c.lineWidth = 1;
+                c.beginPath(); c.moveTo(margin.left, y0); c.lineTo(margin.left + plotW, y0); c.stroke();
+                c.restore();
+            }
+
+            // s-t 图：先画两曲线之间的"间距"阴影
+            if (opts && opts.gap) {
+                c.save();
+                c.fillStyle = 'rgba(255,207,106,0.14)';
+                c.beginPath();
+                for (let i = 0; i < len; i++) c.lineTo(tx(tData[i]), vy(data.xA[i]));
+                for (let i = len - 1; i >= 0; i--) c.lineTo(tx(tData[i]), vy(data.xB[i]));
+                c.closePath();
+                c.fill();
+                c.restore();
+            }
+
+            // 曲线
+            series.forEach(s => {
+                const arr = data[s.key];
+                c.strokeStyle = s.color;
+                c.lineWidth = 2.6;
+                c.lineJoin = 'round';
+                c.shadowColor = s.color; c.shadowBlur = 6;
+                c.beginPath();
+                for (let i = 0; i < len; i++) {
+                    const x = tx(tData[i]), y = vy(arr[i]);
+                    if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+                }
+                c.stroke();
+                c.shadowBlur = 0;
+            });
+
+            // s-t 图：当前时刻竖直间距高亮 + 标签
+            if (opts && opts.gap) {
+                const li = len - 1;
+                const xc = tx(tData[li]);
+                const yA = vy(data.xA[li]);
+                const yB = vy(data.xB[li]);
+                c.save();
+                c.strokeStyle = COL_D; c.lineWidth = 2.5;
+                c.setLineDash([5, 4]);
+                c.beginPath(); c.moveTo(xc, yA); c.lineTo(xc, yB); c.stroke();
+                c.setLineDash([]);
+                // 双向箭头
+                function head(y, dir) {
+                    c.fillStyle = COL_D;
+                    c.beginPath();
+                    c.moveTo(xc, y);
+                    c.lineTo(xc - 5, y - dir * 8);
+                    c.lineTo(xc + 5, y - dir * 8);
+                    c.closePath(); c.fill();
+                }
+                head(yA, 1); head(yB, -1);
+                // 标签
+                const gap = Math.abs(data.xB[li] - data.xA[li]);
+                c.fillStyle = COL_D;
+                c.font = 'bold 12px "Segoe UI", sans-serif';
+                c.textAlign = 'left'; c.textBaseline = 'middle';
+                c.fillText('D=' + gap.toFixed(1) + 'm', xc + 6, (yA + yB) / 2);
+                c.restore();
+            }
+
+            // s-t 图：标出所有相遇点（位置坐标交点），支持多次相遇
+            if (opts && opts.meet && len > 2) {
+                let meetIdx = 0;
+                for (let i = 1; i < len; i++) {
+                    const d0 = data.xA[i - 1] - data.xB[i - 1];
+                    const d1 = data.xA[i] - data.xB[i];
+                    // 红追上蓝(D 正→负) 或 蓝反追红(D 负→正) 均记为一次相遇
+                    if ((d0 > 0 && d1 <= 0) || (d0 < 0 && d1 >= 0)) {
+                        meetIdx++;
+                        const xm = tx(tData[i]);
+                        const ym = vy((data.xA[i] + data.xB[i]) / 2);
+                        c.save();
+                        c.shadowColor = COL_D; c.shadowBlur = 12;
+                        c.fillStyle = COL_D;
+                        c.beginPath(); c.arc(xm, ym, 6, 0, Math.PI * 2); c.fill();
+                        c.shadowBlur = 0;
+                        c.strokeStyle = COL_D; c.lineWidth = 2;
+                        c.font = 'bold 12px "Segoe UI", sans-serif';
+                        c.textAlign = 'center'; c.textBaseline = 'bottom';
+                        const label = (meetIdx > 1 ? ('第' + meetIdx + '次 ') : '') + '相遇 t=' + tData[i].toFixed(1) + 's';
+                        c.fillText(label, xm, ym - 9 - ((meetIdx - 1) % 3) * 16);
+                        c.restore();
+                    }
+                }
+            }
+
+            // 图例 + 实时数值
+            c.font = 'bold 12px "Segoe UI", sans-serif';
+            c.textAlign = 'left'; c.textBaseline = 'middle';
+            const cur1 = data[series[0].key][len - 1];
+            const cur2 = data[series[1].key][len - 1];
+            c.fillStyle = series[0].color;
+            c.fillText('● ' + series[0].sym + ' = ' + cur1.toFixed(1), margin.left + 6, margin.top + 8);
+            c.fillStyle = series[1].color;
+            c.fillText('● ' + series[1].sym + ' = ' + cur2.toFixed(1), margin.left + 6, margin.top + 24);
+
+            // Y 轴单位
+            c.fillStyle = 'rgba(200,220,255,0.4)';
+            c.font = '11px "Segoe UI", sans-serif';
+            c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+            c.fillText(yLabel, margin.left + 4, margin.top - 12);
+        }
+
+        // ---------- 动画 ----------
+        function animate() {
+            updatePhysics();
+            render();
+            drawCharts();
+            updateData();
+            requestAnimationFrame(animate);
+        }
+
+        // ---------- 尺寸自适应 ----------
+        function resizeCanvas() {
+            const rect = canvasWrap.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            W = rect.width || 900;
+            H = rect.height || 620;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function resizeCharts() {
+            [velChartCanvas, dispChartCanvas].forEach(c => {
+                const w = c.clientWidth, h = c.clientHeight;
+                if (w > 0 && h > 0) {
+                    const dpr = window.devicePixelRatio || 1;
+                    c.width = w * dpr; c.height = h * dpr;
+                    c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+                    c.style.width = w + 'px'; c.style.height = h + 'px';
+                }
+            });
+            state.chartDirty = true;
+            drawCharts();
+        }
+
+        // ---------- 滑块绑定 ----------
+        function bindSlider(slider, disp, fmtFn, key) {
+            slider.addEventListener('input', function () {
+                state[key] = parseFloat(this.value);
+                disp.textContent = fmtFn(state[key]);
+                if (!state.running) { prepareRun(); render(); }
+            });
+        }
+        bindSlider(va0Slider, va0Display, v => v.toFixed(1) + ' m/s', 'va0');
+        bindSlider(aaSlider,  aaDisplay,  v => v.toFixed(1) + ' m/s²', 'aa');
+        bindSlider(vb0Slider, vb0Display, v => v.toFixed(1) + ' m/s', 'vb0');
+        bindSlider(abSlider,  abDisplay,  v => v.toFixed(1) + ' m/s²', 'ab');
+        bindSlider(dSlider,   dDisplay,   v => v.toFixed(0) + ' m', 'd');
+
+        // 约束开关 / 限速滑块
+        function bindToggle(btn, getOn, setOn, onText, offText) {
+            btn.addEventListener('click', function () {
+                setOn(!getOn());
+                btn.textContent = getOn() ? onText : offText;
+                btn.classList.toggle('on', getOn());
+                if (!state.running) { prepareRun(); render(); }
+            });
+        }
+        bindToggle(brakeBtn, () => brakeOn, v => brakeOn = v, '🛑 考虑刹车：开', '🛑 考虑刹车：关');
+        bindToggle(limitBtn, () => limitOn, v => limitOn = v, '🚦 考虑限速：开', '🚦 考虑限速：关');
+        vmaxSlider.addEventListener('input', function () {
+            state.vmax = parseFloat(this.value);
+            vmaxDisplay.textContent = state.vmax.toFixed(0) + ' m/s';
+            if (!state.running) { prepareRun(); render(); }
+        });
+
+        // ---------- 视图操作：缩放回绕 + 拖拽平移 + 复位 ----------
+        // 以某个屏幕锚点(像素)为基准缩放，保证该点对应的物理量在缩放前后位置不变
+        function applyZoom(newZoom, anchorX) {
+            newZoom = Math.max(0.2, Math.min(4, newZoom));
+            const cx = (anchorX == null) ? (W / 2) : anchorX;
+            // 锚点当前对应的物理位置(米)
+            const mAt = ((cx - panX) / zoom - ORIGIN_X) / SCALE;
+            zoom = newZoom;
+            panX = cx - zoom * (ORIGIN_X + mAt * SCALE);
+            zoomSlider.value = zoom.toFixed(2);
+            zoomDisplay.textContent = zoom.toFixed(1) + '×';
+            if (!state.running) render();
+        }
+        zoomSlider.addEventListener('input', function () {
+            applyZoom(parseFloat(this.value), W / 2);
+        });
+        const resetViewBtn = document.getElementById('resetViewBtn');
+        resetViewBtn.addEventListener('click', function () {
+            zoom = 1; panX = 0;
+            zoomSlider.value = '1'; zoomDisplay.textContent = '1.0×';
+            if (!state.running) render();
+        });
+
+        // 鼠标拖拽平移
+        let _dragging = false, _lastX = 0;
+        canvas.addEventListener('mousedown', function (e) {
+            _dragging = true; _lastX = e.clientX; canvas.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', function (e) {
+            if (!_dragging) return;
+            panX += (e.clientX - _lastX);
+            _lastX = e.clientX;
+            if (!state.running) render();
+        });
+        window.addEventListener('mouseup', function () {
+            _dragging = false; canvas.style.cursor = 'grab';
+        });
+        // 滚轮缩放（以光标为锚点）
+        canvas.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            applyZoom(zoom * factor, mx);
+        }, { passive: false });
+        // 触摸拖拽（移动端）
+        canvas.addEventListener('touchstart', function (e) {
+            if (e.touches.length === 1) { _dragging = true; _lastX = e.touches[0].clientX; }
+        }, { passive: true });
+        canvas.addEventListener('touchmove', function (e) {
+            if (_dragging && e.touches.length === 1) {
+                const t = e.touches[0];
+                panX += (t.clientX - _lastX);
+                _lastX = t.clientX;
+                if (!state.running) render();
+                e.preventDefault();
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchend', function () { _dragging = false; });
+
+        startBtn.addEventListener('click', startSim);
+        resetBtn.addEventListener('click', resetSim);
+        pauseBtn.addEventListener('click', togglePause);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!state.running) startSim(); }
+            else if (e.key === 'r' || e.key === 'R') { resetSim(); }
+            else if (e.key === 'p' || e.key === 'P') { togglePause(); }
+        });
+
+        // ---------- 初始化 ----------
+        function init() {
+            state.va0 = parseFloat(va0Slider.value);
+            state.aa = parseFloat(aaSlider.value);
+            state.vb0 = parseFloat(vb0Slider.value);
+            state.ab = parseFloat(abSlider.value);
+            state.d = parseFloat(dSlider.value);
+            state.vmax = parseFloat(vmaxSlider.value);
+            va0Display.textContent = state.va0.toFixed(1) + ' m/s';
+            aaDisplay.textContent = state.aa.toFixed(1) + ' m/s²';
+            vb0Display.textContent = state.vb0.toFixed(1) + ' m/s';
+            abDisplay.textContent = state.ab.toFixed(1) + ' m/s²';
+            dDisplay.textContent = state.d.toFixed(0) + ' m';
+            vmaxDisplay.textContent = state.vmax.toFixed(0) + ' m/s';
+            brakeBtn.textContent = '🛑 考虑刹车：关';
+            limitBtn.textContent = '🚦 考虑限速：关';
+
+            resizeCanvas();
+            resizeCharts();
+            prepareRun();
+            render();
+            window.addEventListener('resize', function () {
+                resizeCanvas();
+                resizeCharts();
+                render();
+            });
+            animate();
+        }
+
+        init();
+    })();
+</script>
+</body>
+</html>

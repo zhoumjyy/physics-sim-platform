@@ -1,0 +1,127 @@
+{
+  "manifestVersion": 13,
+  "categories": [
+    {
+      "id": "mechanics",
+      "name": "🔬 力学",
+      "sims": [
+        {
+          "id": "displacement-micro-element",
+          "name": "微元法 · 位移公式推导",
+          "description": "匀变速直线运动 · 以直代曲",
+          "icon": "📐",
+          "src": "simulations/displacement-micro-element.html"
+        },
+        {
+          "id": "projectile",
+          "name": "平抛运动",
+          "description": "速度矢量 · 轨迹 · 碰撞",
+          "icon": "🎯",
+          "src": "simulations/projectile.html"
+        },
+        {
+          "id": "vertical-encounter",
+          "name": "自由落体 × 竖直上抛 · 相遇问题",
+          "description": "甲自由落体 · 乙竖直上抛 · 相遇判定",
+          "icon": "🪂",
+          "src": "simulations/vertical-encounter.html"
+        },
+        {
+          "id": "chase-meet",
+          "name": "追及相遇 · 匀变速直线运动",
+          "description": "红车蓝车 · 速度加速度可调 · 间距突出",
+          "icon": "🚗",
+          "src": "simulations/chase-meet.html"
+        },
+        {
+          "id": "pendulum",
+          "name": "单摆运动",
+          "description": "简谐运动 · 周期",
+          "icon": "🌀",
+          "src": ""
+        }
+      ]
+    },
+    {
+      "id": "electromagnetism",
+      "name": "⚡ 电磁学",
+      "sims": [
+        {
+          "id": "electric-field",
+          "name": "电场可视化 · 电场线与等势面",
+          "description": "6 种电荷组合 · 立体/俯视 · 等高线 · 试探电荷",
+          "icon": "⚡",
+          "src": "simulations/electric-field.html"
+        },
+        {
+          "id": "uniform-charged-body",
+          "name": "均匀带电体 · 电场线与电势分布",
+          "description": "圆环/圆盘/半球壳/实心半球 · 等势面 · 试探电荷",
+          "icon": "🔵",
+          "src": "simulations/均匀带电体模拟器（修复带电体朝向）.html"
+        },
+        {
+          "id": "electrostatic-shielding",
+          "name": "静电屏蔽 · 球壳与薄壳",
+          "description": "外屏蔽/内屏蔽 · 接地/不接地 · 金属球壳与长方体薄壳 · 全空间电场线",
+          "icon": "🛡️",
+          "src": "simulations/electrostatic-shielding.html"
+        },
+        {
+          "id": "multi-charge-field",
+          "name": "多点电荷电场 · 电场线与等势面",
+          "description": "手动添加/拖动点电荷 · 实时生成电场线与等势面",
+          "icon": "🔆",
+          "src": "simulations/multi-charge-field.html"
+        },
+        {
+          "id": "magnetic-field",
+          "name": "磁场可视化",
+          "description": "磁感线 · 安培定则",
+          "icon": "🧲",
+          "src": ""
+        }
+      ]
+    },
+    {
+      "id": "optics",
+      "name": "🌈 光学",
+      "sims": [
+        {
+          "id": "reflection",
+          "name": "反射定律",
+          "description": "入射角 = 反射角",
+          "icon": "🪞",
+          "src": ""
+        },
+        {
+          "id": "refraction",
+          "name": "折射与全反射",
+          "description": "斯涅耳定律",
+          "icon": "💧",
+          "src": ""
+        }
+      ]
+    },
+    {
+      "id": "modern-physics",
+      "name": "⚛️ 近代物理",
+      "sims": [
+        {
+          "id": "photoelectric",
+          "name": "光电效应",
+          "description": "光子 · 逸出功",
+          "icon": "🌟",
+          "src": ""
+        },
+        {
+          "id": "atom-model",
+          "name": "玻尔原子模型",
+          "description": "能级跃迁",
+          "icon": "🪐",
+          "src": ""
+        }
+      ]
+    }
+  ]
+}

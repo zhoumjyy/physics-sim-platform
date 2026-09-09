@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>⚛️ 物理模拟实验室 · 高级教学版</title>
+    
+    <!-- 浏览器标签页图标 (Favicon) — 使用原子符号 SVG -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚛️</text></svg>">
+    
+    <style>
+        /* ===== 全局重置 & 高级深色毛玻璃 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 20% 30%, #162b3a, #0a1420);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            font-size: 20px;
+            color: #eef4fc;
+        }
+        .platform {
+            width: 100%;
+            max-width: min(100vw - 32px, 1980px);
+            height: 94vh;
+            min-height: 780px;
+            background: rgba(18, 34, 50, 0.45);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        /* ===== 顶部导航 ===== */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 36px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: relative;
+            z-index: 20;
+        }
+        .topbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 32px;
+            font-weight: 700;
+            color: #f0f6ff;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(0, 20, 40, 0.4);
+        }
+        .topbar .brand span {
+            font-weight: 300;
+            font-size: 20px;
+            color: #8aacd4;
+            opacity: 0.8;
+            margin-left: 6px;
+        }
+        .topbar .sim-name {
+            font-size: 26px;
+            font-weight: 600;
+            color: #d6e6ff;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 8px 28px;
+            border-radius: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(4px);
+            letter-spacing: 0.5px;
+            flex-shrink: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .topbar .actions {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .topbar .btn-ghost {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #c0d6f0;
+            padding: 10px 24px;
+            border-radius: 60px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: all 0.25s;
+            letter-spacing: 0.3px;
+        }
+        .topbar .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        .topbar .btn-ghost.active {
+            background: rgba(64, 175, 255, 0.12);
+            border-color: rgba(64, 175, 255, 0.25);
+            color: #7fc4ff;
+        }
+        /* ===== 主体 ===== */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            z-index: 10;
+        }
+        /* ===== 左侧边栏 ===== */
+        .sidebar {
+            width: 320px;
+            min-width: 280px;
+            background: rgba(0, 0, 0, 0.15);
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 24px 16px 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            backdrop-filter: blur(4px);
+        }
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        /* ===== 侧边栏拖拽调宽（扩大模拟窗口） ===== */
+        .sidebar-resizer {
+            flex: 0 0 6px;
+            width: 6px;
+            cursor: col-resize;
+            position: relative;
+            z-index: 15;
+            background: transparent;
+        }
+        .sidebar-resizer::after {
+            content: '';
+            position: absolute;
+            top: 14px; bottom: 14px; left: 50%;
+            width: 2px; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+        .sidebar-resizer:hover::after,
+        .sidebar-resizer.dragging::after {
+            background: rgba(90, 170, 255, 0.6);
+        }
+        body.resizing { user-select: none; }
+        body.resizing iframe { pointer-events: none; }   /* 拖拽时让鼠标事件穿透 iframe，避免卡顿 */
+        @media (max-width: 768px) {
+            .sidebar-resizer { display: none; }   /* 移动端为纵向堆叠，禁用拖拽调宽 */
+        }
+        .category-group {
+            margin-bottom: 12px;
+        }
+        /* ---- 分类标题（可点击折叠） ---- */
+        .category-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #7a9fc9;
+            padding: 8px 12px 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+            border-radius: 8px;
+        }
+        .category-title:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .category-title .left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .category-title .left span {
+            opacity: 0.6;
+            font-size: 22px;
+        }
+        .category-title .toggle-icon {
+            font-size: 18px;
+            opacity: 0.5;
+            transition: transform 0.3s;
+        }
+        /* ---- 模拟列表（可折叠） ---- */
+        .sim-list {
+            overflow: hidden;
+            max-height: 1000px;
+            opacity: 1;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.3s ease,
+                        margin 0.3s ease;
+            margin-top: 6px;
+        }
+        .category-group.collapsed .sim-list {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            pointer-events: none;
+        }
+        .category-group.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .sim-list .sim-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #c8daf0;
+            margin-bottom: 2px;
+        }
+        .sim-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+        }
+        .sim-item.active {
+            background: rgba(64, 175, 255, 0.08);
+            border-color: rgba(64, 175, 255, 0.15);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+        .sim-item .icon {
+            font-size: 32px;
+            line-height: 1;
+            flex-shrink: 0;
+            width: 44px;
+            text-align: center;
+        }
+        .sim-item .info {
+            flex: 1;
+            min-width: 0;
+        }
+        .sim-item .info .name {
+            font-weight: 600;
+            font-size: 22px;
+            letter-spacing: 0.3px;
+        }
+        .sim-item .info .desc {
+            font-size: 16px;
+            opacity: 0.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+        .sim-item .badge {
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 2px 14px;
+            border-radius: 30px;
+            color: #6a8fb0;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+        }
+        .sim-item .badge.coming {
+            background: rgba(255, 200, 50, 0.06);
+            color: #d4b05a;
+            border-color: rgba(255, 200, 50, 0.06);
+        }
+        /* ===== 内容区 ===== */
+        .content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+            z-index: 5;
+        }
+        .content iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: rgba(10, 20, 32, 0.6);
+            display: block;
+            opacity: 0;
+            transition: opacity 0.28s ease;
+        }
+        .content .placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #8aacd4;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 9;
+            font-size: 28px;
+            gap: 18px;
+            padding: 20px;
+            text-align: center;
+        }
+        .content .placeholder .big-icon {
+            font-size: 88px;
+            opacity: 0.6;
+        }
+        .content .placeholder .sub {
+            font-size: 20px;
+            opacity: 0.5;
+        }
+        /* ===== 接入指南 (底部抽屉) ===== */
+        .guide-toggle {
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 12px 36px;
+            background: rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #8aacd4;
+            font-size: 18px;
+            font-weight: 500;
+            user-select: none;
+            transition: background 0.2s;
+            position: relative;
+            z-index: 30;
+        }
+        .guide-toggle:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+        .guide-toggle .arrow {
+            transition: transform 0.35s;
+            font-size: 16px;
+            opacity: 0.6;
+        }
+        .guide-toggle .arrow.open {
+            transform: rotate(180deg);
+            opacity: 1;
+        }
+        .guide-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(8, 18, 30, 0.92);
+            border-top: 1px solid transparent;
+            position: relative;
+            z-index: 40;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .guide-panel.open {
+            max-height: 70vh;
+            border-top-color: rgba(255, 255, 255, 0.06);
+        }
+        .guide-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        .guide-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+        .guide-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+        .guide-panel .inner {
+            padding: 32px 40px 40px;
+            color: #c8daf0;
+            font-size: 18px;
+            line-height: 1.8;
+            max-width: 1000px;
+            position: relative;
+            z-index: 41;
+        }
+        .guide-panel .inner h3 {
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #e0edff;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .guide-panel .inner h4 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 24px 0 10px;
+            color: #b0cef0;
+        }
+        .guide-panel .inner code {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 2px 14px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 17px;
+            color: #b0d4ff;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .guide-panel .inner .code-block {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 18px 24px;
+            border-radius: 16px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 16px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            margin: 12px 0 16px;
+            color: #c8daf0;
+        }
+        .guide-panel .inner ul,
+        .guide-panel .inner ol {
+            padding-left: 28px;
+            margin: 8px 0 14px;
+        }
+        .guide-panel .inner li {
+            margin-bottom: 4px;
+        }
+        .guide-panel .inner .tag {
+            display: inline-block;
+            background: rgba(64, 175, 255, 0.06);
+            padding: 2px 18px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #7fc4ff;
+            border: 1px solid rgba(64, 175, 255, 0.06);
+        }
+        /* ===== 响应式 ===== */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 260px;
+                min-width: 200px;
+                padding: 16px 10px;
+            }
+            .sim-item .info .name {
+                font-size: 19px;
+            }
+            .sim-item .icon {
+                font-size: 26px;
+                width: 36px;
+            }
+            .topbar .brand {
+                font-size: 26px;
+            }
+            .topbar .sim-name {
+                font-size: 20px;
+                padding: 6px 18px;
+            }
+            .guide-panel.open {
+                max-height: 60vh;
+            }
+        }
+        @media (max-width: 768px) {
+            .platform {
+                height: auto;
+                min-height: 92vh;
+                border-radius: 28px;
+            }
+            .main {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: 0;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+                max-height: 280px;
+                padding: 14px 12px;
+            }
+            .category-group {
+                margin-bottom: 8px;
+            }
+            .sim-list .sim-item {
+                padding: 10px 14px;
+            }
+            .sim-item .info .desc {
+                display: none;
+            }
+            .content {
+                min-height: 380px;
+            }
+            .topbar {
+                padding: 14px 18px;
+            }
+            .topbar .brand span {
+                display: none;
+            }
+            .topbar .sim-name {
+                font-size: 17px;
+                max-width: 140px;
+            }
+            .topbar .btn-ghost {
+                font-size: 15px;
+                padding: 6px 16px;
+            }
+            .guide-panel .inner {
+                padding: 16px 18px 24px;
+                font-size: 16px;
+            }
+            .guide-panel .inner .code-block {
+                font-size: 14px;
+                padding: 12px 14px;
+            }
+            .guide-toggle {
+                font-size: 16px;
+                padding: 10px 18px;
+            }
+            .guide-panel.open {
+                max-height: 55vh;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+                font-size: 16px;
+            }
+            .platform {
+                border-radius: 20px;
+            }
+            .sim-item .info .name {
+                font-size: 17px;
+            }
+            .sim-item .icon {
+                font-size: 22px;
+                width: 30px;
+            }
+            .topbar .brand {
+                font-size: 20px;
+            }
+            .content .placeholder .big-icon {
+                font-size: 56px;
+            }
+            .guide-panel.open {
+                max-height: 50vh;
+            }
+        }
+        /* ===== 加载态 ===== */
+        .content .loading {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #8aacd4;
+            font-size: 22px;
+            gap: 14px;
+            pointer-events: none;
+            z-index: 8;
+        }
+        .content .loading .spin {
+            width: 30px; height: 30px;
+            border: 3px solid rgba(127,196,255,0.25);
+            border-top-color: #7fc4ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ===== 角色 / 登录 ===== */
+        .topbar .role-btn { display: flex; align-items: center; }
+        .topbar .role-btn .crown { color: #ffd76a; }
+        .login-mask {
+            position: fixed; inset: 0; background: rgba(4,10,18,0.72);
+            backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
+            z-index: 200;
+        }
+        .login-mask.show { display: flex; }
+        /* ===== 云端同步状态面板 ===== */
+        .sync-mask {
+            position: fixed; inset: 0; background: rgba(4,10,18,0.72);
+            backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
+            z-index: 200;
+        }
+        .sync-mask.show { display: flex; }
+        .sync-card {
+            width: 460px; max-width: 92vw;
+            background: rgba(18,34,50,0.6); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 28px; padding: 30px 32px; backdrop-filter: blur(24px);
+            box-shadow: 0 30px 70px -20px rgba(0,0,0,0.8);
+            color: #c8daf0; font-size: 15px; line-height: 1.7;
+        }
+        .sync-card h3 { font-size: 22px; color: #e0edff; margin-bottom: 14px; }
+        .sync-card .sync-status {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 12px 16px; margin-bottom: 16px; color: #eef4fc; font-size: 16px;
+        }
+        .sync-card .note { font-size: 14px; color: #9fb6d4; margin: 8px 0; }
+        .sync-card .note code { background: rgba(255,255,255,0.06); padding: 1px 8px; border-radius: 6px; color: #b0d4ff; }
+        .sync-card ul.note { padding-left: 22px; margin: 6px 0 18px; }
+        .sync-card ul.note li { margin-bottom: 6px; }
+        .sync-card .row { display: flex; gap: 10px; justify-content: flex-end; }
+        .sync-card .btn {
+            background: rgba(90,170,255,0.18); border: 1px solid rgba(120,190,255,0.4);
+            color: #fff; padding: 10px 22px; border-radius: 14px; cursor: pointer; font-size: 15px;
+        }
+        .sync-card .btn:hover { background: rgba(90,170,255,0.3); }
+        .hidden { display: none !important; }
+        .login-card {
+            width: 380px; max-width: 90vw;
+            background: rgba(18,34,50,0.6); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 28px; padding: 32px; backdrop-filter: blur(24px);
+            box-shadow: 0 30px 70px -20px rgba(0,0,0,0.8);
+        }
+        .login-card h3 { font-size: 22px; color: #e0edff; margin-bottom: 6px; }
+        .login-card p { font-size: 14px; color: #8aacd4; margin-bottom: 18px; line-height: 1.6; }
+        .login-card input {
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            color: #eef4fc; padding: 12px 16px; border-radius: 14px; font-size: 16px; margin-bottom: 14px; outline: none;
+        }
+        .login-card input:focus { border-color: rgba(64,175,255,0.4); }
+        .login-card .err { color: #ff9a9a; font-size: 13px; min-height: 16px; margin-bottom: 10px; }
+        .login-card .row { display: flex; gap: 10px; }
+        .login-card .row .btn { flex: 1; text-align: center; text-decoration: none; }
+        .hidden { display: none !important; }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="platform" id="app">
+        <header class="topbar">
+            <div class="brand">
+                <!-- 核心修改：将试管 🧪 更换为原子符号 ⚛️ -->
+                ⚛️ 物理模拟实验室
+                <span>Physics Lab</span>
+            </div>
+            <div class="sim-name" id="simName">🎯 平抛运动</div>
+            <div class="actions">
+                <button class="btn-ghost hidden" id="workbenchBtn">🛠 工作台</button>
+                <button class="btn-ghost active" id="guideToggleBtn">📖 接入指南</button>
+                <button class="btn-ghost" id="refreshBtn">⟳ 刷新</button>
+                <button class="btn-ghost" id="syncBtn">☁️ 云端同步</button>
+                <button class="btn-ghost role-btn" id="roleBtn"><span id="roleLabel">🔐 管理员登录</span></button>
+            </div>
+        </header>
+        <div class="main">
+            <nav class="sidebar" id="sidebar"></nav>
+            <div class="sidebar-resizer" id="sidebarResizer" title="拖动调节导航栏宽度"></div>
+            <div class="content" id="contentArea">
+                <div class="placeholder" id="placeholder">
+                    <!-- 核心修改：将占位大图标从显微镜 🔬 更换为原子符号 ⚛️ -->
+                    <div class="big-icon">⚛️</div>
+                    <div>选择左侧模拟器开始实验</div>
+                    <div class="sub">支持力学 · 电磁学 · 光学 · 近代物理</div>
+                </div>
+            </div>
+        </div>
+        <div class="guide-toggle" id="guideToggle">
+            <span>📖 接入指南 — 如何添加新的物理模拟器</span>
+            <span class="arrow" id="guideArrow">▾</span>
+        </div>
+        <div class="guide-panel" id="guidePanel">
+            <div class="inner">
+                <h3>📐 模拟器接入规范</h3>
+                <p>您可以使用 AI 生成任意物理模拟 HTML 文件，并轻松接入本平台。</p>
+                <h4>📁 文件格式要求</h4>
+                <ul>
+                    <li>每个模拟器必须是 <strong>独立的 HTML 文件</strong>（含 CSS / JavaScript）。</li>
+                    <li>建议采用 <strong>毛玻璃质感</strong> 设计风格以保持视觉统一，但非强制。</li>
+                    <li>模拟器应 <strong>自适应</strong> 容器尺寸，或在 iframe 中能完整显示。</li>
+                    <li>所有资源请使用 <strong>内联或 CDN</strong>，避免相对路径引用失败。</li>
+                </ul>
+                <h4>🔌 接入步骤</h4>
+                <ol>
+                    <li>将模拟器 HTML 文件放入 <code>simulations/</code> 目录。</li>
+                    <li>在 <code>sims.json</code> 清单的对应分类中添加一条配置（或直接打开右上角 <code>🛠 工作台</code> 可视化编辑）。</li>
+                </ol>
+                <div class="code-block">{
+        id: 'your-sim-id',
+        name: '模拟器名称',
+        description: '简短描述',
+        icon: '🚀',
+        src: 'simulations/your-sim.html'
+    }</div>
+                <h4>✅ 完整示例（在力学分类下添加）</h4>
+                <div class="code-block">// sims.json：数组即分类，sims 即模拟器
+    [
+        {
+            "id": "mechanics",
+            "name": "🔬 力学",
+            "sims": [
+                { "id": "displacement-micro-element", "name": "微元法 · 位移公式推导", "description": "匀变速直线运动 · 以直代曲", "icon": "📐", "src": "simulations/displacement-micro-element.html" },
+                { "id": "projectile", "name": "平抛运动", "description": "速度矢量 · 轨迹", "icon": "🎯", "src": "simulations/projectile.html" },
+                { "id": "free-fall", "name": "自由落体", "description": "重力加速度演示", "icon": "📐", "src": "" }
+            ]
+        }
+        // 更多分类...
+    ]</div>
+                <h4>🎨 设计建议</h4>
+                <ul>
+                    <li>推荐使用与本平台一致的 <strong>深色毛玻璃</strong> 风格。</li>
+                    <li>画布尺寸建议 <strong>820×620</strong> 或自适应。</li>
+                    <li>交互控件请使用 <strong>大圆角 + 柔和阴影</strong> 以提升质感。</li>
+                    <li>可参考已集成的 <strong>平抛运动模拟器</strong> 代码风格。</li>
+                </ul>
+                <p style="margin-top:16px;opacity:0.5;font-size:16px;">
+                    💡 提示：编辑 <code>sims.json</code> 并刷新即可增删模拟器；或用右上角 <code>🛠 工作台</code> 可视化操作，无需改代码。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员登录 -->
+    <div class="login-mask" id="loginMask">
+        <div class="login-card">
+            <h3>🔐 管理员登录</h3>
+            <p>输入管理员密码后，可使用「🛠 工作台」编辑、增删模拟器。</p>
+            <input type="password" id="pwdInput" placeholder="管理员密码" />
+            <div class="err" id="pwdErr"></div>
+            <div class="row">
+                <button class="btn accent" id="loginOk">登录</button>
+                <button class="btn" id="loginCancel">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 云端同步状态（纯静态下由 AI 代理执行真正的上传/拉取） -->
+    <div class="sync-mask" id="syncMask">
+        <div class="sync-card">
+            <h3>☁️ 云端同步状态</h3>
+            <div class="sync-status" id="syncStatus">读取云端同步信息中…</div>
+            <p class="note">本平台为纯静态站点，浏览器页面自身<strong>无法</strong>把修改直接写回云端。真正的同步由 <strong>AI 代理</strong> 完成：</p>
+            <ul class="note">
+                <li><b>保存并上传：</b>关闭页面前会询问"是否保留修改"；您也可直接对我说"<b>帮我同步到云端</b>"，我便把本地部署到公网（同一链接复用）。</li>
+                <li><b>开工加载云端：</b>我每次开工时会先拉取公网上的 <code>sims.json</code> / <code>sync-meta.json</code> 与本地比对，确保不覆盖云端最新内容。</li>
+                <li><b>学生参数：</b>模拟器里调的参数会自动存本机浏览器，并可"<b>导出 / 导入</b>"JSON 随身带走、收集后作为预设重新发布。</li>
+            </ul>
+            <div class="row"><button class="btn" id="syncClose">关闭</button></div>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  📋 模拟器分类配置 — 按物理板块组织
+        // ================================================================
+        const DEFAULT_CATEGORIES = [{
+            id: 'mechanics',
+            name: '🔬 力学',
+            sims: [{
+                id: 'displacement-micro-element',
+                name: '微元法 · 位移公式推导',
+                description: '匀变速直线运动 · 以直代曲',
+                icon: '📐',
+                src: 'simulations/displacement-micro-element.html'
+            },{
+                id: 'projectile',
+                name: '平抛运动',
+                description: '速度矢量 · 轨迹 · 碰撞',
+                icon: '🎯',
+                src: 'simulations/projectile.html'
+            }, {
+                id: 'vertical-encounter',
+                name: '自由落体 × 竖直上抛 · 相遇问题',
+                description: '甲自由落体 · 乙竖直上抛 · 相遇判定',
+                icon: '🪂',
+                src: 'simulations/vertical-encounter.html'
+            }, {
+                id: 'chase-meet',
+                name: '追及相遇 · 匀变速直线运动',
+                description: '红车蓝车 · 速度加速度可调 · 间距突出',
+                icon: '🚗',
+                src: 'simulations/chase-meet.html'
+            }, {
+                id: 'pendulum',
+                name: '单摆运动',
+                description: '简谐运动 · 周期',
+                icon: '🌀',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'electromagnetism',
+            name: '⚡ 电磁学',
+            sims: [{
+                id: 'electric-field',
+                name: '电场可视化 · 电场线与等势面',
+                description: '6 种电荷组合 · 立体/俯视 · 等高线 · 试探电荷',
+                icon: '⚡',
+                src: 'simulations/electric-field.html'
+            }, {
+                id: 'uniform-charged-body',
+                name: '均匀带电体 · 电场线与电势分布',
+                description: '圆环/圆盘/半球壳/实心半球 · 等势面 · 试探电荷',
+                icon: '🔵',
+                src: 'simulations/均匀带电体模拟器（修复带电体朝向）.html'
+            }, {
+                id: 'electrostatic-shielding',
+                name: '静电屏蔽 · 球壳与薄壳',
+                description: '外屏蔽/内屏蔽 · 接地/不接地 · 金属球壳与长方体薄壳',
+                icon: '🛡️',
+                src: 'simulations/electrostatic-shielding.html'
+            }, {
+                id: 'multi-charge-field',
+                name: '多点电荷电场 · 电场线与等势面',
+                description: '手动添加/拖动点电荷 · 实时生成电场线与等势面',
+                icon: '🔆',
+                src: 'simulations/multi-charge-field.html'
+            }, {
+                id: 'magnetic-field',
+                name: '磁场可视化',
+                description: '磁感线 · 安培定则',
+                icon: '🧲',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'optics',
+            name: '🌈 光学',
+            sims: [{
+                id: 'reflection',
+                name: '反射定律',
+                description: '入射角 = 反射角',
+                icon: '🪞',
+                src: 'about:blank'
+            }, {
+                id: 'refraction',
+                name: '折射与全反射',
+                description: '斯涅耳定律',
+                icon: '💧',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'modern-physics',
+            name: '⚛️ 近代物理',
+            sims: [{
+                id: 'photoelectric',
+                name: '光电效应',
+                description: '光子 · 逸出功',
+                icon: '🌟',
+                src: 'about:blank'
+            }, {
+                id: 'atom-model',
+                name: '玻尔原子模型',
+                description: '能级跃迁',
+                icon: '🪐',
+                src: 'about:blank'
+            }]
+        }];
+
+        // 运行时优先加载 sims.json；失败则回退到上方内置清单
+        let CATEGORIES = DEFAULT_CATEGORIES;
+        async function loadManifest() {
+            // 先拉取线上最新 sims.json（带版本号），确定权威版本
+            let fresh = null, freshVer = 0;
+            try {
+                const res = await fetch('sims.json?t=' + Date.now(), { cache: 'no-store' });
+                if (res.ok) {
+                    const parsed = await res.json();
+                    const cats = Array.isArray(parsed) ? parsed : (parsed && parsed.categories);
+                    if (Array.isArray(cats) && cats.length) {
+                        fresh = cats;
+                        freshVer = (parsed && parsed.manifestVersion) || 0;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ 未能加载 sims.json，将尝试本地覆盖层或内置清单。', e);
+            }
+            // 工作台「保存」会写入本地覆盖层。仅当其版本不低于线上时才采用，
+            // 否则（例如已重新部署了更新的清单）自动失效并改用线上最新版本。
+            try {
+                const ov = localStorage.getItem('phys_manifest_override');
+                if (ov) {
+                    const parsed = JSON.parse(ov);
+                    const ovData = Array.isArray(parsed) ? parsed : (parsed && parsed.categories);
+                    const ovVer = Array.isArray(parsed) ? 0 : ((parsed && parsed.manifestVersion) || 0);
+                    if (ovData && ovData.length && ovVer >= freshVer) {
+                        CATEGORIES = ovData;
+                        return;
+                    }
+                    if (ovVer < freshVer) {
+                        localStorage.removeItem('phys_manifest_override');
+                        console.info('🗑️ 已弃用过期的工作台本地清单覆盖层，改用线上最新版本。');
+                    }
+                }
+            } catch (e) { /* ignore */ }
+            CATEGORIES = fresh || DEFAULT_CATEGORIES;
+        }
+
+        // ================================================================
+        //  🧩 平台核心逻辑（含折叠功能）
+        // ================================================================
+        (function() {
+            'use strict';
+            const sidebar = document.getElementById('sidebar');
+            const contentArea = document.getElementById('contentArea');
+            const simName = document.getElementById('simName');
+            const placeholder = document.getElementById('placeholder');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const guideToggle = document.getElementById('guideToggle');
+            const guidePanel = document.getElementById('guidePanel');
+            const guideArrow = document.getElementById('guideArrow');
+            const guideToggleBtn = document.getElementById('guideToggleBtn');
+            const workbenchBtn = document.getElementById('workbenchBtn');
+            const roleBtn = document.getElementById('roleBtn');
+            const roleLabel = document.getElementById('roleLabel');
+            const loginMask = document.getElementById('loginMask');
+            const pwdInput = document.getElementById('pwdInput');
+            const pwdErr = document.getElementById('pwdErr');
+            const loginOk = document.getElementById('loginOk');
+            const loginCancel = document.getElementById('loginCancel');
+
+            const LS_PWD = 'phys_admin_pwd';
+            const LS_ADMIN = 'phys_admin_logged';
+            const DEFAULT_PWD = 'physics2026';
+
+            function getPwd() { return localStorage.getItem(LS_PWD) || DEFAULT_PWD; }
+            function isAdmin() { return localStorage.getItem(LS_ADMIN) === '1'; }
+            function setAdmin(on) { localStorage.setItem(LS_ADMIN, on ? '1' : '0'); refreshRoleUI(); }
+            function refreshRoleUI() {
+                const admin = isAdmin();
+                if (workbenchBtn) workbenchBtn.classList.toggle('hidden', !admin);
+                if (roleBtn) roleLabel.textContent = admin ? '👑 管理员 · 退出' : '🔐 管理员登录';
+            }
+
+            let currentSimId = null;
+            let guideOpen = false;
+
+            // ---- iframe 缓存池：已打开的模拟器保留在 DOM，切换仅显隐 → 秒开，无重加载卡顿 ----
+            const frameCache = new Map();   // id -> { el, ts }
+            const MAX_CACHE = 6;
+            let loadingEl = null;
+            function ensureLoading() {
+                if (!loadingEl) {
+                    loadingEl = document.createElement('div');
+                    loadingEl.className = 'loading';
+                    loadingEl.innerHTML = '<div class="spin"></div><span>加载中…</span>';
+                    contentArea.appendChild(loadingEl);
+                }
+                return loadingEl;
+            }
+            function evictOldest() {
+                if (frameCache.size < MAX_CACHE) return;
+                let oldestId = null, oldestTs = Infinity;
+                frameCache.forEach(function (v, k) {
+                    if (k !== currentSimId && v.ts < oldestTs) { oldestTs = v.ts; oldestId = k; }
+                });
+                if (oldestId) {
+                    const e = frameCache.get(oldestId);
+                    if (e.el && e.el.parentNode) e.el.parentNode.removeChild(e.el);
+                    frameCache.delete(oldestId);
+                }
+            }
+
+            function findSimulatorById(id) {
+                for (const cat of CATEGORIES) {
+                    const found = cat.sims.find(s => s.id === id);
+                    if (found) return found;
+                }
+                return null;
+            }
+
+            // ---------- 渲染侧边栏（含折叠交互） ----------
+            function renderSidebar() {
+                sidebar.innerHTML = '';
+                CATEGORIES.forEach((cat) => {
+                    const group = document.createElement('div');
+                    group.className = 'category-group';
+                    group.dataset.categoryId = cat.id;
+
+                    const title = document.createElement('div');
+                    title.className = 'category-title';
+                    title.innerHTML = `
+                        <span class="left">
+                            <span>${cat.name.split(' ')[0]}</span>
+                            ${cat.name.split(' ').slice(1).join(' ')}
+                        </span>
+                        <span class="toggle-icon">▾</span>
+                    `;
+                    title.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        group.classList.toggle('collapsed');
+                    });
+
+                    const list = document.createElement('div');
+                    list.className = 'sim-list';
+
+                    cat.sims.forEach((sim) => {
+                        const item = document.createElement('div');
+                        item.className = 'sim-item';
+                        item.dataset.id = sim.id;
+
+                        const isComing = sim.src === 'about:blank' || !sim.src;
+                        const badgeClass = isComing ? 'badge coming' : 'badge';
+                        item.innerHTML = `
+                            <span class="icon">${sim.icon}</span>
+                            <div class="info">
+                                <div class="name">${sim.name}</div>
+                                <div class="desc">${sim.description || ''}</div>
+                            </div>
+                            <span class="${badgeClass}">${isComing ? '⏳ 即将上线' : 'HTML'}</span>
+                        `;
+                        item.addEventListener('click', () => loadSimulation(sim.id));
+                        list.appendChild(item);
+                    });
+
+                    group.appendChild(title);
+                    group.appendChild(list);
+                    sidebar.appendChild(group);
+                });
+            }
+
+            function highlightActive() {
+                document.querySelectorAll('.sim-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.id === currentSimId);
+                });
+            }
+
+            function loadSimulation(id, silent = false) {
+                const sim = findSimulatorById(id);
+                if (!sim) return;
+                currentSimId = id;
+                highlightActive();
+                simName.textContent = `${sim.icon} ${sim.name}`;
+
+                const isPlaceholder = !sim.src || sim.src === 'about:blank';
+                if (isPlaceholder) {
+                    frameCache.forEach(e => { e.el.style.display = 'none'; e.el.style.opacity = '0'; });
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                    placeholder.innerHTML = `
+                        <div class="big-icon">${sim.icon}</div>
+                        <div>${sim.name}</div>
+                        <div class="sub">该模拟器即将上线，敬请期待！</div>
+                    `;
+                    return;
+                }
+                placeholder.style.display = 'none';
+                evictOldest();
+                let entry = frameCache.get(id);
+                if (!entry) {
+                    const f = document.createElement('iframe');
+                    f.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;background:rgba(10,20,32,0.6);display:block;opacity:0;transition:opacity .28s ease;';
+                    const load = ensureLoading();
+                    load.style.display = 'flex';
+                    f.addEventListener('load', () => {
+                        f.style.opacity = '1';
+                        if (currentSimId === id) load.style.display = 'none';
+                    });
+                    f.src = sim.src;
+                    contentArea.appendChild(f);
+                    entry = { el: f, ts: Date.now() };
+                    frameCache.set(id, entry);
+                } else {
+                    entry.ts = Date.now();
+                }
+                frameCache.forEach((e, k) => {
+                    if (k !== id) { e.el.style.display = 'none'; e.el.style.opacity = '0'; }
+                });
+                entry.el.style.display = 'block';
+                entry.el.style.opacity = '1';
+                if (!silent) history.replaceState(null, '', `#${id}`);
+            }
+
+            async function refreshAll() {
+                frameCache.forEach(e => { if (e.el.parentNode) e.el.parentNode.removeChild(e.el); });
+                frameCache.clear();
+                if (loadingEl) loadingEl.style.display = 'none';
+                await loadManifest();
+                renderSidebar();
+                highlightActive();
+                if (currentSimId) loadSimulation(currentSimId, true);
+            }
+
+            function refreshSim() {
+                if (!currentSimId) return;
+                const sim = findSimulatorById(currentSimId);
+                if (!sim || !sim.src || sim.src === 'about:blank') { loadSimulation(currentSimId, true); return; }
+                const e = frameCache.get(currentSimId);
+                if (e && e.el.parentNode) e.el.parentNode.removeChild(e.el);
+                frameCache.delete(currentSimId);
+                loadSimulation(currentSimId, true);
+            }
+
+            function toggleGuide(open) {
+                guideOpen = (open !== undefined) ? open : !guideOpen;
+                guidePanel.classList.toggle('open', guideOpen);
+                guideArrow.classList.toggle('open', guideOpen);
+                guideToggleBtn.classList.toggle('active', guideOpen);
+                if (guideOpen) guidePanel.scrollTop = 0;
+            }
+
+            // ---- 侧边栏宽度拖拽（拖动分隔条即可扩大/缩小模拟窗口） ----
+            const sidebarResizer = document.getElementById('sidebarResizer');
+            let sidebarResizing = false;
+            function applySidebarWidth() {
+                const mq = window.matchMedia('(max-width: 768px)');
+                if (mq.matches) {
+                    sidebar.style.width = '';                       // 移动端纵向堆叠，恢复 CSS 默认全宽
+                    if (sidebarResizer) sidebarResizer.style.display = 'none';
+                    return;
+                }
+                if (sidebarResizer) sidebarResizer.style.display = '';
+                const saved = parseInt(localStorage.getItem('phys_sidebar_w') || '', 10);
+                if (!isNaN(saved)) sidebar.style.width = Math.max(200, Math.min(560, saved)) + 'px';
+            }
+            function sidebarStart(e) {
+                sidebarResizing = true;
+                document.body.classList.add('resizing');
+                if (sidebarResizer) sidebarResizer.classList.add('dragging');
+                if (e.preventDefault) e.preventDefault();
+                window.addEventListener('mousemove', sidebarMove);
+                window.addEventListener('mouseup', sidebarEnd);
+            }
+            function sidebarMove(e) {
+                if (!sidebarResizing) return;
+                const mainEl = document.querySelector('.main');
+                const rect = mainEl.getBoundingClientRect();
+                let w = e.clientX - rect.left;                       // 分隔条左侧 = 侧边栏目标宽度
+                w = Math.max(200, Math.min(560, w));
+                sidebar.style.width = w + 'px';
+            }
+            function sidebarEnd() {
+                sidebarResizing = false;
+                document.body.classList.remove('resizing');
+                if (sidebarResizer) sidebarResizer.classList.remove('dragging');
+                window.removeEventListener('mousemove', sidebarMove);
+                window.removeEventListener('mouseup', sidebarEnd);
+                try { localStorage.setItem('phys_sidebar_w', sidebar.style.width.replace('px', '')); } catch (e2) { /* ignore */ }
+            }
+            if (sidebarResizer) {
+                sidebarResizer.addEventListener('mousedown', sidebarStart);
+                sidebarResizer.addEventListener('dblclick', function () {   // 双击恢复默认宽度
+                    sidebar.style.width = '';
+                    try { localStorage.removeItem('phys_sidebar_w'); } catch (e2) { /* ignore */ }
+                });
+            }
+            window.addEventListener('resize', applySidebarWidth);
+            applySidebarWidth();
+
+            // ---- 云端同步（AI 代理模式） ----
+            // 标记：本地是否有尚未同步到云端的修改
+            let platformDirty = false;
+            function markDirty() { platformDirty = true; }
+            window.__markPlatformDirty = markDirty;
+            // 模拟器通过 postMessage 上报编辑（学生参数 / 平台内改动）
+            window.addEventListener('message', (e) => {
+                if (e.data && (e.data.type === 'phys-edit' || e.data.type === 'phys-config-change')) markDirty();
+            });
+            // 关闭 / 离开前询问是否保留修改（仅当有未同步改动或工作台覆盖层存在时）
+            window.addEventListener('beforeunload', (e) => {
+                let hasOverride = false;
+                try { hasOverride = !!localStorage.getItem('phys_manifest_override'); } catch (_) {}
+                if (platformDirty || hasOverride) {
+                    const msg = '您有尚未同步到云端的修改。\n点击"留在此页"可继续编辑；离开后可由我（AI 代理）帮您上传到云端。';
+                    e.preventDefault();
+                    e.returnValue = msg;
+                    return msg;
+                }
+            });
+            // 离开时记录标记，便于下次开工核对
+            window.addEventListener('pagehide', () => {
+                try { localStorage.setItem('phys_last_close_dirty', platformDirty ? '1' : '0'); } catch (_) {}
+            });
+
+            // 云端同步面板
+            const syncMask = document.getElementById('syncMask');
+            const syncStatus = document.getElementById('syncStatus');
+            const syncBtn = document.getElementById('syncBtn');
+            function openSync() { syncMask.classList.add('show'); loadSyncMeta(); }
+            function closeSync() { syncMask.classList.remove('show'); }
+            async function loadSyncMeta() {
+                let txt = '（未能读取云端同步信息）';
+                try {
+                    const res = await fetch('sync-meta.json?t=' + Date.now(), { cache: 'no-store' });
+                    if (res.ok) {
+                        const m = await res.json();
+                        const t = m.lastSync ? new Date(m.lastSync) : null;
+                        const tstr = t ? t.toLocaleString('zh-CN') : '未知';
+                        txt = '云端最后同步：<b style="color:#ffd27a">' + tstr + '</b><br>' +
+                              '清单版本 manifestVersion：<b style="color:#7fc4ff">' + (m.manifestVersion || '?') + '</b>';
+                    }
+                } catch (e) { /* ignore */ }
+                syncStatus.innerHTML = txt;
+            }
+            if (syncBtn) syncBtn.addEventListener('click', openSync);
+            document.getElementById('syncClose').addEventListener('click', closeSync);
+            syncMask.addEventListener('click', (e) => { if (e.target === syncMask) closeSync(); });
+            loadSyncMeta();   // 启动即读取云端最后同步时间，便于提示
+
+            // ---- 登录 / 角色 ----
+            function openLogin() {
+                pwdErr.textContent = ''; pwdInput.value = '';
+                loginMask.classList.add('show');
+                setTimeout(() => pwdInput.focus(), 50);
+            }
+            function closeLogin() { loginMask.classList.remove('show'); }
+            function tryLogin() {
+                if (pwdInput.value === getPwd()) { setAdmin(true); closeLogin(); }
+                else { pwdErr.textContent = '密码错误，请重试。'; }
+            }
+            roleBtn.addEventListener('click', () => {
+                if (isAdmin()) { if (confirm('退出管理员身份？退出后将无法使用工作台。')) setAdmin(false); }
+                else openLogin();
+            });
+            loginOk.addEventListener('click', tryLogin);
+            pwdInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+            loginCancel.addEventListener('click', closeLogin);
+            loginMask.addEventListener('click', e => { if (e.target === loginMask) closeLogin(); });
+
+            async function init() {
+                await loadManifest();
+                refreshRoleUI();
+                renderSidebar();
+                const hash = location.hash.replace('#', '');
+                if (hash && findSimulatorById(hash)) {
+                    loadSimulation(hash, true);
+                } else {
+                    outer:
+                    for (const cat of CATEGORIES) {
+                        for (const sim of cat.sims) {
+                            if (sim.src) { loadSimulation(sim.id, true); break outer; }
+                        }
+                    }
+                }
+                refreshBtn.addEventListener('click', refreshAll);
+                guideToggle.addEventListener('click', () => toggleGuide());
+                guideToggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleGuide();
+                });
+                if (workbenchBtn) workbenchBtn.addEventListener('click', () => window.open('admin.html', '_blank'));
+                console.log('⚛️ 物理模拟实验室已启动');
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>

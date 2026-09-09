@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🪂 自由落体 × 竖直上抛 · 相遇问题</title>
+    <style>
+        /* ===== 全局深色毛玻璃风格（与抛体模拟器一致） ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: rgba(10, 20, 32, 0.6);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            font-size: 18px;
+            color: #eef4fc;
+        }
+        .sim-card {
+            width: 100%;
+            max-width: 1800px;
+            height: 96vh;
+            min-height: 800px;
+            background: rgba(18, 34, 50, 0.40);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(0, 0, 0, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #d6e6ff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header .title span { opacity: 0.5; font-weight: 300; font-size: 16px; }
+        .header .status {
+            font-size: 16px;
+            color: #8aacd4;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .header .status.flying { color: #7fc4ff; border-color: rgba(64,175,255,0.15); }
+        .header .status.met { color: #ffd36a; border-color: rgba(255,180,80,0.18); }
+        .header .status.end { color: #e07a7a; border-color: rgba(200,80,80,0.15); }
+
+        /* ===== 主体：左(参数) | 中(画布) | 右(图表) ===== */
+        .main { display: flex; flex: 1; min-height: 0; }
+
+        /* ===== 左侧参数面板 ===== */
+        .panel-left {
+            width: 320px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.12);
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 16px 16px 18px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .panel-left::-webkit-scrollbar { width: 4px; }
+        .panel-left::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+        .panel-left .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6a8fb0;
+            opacity: 0.5;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .ctrl-group {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 10px 14px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .ctrl-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 500;
+            color: #c0d6f0;
+            margin-bottom: 2px;
+        }
+        .ctrl-group label span {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #8aacd4;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #2a4a6a, #4a8ab5);
+            border-radius: 10px;
+            outline: none;
+            margin: 4px 0 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            box-shadow: 0 2px 10px rgba(0,20,40,0.4);
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+        }
+        .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: #c0d6f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            letter-spacing: 0.3px;
+            min-width: 50px;
+        }
+        .btn-primary { background: rgba(64, 175, 255, 0.12); border-color: rgba(64, 175, 255, 0.15); color: #7fc4ff; }
+        .btn-primary:hover { background: rgba(64, 175, 255, 0.2); border-color: rgba(64, 175, 255, 0.25); transform: translateY(-1px); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.03); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255,255,255,0.08); }
+        .btn-danger { background: rgba(200, 80, 80, 0.08); border-color: rgba(200, 80, 80, 0.1); color: #d47a7a; }
+        .btn-danger:hover { background: rgba(200, 80, 80, 0.15); }
+        .btn-warning { background: rgba(200, 180, 50, 0.08); border-color: rgba(200, 180, 50, 0.1); color: #d4c05a; }
+        .btn-warning:hover { background: rgba(200, 180, 50, 0.15); }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 14px;
+            font-size: 15px;
+            color: #c8daf0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 14px;
+            padding: 8px 14px;
+        }
+        .data-grid .item { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .data-grid .item:last-child, .data-grid .item:nth-last-child(2) { border-bottom: none; }
+        .data-grid .label { opacity: 0.5; font-weight: 400; }
+        .data-grid .value { font-weight: 600; color: #d6e6ff; font-variant-numeric: tabular-nums; }
+        .data-grid .value.a { color: #7fc4ff; }
+        .data-grid .value.b { color: #5aaa7a; }
+        .data-grid .value.highlight { color: #7fc4ff; }
+
+        .opt-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+        .opt-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #4a8ab5; cursor: pointer; }
+        .opt-row label { font-size: 15px; font-weight: 500; color: #c0d6f0; cursor: pointer; }
+        .opt-row select {
+            flex: 1;
+            padding: 5px 10px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.2);
+            color: #c8daf0;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+        }
+        .opt-row select:focus { border-color: #4a8ab5; }
+        .opt-row select option { background: #1a2a3a; }
+
+        /* ===== 相遇结论卡片（课堂重点，放大突出） ===== */
+        .meet-card {
+            background: rgba(255, 180, 80, 0.06);
+            border-color: rgba(255, 180, 80, 0.15);
+            padding: 14px 16px 16px;
+            box-shadow: 0 0 0 1px rgba(255,180,80,0.04), 0 8px 24px -12px rgba(255,180,80,0.25);
+        }
+        .meet-flag { font-size: 18px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .meet-flag.yes { color: #7fffae; }
+        .meet-flag.no { color: #d47a7a; }
+        .meet-rows { display: flex; flex-direction: column; gap: 6px; }
+        .meet-row { display: flex; justify-content: space-between; font-size: 15px; color: #c8daf0; }
+        .meet-row .mv { font-weight: 700; color: #ffd36a; font-variant-numeric: tabular-nums; }
+        .meet-note { margin-top: 8px; font-size: 12px; color: #8aacd4; opacity: 0.65; line-height: 1.5; }
+
+        /* ===== 中间画布 ===== */
+        .canvas-wrap {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        .canvas-wrap canvas { width: 100%; height: 100%; display: block; background: rgba(8, 18, 30, 0.5); }
+
+        /* ===== 右侧图表面板 ===== */
+        .panel-right {
+            width: 350px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.08);
+            border-left: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 10px 12px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .panel-right .chart-box {
+            flex: 1;
+            min-height: 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 6px 8px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-right .chart-box .chart-title {
+            font-size: 13px;
+            color: #8aacd4;
+            opacity: 0.6;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .panel-right .chart-box canvas {
+            flex: 1;
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            min-height: 0;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1400px) {
+            .panel-left { width: 280px; min-width: 200px; padding: 12px 12px; }
+            .panel-right { width: 300px; min-width: 200px; padding: 8px 10px; }
+        }
+        @media (max-width: 1100px) {
+            .main { flex-direction: column; }
+            .panel-left { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); max-height: 340px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+            .panel-left .ctrl-group { flex: 1; min-width: 180px; }
+            .panel-right { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); flex-direction: row; height: 170px; }
+            .panel-right .chart-box { flex: 1; min-width: 0; }
+            .panel-right .chart-box:first-child { border-right: 1px solid rgba(255,255,255,0.04); }
+            .canvas-wrap { min-height: 300px; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .sim-card { border-radius: 20px; height: auto; min-height: 90vh; }
+            .header { padding: 10px 16px; }
+            .header .title { font-size: 18px; }
+            .panel-left .ctrl-group { min-width: 140px; }
+            .panel-right { height: 150px; flex-direction: column; }
+            .panel-right .chart-box:first-child { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+            .data-grid { grid-template-columns: 1fr; font-size: 13px; }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sim-card" id="app">
+    <!-- 顶部栏 -->
+    <div class="header">
+        <div class="title">🪂 自由落体 × 竖直上抛 <span>相遇问题</span></div>
+        <div class="status" id="statusBadge">⏸ 待开始</div>
+    </div>
+
+    <!-- 主体：左 | 中 | 右 -->
+    <div class="main">
+        <!-- 左侧参数面板 -->
+        <div class="panel-left" id="panelLeft">
+            <!-- 控制按钮 -->
+            <div class="ctrl-group">
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="startBtn">🚀 开始</button>
+                    <button class="btn btn-secondary" id="resetBtn">⟳ 重置</button>
+                    <button class="btn btn-warning" id="pauseBtn">⏸ 暂停</button>
+                </div>
+            </div>
+
+            <!-- 物体甲：自由落体 -->
+            <div class="ctrl-group">
+                <div class="section-title">🔵 物体甲 · 自由落体</div>
+                <div class="opt-row">
+                    <label for="typeSelect">形状</label>
+                    <select id="typeSelect">
+                        <option value="cylinder" selected>竖直圆筒（有高度）</option>
+                        <option value="ball">小球（质点）</option>
+                    </select>
+                </div>
+                <label style="margin-top:8px;">下落高度 H <span id="haDisplay">40 m</span></label>
+                <input type="range" id="haSlider" min="5" max="120" step="1" value="40" />
+                <div id="lenRow">
+                    <label style="margin-top:8px;">圆筒长度 L <span id="lenDisplay">20 m</span></label>
+                    <input type="range" id="lenSlider" min="5" max="50" step="1" value="20" />
+                </div>
+            </div>
+
+            <!-- 物体乙：竖直上抛 -->
+            <div class="ctrl-group">
+                <div class="section-title">🟢 物体乙 · 竖直上抛</div>
+                <label>初速度 v₀ <span id="v0Display">25.0 m/s</span></label>
+                <input type="range" id="v0Slider" min="5" max="50" step="0.5" value="25" />
+            </div>
+
+            <!-- 实时数据 -->
+            <div class="ctrl-group" style="padding-bottom:8px;">
+                <div class="section-title">📊 实时数据</div>
+                <div class="data-grid" id="dataGrid">
+                    <div class="item"><span class="label">甲高度</span><span class="value a" id="yaVal">40.0 m</span></div>
+                    <div class="item"><span class="label">乙高度</span><span class="value b" id="ybVal">0.0 m</span></div>
+                    <div class="item"><span class="label">高度差</span><span class="value" id="diffVal">40.0 m</span></div>
+                    <div class="item"><span class="label">时间 t</span><span class="value" id="tVal">0.00 s</span></div>
+                </div>
+            </div>
+
+            <!-- 相遇结论（课堂重点） -->
+            <div class="ctrl-group meet-card">
+                <div class="meet-flag yes" id="meetFlag">✅ 可相遇</div>
+                <div class="meet-rows">
+                    <div class="meet-row"><span>相遇时间 t</span><span class="mv" id="meetT">1.60 s</span></div>
+                    <div class="meet-row"><span>相遇高度 h</span><span class="mv" id="meetH">27.46 m</span></div>
+                </div>
+                <div class="meet-note">相对速度恒为 v₀（与 g 无关），故 t = H / v₀ 。<br>可行条件：H ≤ 2v₀²/g，否则乙达不到甲。</div>
+            </div>
+        </div>
+
+        <!-- 中间画布 -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <!-- 右侧图表面板 -->
+        <div class="panel-right" id="panelRight">
+            <div class="chart-box">
+                <div class="chart-title">📈 高度 vs 时间（相遇点）</div>
+                <canvas id="heightChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">📉 速度 vs 时间</div>
+                <canvas id="velChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    //  🪂 自由落体(甲) × 竖直上抛(乙) · 相遇问题
+    //  物理要点：相对速度恒为 v₀ → t = H/v₀；可行条件 H ≤ 2v₀²/g
+    // ================================================================
+    (function () {
+        'use strict';
+
+        // ---------- DOM 引用 ----------
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrap = document.getElementById('canvasWrap');
+
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+
+        const typeSelect = document.getElementById('typeSelect');
+        const haSlider = document.getElementById('haSlider');
+        const haDisplay = document.getElementById('haDisplay');
+        const lenRow = document.getElementById('lenRow');
+        const lenSlider = document.getElementById('lenSlider');
+        const lenDisplay = document.getElementById('lenDisplay');
+        const v0Slider = document.getElementById('v0Slider');
+        const v0Display = document.getElementById('v0Display');
+
+        const statusBadge = document.getElementById('statusBadge');
+
+        const yaVal = document.getElementById('yaVal');
+        const ybVal = document.getElementById('ybVal');
+        const diffVal = document.getElementById('diffVal');
+        const tVal = document.getElementById('tVal');
+
+        const meetFlag = document.getElementById('meetFlag');
+        const meetT = document.getElementById('meetT');
+        const meetH = document.getElementById('meetH');
+
+        const heightChart = document.getElementById('heightChart');
+        const velChart = document.getElementById('velChart');
+        const hCtx = heightChart.getContext('2d');
+        const vCtx = velChart.getContext('2d');
+
+        // ---------- 物理常量 ----------
+        const G = 9.8;
+        const DT = 1 / 30;          // 时间步长（实时 30fps）
+        const COL_A = '#7fc4ff';    // 甲 蓝
+        const COL_B = '#5aaa7a';    // 乙 绿
+        const COL_MEET = '#ffd36a'; // 相遇 橙金
+
+        // ---------- 状态 ----------
+        let state = {
+            HA: 40,        // 甲下落高度（圆筒=底端起始高度，小球=球心起始高度）
+            L: 20,         // 圆筒长度
+            v0: 25,        // 乙初速度
+            type: 'cylinder',
+            running: false,
+            paused: false,
+            finished: false,
+            met: false,
+            metT: 0,
+            metH: 0,
+            time: 0,
+            yA: 40,        // 甲当前高度（圆筒=底端）
+            yB: 0,         // 乙当前高度
+            maxTime: 6,
+            trailB: [],    // 乙轨迹
+        };
+
+        // ---------- 物理计算 ----------
+        // 甲（底端/球心）高度
+        function posA(t) { return state.HA - 0.5 * G * t * t; }
+        // 乙高度
+        function posB(t) { return state.v0 * t - 0.5 * G * t * t; }
+        // 甲速度（向下为负）
+        function velA(t) { return -G * t; }
+        // 乙速度
+        function velB(t) { return state.v0 - G * t; }
+
+        // 解析相遇信息（随参数实时更新，无需运行）
+        function analyze() {
+            const HA = state.HA, v0 = state.v0;
+            const tA = Math.sqrt(2 * HA / G);   // 甲落地时间
+            const tB = 2 * v0 / G;              // 乙落地（总飞行）时间
+            const feasible = HA <= 2 * v0 * v0 / G + 1e-9;
+            let t_m = null, h_m = null;
+            if (feasible) {
+                t_m = HA / v0;
+                h_m = HA - 0.5 * G * t_m * t_m;
+            }
+            const maxFlight = Math.max(tA, tB);
+            return { tA, tB, feasible, t_m, h_m, maxFlight };
+        }
+
+        // ---------- 画布尺寸 ----------
+        let W = 820, H = 620;
+        function resizeCanvas() {
+            const rect = canvasWrap.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            W = rect.width || 820;
+            H = rect.height || 620;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            renderScene();
+        }
+
+        // ---------- 场景映射 ----------
+        function sceneScale() {
+            const groundY = H - 70;
+            const worldMaxH = Math.max(state.HA, state.v0 * state.v0 / (2 * G), 5) * 1.12;
+            const pxPerM = (groundY - 50) / worldMaxH;
+            return { groundY, worldMaxH, pxPerM };
+        }
+
+        // ---------- 场景绘制（甲乙在同一竖直线上独立运动） ----------
+        function renderScene() {
+            const { groundY, worldMaxH, pxPerM } = sceneScale();
+            const cx = W * 0.5;   // 甲乙共用的同一竖直线
+
+            ctx.clearRect(0, 0, W, H);
+
+            // 背景竖向参考线
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+            }
+
+            // 地面
+            ctx.strokeStyle = 'rgba(180,200,230,0.35)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(W, groundY); ctx.stroke();
+            ctx.fillStyle = 'rgba(180,200,230,0.18)';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('地面 (h = 0)', 12, groundY + 18);
+
+            // 共用的中央竖直轨道（甲乙同线）
+            ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath(); ctx.moveTo(cx, 30); ctx.lineTo(cx, groundY); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 图例（右上角）
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillStyle = COL_A;
+            ctx.fillText('● 甲 自由落体', W - 18, 24);
+            ctx.fillStyle = COL_B;
+            ctx.fillText('● 乙 竖直上抛', W - 18, 46);
+
+            // 高度标尺（左侧）
+            ctx.fillStyle = 'rgba(200,220,255,0.25)';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'right';
+            const yMax = worldMaxH;
+            for (let h = 0; h <= yMax; h += niceStep(yMax)) {
+                const y = groundY - h * pxPerM;
+                if (y < 30) break;
+                ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+                ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 10, y); ctx.stroke();
+                ctx.fillText(h.toFixed(0), 34, y + 4);
+            }
+
+            // 乙的轨迹（同一竖直线）
+            if (state.trailB.length > 1) {
+                ctx.strokeStyle = 'rgba(90,170,122,0.35)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < state.trailB.length; i++) {
+                    const p = state.trailB[i];
+                    const y = groundY - Math.max(0, p.h) * pxPerM;
+                    if (i === 0) ctx.moveTo(cx, y); else ctx.lineTo(cx, y);
+                }
+                ctx.stroke();
+            }
+
+            // 当前位置
+            const yA_px = groundY - Math.max(0, state.yA) * pxPerM;
+            const yB_px = groundY - Math.max(0, state.yB) * pxPerM;
+
+            // 甲 物体（同一竖直线 cx）
+            if (state.type === 'cylinder') {
+                const yBottom = Math.max(0, state.yA);
+                const yTop = state.yA + state.L;
+                const rectTop = groundY - Math.max(0, yTop) * pxPerM;
+                const rectBottom = groundY - Math.max(0, yBottom) * pxPerM;
+                if (yTop > 0) {
+                    ctx.fillStyle = 'rgba(127,196,255,0.18)';
+                    ctx.strokeStyle = COL_A;
+                    ctx.lineWidth = 2.5;
+                    const rw = 30;
+                    ctx.fillRect(cx - rw / 2, rectTop, rw, rectBottom - rectTop);
+                    ctx.strokeRect(cx - rw / 2, rectTop, rw, rectBottom - rectTop);
+                    // 底端标记（相遇参考点）
+                    ctx.fillStyle = COL_A;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - rw / 2 - 8, rectBottom);
+                    ctx.lineTo(cx - rw / 2, rectBottom - 6);
+                    ctx.lineTo(cx - rw / 2, rectBottom + 6);
+                    ctx.closePath(); ctx.fill();
+                }
+            } else {
+                drawBall(cx, yA_px, 11, COL_A);
+            }
+
+            // 乙 小球（同一竖直线 cx）
+            drawBall(cx, yB_px, 11, COL_B);
+
+            // 高度参考线 + 数值标注
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = 'rgba(127,196,255,0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(60, yA_px); ctx.lineTo(W - 60, yA_px); ctx.stroke();
+            ctx.strokeStyle = 'rgba(90,170,122,0.5)';
+            ctx.beginPath(); ctx.moveTo(60, yB_px); ctx.lineTo(W - 60, yB_px); ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = COL_A;
+            ctx.fillText('h甲=' + state.yA.toFixed(1), 64, yA_px - 8);
+            ctx.fillStyle = COL_B;
+            ctx.textAlign = 'right';
+            ctx.fillText('h乙=' + state.yB.toFixed(1), W - 64, yB_px - 8);
+
+            // 相遇高亮（沿同一竖直线相遇）
+            if (state.met) {
+                const my = (yA_px + yB_px) / 2;
+                ctx.save();
+                ctx.shadowColor = COL_MEET;
+                ctx.shadowBlur = 18;
+                ctx.strokeStyle = COL_MEET;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([8, 6]);
+                ctx.beginPath();
+                ctx.moveTo(60, my); ctx.lineTo(W - 60, my);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = COL_MEET;
+                ctx.beginPath();
+                ctx.arc(cx, my, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                ctx.fillStyle = COL_MEET;
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('相遇！t=' + state.metT.toFixed(2) + 's  h=' + state.metH.toFixed(1) + 'm', cx, my - 18);
+            } else {
+                // 高度差提示
+                const diff = state.yB - state.yA;
+                if (state.running && !state.finished && diff < 0) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    ctx.font = '13px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('高度差 ' + Math.abs(diff).toFixed(1) + ' m', cx, Math.min(yA_px, yB_px) - 14);
+                }
+            }
+        }
+
+        function drawBall(x, y, r, color) {
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 14;
+            const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.2, x, y, r);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(1, color);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function niceStep(max) {
+            const raw = max / 5;
+            const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+            const n = raw / pow;
+            let step;
+            if (n < 1.5) step = 1; else if (n < 3) step = 2; else if (n < 7) step = 5; else step = 10;
+            return Math.max(1, step * pow);
+        }
+
+        // ---------- 图表绘制 ----------
+        function drawChart(c, cctx, xMax, yMin, yMax, series, opts) {
+            const dpr = window.devicePixelRatio || 1;
+            const cw = c.clientWidth, ch = c.clientHeight;
+            c.width = cw * dpr; c.height = ch * dpr;
+            cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            cctx.clearRect(0, 0, cw, ch);
+
+            const padL = 44, padR = 12, padT = 12, padB = 22;
+            const pw = cw - padL - padR, ph = ch - padT - padB;
+
+            function mx(t) { return padL + (t / xMax) * pw; }
+            function my(v) { return padT + (yMax - v) / (yMax - yMin) * ph; }
+
+            // 网格 + 坐标轴
+            cctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            cctx.lineWidth = 1;
+            cctx.fillStyle = 'rgba(200,220,255,0.35)';
+            cctx.font = '10px sans-serif';
+            const ny = 5;
+            cctx.textAlign = 'right'; cctx.textBaseline = 'middle';
+            for (let i = 0; i <= ny; i++) {
+                const v = yMin + (yMax - yMin) * i / ny;
+                const y = my(v);
+                cctx.beginPath(); cctx.moveTo(padL, y); cctx.lineTo(padL + pw, y); cctx.stroke();
+                cctx.fillText(v.toFixed(0), padL - 4, y);
+            }
+            const nx = 5;
+            cctx.textAlign = 'center'; cctx.textBaseline = 'top';
+            for (let i = 0; i <= nx; i++) {
+                const t = xMax * i / nx;
+                const x = mx(t);
+                cctx.beginPath(); cctx.moveTo(x, padT); cctx.lineTo(x, padT + ph); cctx.stroke();
+                cctx.fillText(t.toFixed(1), x, padT + ph + 4);
+            }
+            // 轴标题
+            cctx.fillStyle = 'rgba(200,220,255,0.45)';
+            cctx.textAlign = 'center';
+            cctx.fillText('t / s', padL + pw / 2, cctx.canvas.height / dpr - 8);
+            cctx.save();
+            cctx.translate(11, padT + ph / 2);
+            cctx.rotate(-Math.PI / 2);
+            cctx.fillText(opts.yLabel, 0, 0);
+            cctx.restore();
+
+            // 零线（速度图）
+            if (yMin < 0 && yMax > 0) {
+                cctx.strokeStyle = 'rgba(255,255,255,0.12)';
+                cctx.beginPath(); cctx.moveTo(padL, my(0)); cctx.lineTo(padL + pw, my(0)); cctx.stroke();
+            }
+
+            // 曲线
+            series.forEach(function (s) {
+                cctx.strokeStyle = s.color;
+                cctx.lineWidth = s.width || 2.5;
+                cctx.beginPath();
+                s.data.forEach(function (p, i) {
+                    const x = mx(p[0]), y = my(p[1]);
+                    if (i === 0) cctx.moveTo(x, y); else cctx.lineTo(x, y);
+                });
+                cctx.stroke();
+            });
+
+            // 相遇点
+            if (opts.meeting) {
+                const x = mx(opts.meeting.t), y = my(opts.meeting.h);
+                cctx.save();
+                cctx.shadowColor = COL_MEET; cctx.shadowBlur = 12;
+                cctx.fillStyle = COL_MEET;
+                cctx.beginPath(); cctx.arc(x, y, 6, 0, Math.PI * 2); cctx.fill();
+                cctx.restore();
+                cctx.fillStyle = COL_MEET;
+                cctx.font = 'bold 11px sans-serif';
+                cctx.textAlign = 'left'; cctx.textBaseline = 'bottom';
+                cctx.fillText('相遇', x + 8, y - 4);
+            }
+
+            // 当前时间游标
+            if (opts.cursorT != null) {
+                const ct = Math.min(opts.cursorT, xMax);
+                const x = mx(ct);
+                cctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                cctx.setLineDash([3, 4]);
+                cctx.beginPath(); cctx.moveTo(x, padT); cctx.lineTo(x, padT + ph); cctx.stroke();
+                cctx.setLineDash([]);
+                series.forEach(function (s) {
+                    const v = s.valueAt != null ? s.valueAt(ct) : null;
+                    if (v == null) return;
+                    const y = my(Math.max(yMin, Math.min(yMax, v)));
+                    cctx.fillStyle = s.color;
+                    cctx.beginPath(); cctx.arc(x, y, 4, 0, Math.PI * 2); cctx.fill();
+                });
+            }
+        }
+
+        function sample(fn, xMax, n) {
+            const arr = [];
+            for (let i = 0; i <= n; i++) {
+                const t = xMax * i / n;
+                arr.push([t, fn(t)]);
+            }
+            return arr;
+        }
+
+        function drawCharts() {
+            const info = analyze();
+            const xMax = info.maxFlight + 0.4;
+
+            // 高度-时间
+            const hYMax = Math.max(state.HA, state.v0 * state.v0 / (2 * G), 5) * 1.05;
+            drawChart(heightChart, hCtx, xMax, 0, hYMax, [
+                { color: COL_A, data: sample(posA, xMax, 140), valueAt: posA },
+                { color: COL_B, data: sample(posB, xMax, 140), valueAt: posB },
+            ], {
+                yLabel: 'h / m',
+                meeting: info.feasible ? { t: info.t_m, h: info.h_m } : null,
+                cursorT: state.time,
+            });
+
+            // 速度-时间
+            const vYMax = Math.max(state.v0, 0) * 1.1 + 0.1;
+            const vYMin = Math.min(velA(xMax), velB(xMax), 0) * 1.1;
+            drawChart(velChart, vCtx, xMax, vYMin, vYMax, [
+                { color: COL_A, data: sample(velA, xMax, 140), valueAt: velA },
+                { color: COL_B, data: sample(velB, xMax, 140), valueAt: velB },
+            ], {
+                yLabel: 'v / (m·s⁻¹)',
+                meeting: null,
+                cursorT: state.time,
+            });
+        }
+
+        // ---------- 数据 / 状态更新 ----------
+        function updateData() {
+            yaVal.textContent = state.yA.toFixed(1) + ' m';
+            ybVal.textContent = state.yB.toFixed(1) + ' m';
+            diffVal.textContent = Math.abs(state.yB - state.yA).toFixed(1) + ' m';
+            tVal.textContent = state.time.toFixed(2) + ' s';
+
+            let text, cls;
+            if (state.finished && !state.met) { text = '⚫ 未相遇（已落地）'; cls = 'end'; }
+            else if (state.met) { text = '🔵 已相遇 t=' + state.metT.toFixed(2) + 's'; cls = 'met'; }
+            else if (state.running) { text = '🟢 运动中'; cls = 'flying'; }
+            else { text = '⏸ 待开始'; cls = ''; }
+            statusBadge.textContent = text;
+            statusBadge.className = 'status' + (cls ? ' ' + cls : '');
+        }
+
+        // 解析相遇信息面板（参数变化时实时更新）
+        function updateMeetCard() {
+            const info = analyze();
+            if (info.feasible) {
+                meetFlag.textContent = '✅ 可相遇';
+                meetFlag.className = 'meet-flag yes';
+                meetT.textContent = info.t_m.toFixed(2) + ' s';
+                meetH.textContent = info.h_m.toFixed(2) + ' m';
+            } else {
+                meetFlag.textContent = '❌ 不相遇（乙达不到甲）';
+                meetFlag.className = 'meet-flag no';
+                meetT.textContent = '—';
+                meetH.textContent = '—';
+            }
+        }
+
+        // ---------- 动画 ----------
+        let rafId = null;
+        function step() {
+            state.time += DT;
+            // 位置（落地钳制为 0）
+            let ya = posA(state.time);
+            let yb = posB(state.time);
+            if (ya < 0) ya = 0;
+            if (yb < 0) yb = 0;
+            state.yA = ya;
+            state.yB = yb;
+
+            // 轨迹（乙）
+            state.trailB.push({ h: posB(state.time) });
+            if (state.trailB.length > 600) state.trailB.shift();
+
+            // 相遇判定（乙达到甲底端/球心，且均在空中）
+            if (!state.met && state.time > 0) {
+                const aPos = posA(state.time);
+                const bPos = posB(state.time);
+                if (bPos >= aPos && aPos > 0 && bPos > 0) {
+                    state.met = true;
+                    state.metT = state.time;
+                    state.metH = aPos;
+                }
+            }
+
+            // 结束判定
+            if (state.time >= state.maxTime) {
+                state.finished = true;
+                state.running = false;
+            }
+        }
+
+        function loop() {
+            if (!state.running) { rafId = null; return; }
+            if (!state.paused) step();
+            renderScene();
+            drawCharts();
+            updateData();
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function startSim() {
+            resetSim();
+            const info = analyze();
+            state.maxTime = info.maxFlight + 0.4;
+            state.running = true;
+            state.paused = false;
+            pauseBtn.textContent = '⏸ 暂停';
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function resetSim() {
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            state.running = false;
+            state.paused = false;
+            state.finished = false;
+            state.met = false;
+            state.time = 0;
+            state.yA = state.HA;
+            state.yB = 0;
+            state.trailB = [];
+            pauseBtn.textContent = '⏸ 暂停';
+            renderScene();
+            drawCharts();
+            updateData();
+        }
+
+        function togglePause() {
+            // 已结束或未开始 → 直接重新模拟；否则切换暂停/继续
+            if (state.finished || !state.running) { startSim(); return; }
+            state.paused = !state.paused;
+            pauseBtn.textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
+        }
+
+        // ---------- 事件绑定 ----------
+        startBtn.addEventListener('click', startSim);
+        resetBtn.addEventListener('click', resetSim);
+        pauseBtn.addEventListener('click', togglePause);
+
+        typeSelect.addEventListener('change', function () {
+            state.type = this.value;
+            lenRow.style.display = state.type === 'cylinder' ? 'flex' : 'none';
+            resetSim();
+            updateMeetCard();
+        });
+
+        haSlider.addEventListener('input', function () {
+            state.HA = parseFloat(this.value);
+            haDisplay.textContent = state.HA.toFixed(0) + ' m';
+            resetSim();
+            updateMeetCard();
+        });
+
+        lenSlider.addEventListener('input', function () {
+            state.L = parseFloat(this.value);
+            lenDisplay.textContent = state.L.toFixed(0) + ' m';
+            resetSim();
+        });
+
+        v0Slider.addEventListener('input', function () {
+            state.v0 = parseFloat(this.value);
+            v0Display.textContent = state.v0.toFixed(1) + ' m/s';
+            resetSim();
+            updateMeetCard();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // ---------- 初始化 ----------
+        function init() {
+            state.HA = parseFloat(haSlider.value);
+            state.L = parseFloat(lenSlider.value);
+            state.v0 = parseFloat(v0Slider.value);
+            state.type = typeSelect.value;
+            haDisplay.textContent = state.HA.toFixed(0) + ' m';
+            lenDisplay.textContent = state.L.toFixed(0) + ' m';
+            v0Display.textContent = state.v0.toFixed(1) + ' m/s';
+            lenRow.style.display = state.type === 'cylinder' ? 'flex' : 'none';
+            resizeCanvas();
+            updateMeetCard();
+            updateData();
+            setTimeout(resizeCanvas, 60);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+</script>
+</body>
+</html>

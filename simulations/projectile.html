@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎯 抛体运动模拟器</title>
+    <style>
+        /* ===== 全局深色毛玻璃风格 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: rgba(10, 20, 32, 0.6);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            font-size: 18px;
+            color: #eef4fc;
+        }
+        .sim-card {
+            width: 100%;
+            max-width: 1800px;
+            height: 96vh;
+            min-height: 800px;
+            background: rgba(18, 34, 50, 0.40);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: rgba(0, 0, 0, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #d6e6ff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header .title span {
+            opacity: 0.5;
+            font-weight: 300;
+            font-size: 16px;
+        }
+        .header .status {
+            font-size: 16px;
+            color: #8aacd4;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .header .status.flying { color: #7fc4ff; border-color: rgba(64,175,255,0.15); }
+        .header .status.collided { color: #e07a7a; border-color: rgba(200,80,80,0.15); }
+
+        /* ===== 主体：左(参数) | 中(画布) | 右(图表) ===== */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ===== 左侧参数面板 ===== */
+        .panel-left {
+            width: 320px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.12);
+            border-right: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 16px 16px 18px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .panel-left::-webkit-scrollbar { width: 4px; }
+        .panel-left::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+        .panel-left .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6a8fb0;
+            opacity: 0.5;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .ctrl-group {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 10px 14px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .ctrl-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 500;
+            color: #c0d6f0;
+            margin-bottom: 2px;
+        }
+        .ctrl-group label span {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #8aacd4;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #2a4a6a, #4a8ab5);
+            border-radius: 10px;
+            outline: none;
+            margin: 4px 0 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            box-shadow: 0 2px 10px rgba(0,20,40,0.4);
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+        }
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: #c0d6f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            letter-spacing: 0.3px;
+            min-width: 50px;
+        }
+        .btn-primary {
+            background: rgba(64, 175, 255, 0.12);
+            border-color: rgba(64, 175, 255, 0.15);
+            color: #7fc4ff;
+        }
+        .btn-primary:hover {
+            background: rgba(64, 175, 255, 0.2);
+            border-color: rgba(64, 175, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.03); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255,255,255,0.08); }
+        .btn-danger {
+            background: rgba(200, 80, 80, 0.08);
+            border-color: rgba(200, 80, 80, 0.1);
+            color: #d47a7a;
+        }
+        .btn-danger:hover { background: rgba(200, 80, 80, 0.15); }
+        .btn-warning {
+            background: rgba(200, 180, 50, 0.08);
+            border-color: rgba(200, 180, 50, 0.1);
+            color: #d4c05a;
+        }
+        .btn-warning:hover { background: rgba(200, 180, 50, 0.15); }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 14px;
+            font-size: 15px;
+            color: #c8daf0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 14px;
+            padding: 8px 14px;
+        }
+        .data-grid .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .data-grid .item:last-child,
+        .data-grid .item:nth-last-child(2) { border-bottom: none; }
+        .data-grid .label { opacity: 0.5; font-weight: 400; }
+        .data-grid .value { font-weight: 600; color: #d6e6ff; font-variant-numeric: tabular-nums; }
+        .data-grid .value.highlight { color: #7fc4ff; }
+
+        .obstacle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 2px;
+        }
+        .obstacle-row input[type="checkbox"] {
+            width: 18px; height: 18px;
+            accent-color: #4a8ab5;
+            cursor: pointer;
+        }
+        .obstacle-row label { font-size: 15px; font-weight: 500; color: #c0d6f0; cursor: pointer; }
+        .obstacle-row select {
+            flex: 1;
+            padding: 5px 10px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.2);
+            color: #c8daf0;
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+        }
+        .obstacle-row select:focus { border-color: #4a8ab5; }
+        .obstacle-row select option { background: #1a2a3a; }
+
+        .zoom-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .zoom-row label { font-size: 15px; color: #c0d6f0; }
+        .zoom-row input[type="range"] { flex: 1; }
+
+        /* ===== 中间画布 ===== */
+        .canvas-wrap {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        .canvas-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: rgba(8, 18, 30, 0.5);
+            cursor: grab;
+            touch-action: none;
+        }
+        .canvas-wrap canvas:active {
+            cursor: grabbing;
+        }
+
+        /* ===== 右侧图表面板 ===== */
+        .panel-right {
+            width: 350px;
+            min-width: 260px;
+            background: rgba(0, 0, 0, 0.08);
+            border-left: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 10px 12px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .panel-right .chart-box {
+            flex: 1;
+            min-height: 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 6px 8px 4px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-right .chart-box .chart-title {
+            font-size: 13px;
+            color: #8aacd4;
+            opacity: 0.6;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .panel-right .chart-box canvas {
+            flex: 1;
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            min-height: 0;
+        }
+
+        /* ===== 响应式布局 ===== */
+        @media (max-width: 1400px) {
+            .panel-left { width: 280px; min-width: 200px; padding: 12px 12px; }
+            .panel-right { width: 300px; min-width: 200px; padding: 8px 10px; }
+        }
+        @media (max-width: 1100px) {
+            .main { flex-direction: column; }
+            .panel-left { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); max-height: 340px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+            .panel-left .ctrl-group { flex: 1; min-width: 180px; }
+            .panel-right { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); flex-direction: row; height: 160px; }
+            .panel-right .chart-box { flex: 1; min-width: 0; }
+            .panel-right .chart-box:first-child { border-right: 1px solid rgba(255,255,255,0.04); }
+            .canvas-wrap { min-height: 300px; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .sim-card { border-radius: 20px; height: auto; min-height: 90vh; }
+            .header { padding: 10px 16px; }
+            .header .title { font-size: 18px; }
+            .header .status { font-size: 13px; padding: 2px 14px; }
+            .panel-left .ctrl-group { min-width: 140px; }
+            .panel-right { height: 140px; flex-direction: column; }
+            .panel-right .chart-box:first-child { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+            .data-grid { grid-template-columns: 1fr; font-size: 13px; }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sim-card" id="app">
+    <!-- 顶部栏 -->
+    <div class="header">
+        <div class="title">🎯 抛体运动模拟器 <span>Projectile Motion</span></div>
+        <div class="status" id="statusBadge">⏸ 待发射</div>
+    </div>
+
+    <!-- 主体：左 | 中 | 右 -->
+    <div class="main">
+        <!-- 左侧参数面板 -->
+        <div class="panel-left" id="panelLeft">
+            <!-- 控制按钮 -->
+            <div class="ctrl-group">
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="launchBtn">🚀 发射</button>
+                    <button class="btn btn-secondary" id="resetBtn">⟳ 重置</button>
+                    <button class="btn btn-warning" id="pauseBtn">⏸ 暂停</button>
+                    <button class="btn btn-danger" id="clearTrailBtn">🗑 清除轨迹</button>
+                </div>
+            </div>
+
+            <!-- 物理参数 -->
+            <div class="ctrl-group">
+                <div class="section-title">⚙️ 物理参数</div>
+                <label>初速度 v₀ <span id="v0Display">20.0 m/s</span></label>
+                <input type="range" id="v0Slider" min="2" max="35" step="0.5" value="20" />
+                <label style="margin-top:6px;">抛射角度 θ <span id="angleDisplay">45°</span></label>
+                <input type="range" id="angleSlider" min="0" max="85" step="1" value="45" />
+                <label style="margin-top:6px;">初始高度 h <span id="hDisplay">50.0 m</span></label>
+                <input type="range" id="hSlider" min="0" max="200" step="1" value="50" />
+            </div>
+
+            <!-- 障碍物 -->
+            <div class="ctrl-group">
+                <div class="section-title">🧱 障碍物</div>
+                <div class="obstacle-row">
+                    <input type="checkbox" id="obstacleEnable" checked />
+                    <label for="obstacleEnable">启用</label>
+                    <select id="obstacleShape">
+                        <option value="rectangle">矩形</option>
+                        <option value="triangle" selected>直角三角形斜面</option>
+                        <option value="hemisphere">半球形</option>
+                        <option value="bowl">碗形</option>
+                    </select>
+                </div>
+                <label style="margin-top:6px;">水平距离 <span id="obsDistDisplay">20.0 m</span></label>
+                <input type="range" id="obsDistSlider" min="0" max="100" step="0.5" value="20" />
+                <label style="margin-top:6px;">高度 <span id="obsHDisplay">4.0 m</span></label>
+                <input type="range" id="obsHSlider" min="0.5" max="100" step="0.5" value="4" />
+                <label style="margin-top:6px;">宽度 <span id="obsWDisplay">8.0 m</span></label>
+                <input type="range" id="obsWSlider" min="0.5" max="100" step="0.5" value="8" />
+            </div>
+
+            <!-- 显示控制 -->
+            <div class="ctrl-group">
+                <div class="section-title">👁️ 显示控制</div>
+                <div class="btn-row">
+                    <button class="btn btn-secondary" id="toggleDisplacementBtn">📏 显示位移</button>
+                </div>
+            </div>
+
+            <!-- 缩放 -->
+            <div class="ctrl-group">
+                <div class="section-title">🔍 视图控制</div>
+                <div class="zoom-row">
+                    <label>缩放</label>
+                    <input type="range" id="zoomSlider" min="0.3" max="2.5" step="0.01" value="1.0" />
+                    <span id="zoomDisplay">100%</span>
+                </div>
+                <div style="margin-top:6px; font-size:13px; color:#8aacd4; opacity:0.5; text-align:center;">
+                    🖱 拖动画布平移 · 滚轮缩放
+                </div>
+            </div>
+
+            <!-- 实时数据 -->
+            <div class="ctrl-group" style="padding-bottom:8px;">
+                <div class="section-title">📊 实时数据</div>
+                <div class="data-grid" id="dataGrid">
+                    <div class="item"><span class="label">水平位移</span><span class="value" id="dxVal">0.0 m</span></div>
+                    <div class="item"><span class="label">竖直位移</span><span class="value" id="dyVal">0.0 m</span></div>
+                    <div class="item"><span class="label">合速度</span><span class="value highlight" id="vVal">0.0 m/s</span></div>
+                    <div class="item"><span class="label">飞行时间</span><span class="value" id="tVal">0.00 s</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间画布 -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <!-- 右侧图表面板 -->
+        <div class="panel-right" id="panelRight">
+            <div class="chart-box">
+                <div class="chart-title">📈 速度分量 vs 时间</div>
+                <canvas id="velocityChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">📉 位移 vs 时间</div>
+                <canvas id="displacementChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    //  🎯 抛体运动模拟器 — 高度范围 0-200m，合位移显示切换
+    // ================================================================
+    (function() {
+        'use strict';
+
+        // ---------- DOM 引用 ----------
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrap = document.getElementById('canvasWrap');
+
+        const v0Slider = document.getElementById('v0Slider');
+        const angleSlider = document.getElementById('angleSlider');
+        const hSlider = document.getElementById('hSlider');
+        const v0Display = document.getElementById('v0Display');
+        const angleDisplay = document.getElementById('angleDisplay');
+        const hDisplay = document.getElementById('hDisplay');
+        const launchBtn = document.getElementById('launchBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const clearTrailBtn = document.getElementById('clearTrailBtn');
+        const toggleDisplacementBtn = document.getElementById('toggleDisplacementBtn');
+        const statusBadge = document.getElementById('statusBadge');
+
+        const obsEnable = document.getElementById('obstacleEnable');
+        const obsShape = document.getElementById('obstacleShape');
+        const obsDistSlider = document.getElementById('obsDistSlider');
+        const obsHSlider = document.getElementById('obsHSlider');
+        const obsWSlider = document.getElementById('obsWSlider');
+        const obsDistDisplay = document.getElementById('obsDistDisplay');
+        const obsHDisplay = document.getElementById('obsHDisplay');
+        const obsWDisplay = document.getElementById('obsWDisplay');
+
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+
+        const dxVal = document.getElementById('dxVal');
+        const dyVal = document.getElementById('dyVal');
+        const vVal = document.getElementById('vVal');
+        const tVal = document.getElementById('tVal');
+
+        const velChartCanvas = document.getElementById('velocityChart');
+        const dispChartCanvas = document.getElementById('displacementChart');
+        const velCtx = velChartCanvas.getContext('2d');
+        const dispCtx = dispChartCanvas.getContext('2d');
+
+        // ---------- 物理常量 ----------
+        const G = 9.8;
+        const SCALE = 7;          // 1m = 7px
+        const DT = 1 / 30;         // 速度加倍
+
+        // ---------- 画布尺寸 ----------
+        let W = 820, H = 620;
+        const ORIGIN_X = 120;      // 抛出点 x (固定)
+        const ORIGIN_Y = 80;       // 抛出点 y (固定，顶部留白)
+        const BALL_R = 9;
+
+        // ---------- 相机 ----------
+        let camera = { x: 0, y: 0 };
+        let zoomFactor = 1.0;
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+
+        // ---------- 状态 ----------
+        let state = {
+            x: 0, y: 0,
+            vx: 0, vy: 0,
+            v0: 20,
+            angle: 45,
+            h_m: 50,              // 初始高度 (米)
+            flying: false,
+            collided: false,
+            finished: false,
+            paused: false,
+            time: 0,
+            trail: [],
+            frameCounter: 0,
+            trailInterval: 4,
+            obstacle: {
+                enabled: true,
+                shape: 'triangle',
+                dist: 20,
+                height: 4,
+                width: 8,
+            },
+            collisionMsg: '',
+            collisionShow: 0,
+            history: {
+                time: [],
+                vx: [],
+                vy: [],
+                dx: [],
+                dy: []
+            },
+            maxHistory: 300,
+            chartDirty: false,
+            showDisplacement: true,   // 默认显示位移
+        };
+
+        // 计算像素高度
+        function getHeightPx() {
+            return state.h_m * SCALE;
+        }
+
+        // ---------- 辅助 ----------
+        function mToPx(m) { return m * SCALE; }
+        function pxToM(px) { return px / SCALE; }
+        function degToRad(deg) { return deg * Math.PI / 180; }
+
+        function getObstaclePx() {
+            const o = state.obstacle;
+            const dx = mToPx(o.dist);
+            const h = mToPx(o.height);
+            const w = mToPx(o.width);
+            const groundY = ORIGIN_Y + getHeightPx();   // 地面 y 坐标
+            const ox = ORIGIN_X + dx;
+            const oy = groundY - h;                     // 障碍物顶部
+            return { ox, oy, w, h, dx };
+        }
+
+        // ---------- 障碍物同步 ----------
+        function syncObstacleSize(trigger) {
+            const shape = state.obstacle.shape;
+            if (shape === 'hemisphere') {
+                let w = parseFloat(obsWSlider.value);
+                let newH = w * 0.5;
+                if (newH < 0.5) newH = 0.5;
+                if (newH > 100) newH = 100;
+                obsHSlider.value = newH;
+                obsHDisplay.textContent = newH.toFixed(1) + ' m';
+                state.obstacle.height = newH;
+                state.obstacle.width = w;
+            } else if (shape === 'bowl') {
+                let w = parseFloat(obsWSlider.value);
+                let h = parseFloat(obsHSlider.value);
+                if (trigger === 'width') {
+                    let newH = w * 0.5;
+                    if (newH < 0.5) newH = 0.5;
+                    if (newH > 100) newH = 100;
+                    obsHSlider.value = newH;
+                    obsHDisplay.textContent = newH.toFixed(1) + ' m';
+                    state.obstacle.height = newH;
+                } else if (trigger === 'height') {
+                    let newW = h * 2;
+                    if (newW < 0.5) newW = 0.5;
+                    if (newW > 100) newW = 100;
+                    obsWSlider.value = newW;
+                    obsWDisplay.textContent = newW.toFixed(1) + ' m';
+                    state.obstacle.width = newW;
+                } else {
+                    let wVal = parseFloat(obsWSlider.value);
+                    let newH = wVal * 0.5;
+                    if (newH < 0.5) newH = 0.5;
+                    if (newH > 100) newH = 100;
+                    obsHSlider.value = newH;
+                    obsHDisplay.textContent = newH.toFixed(1) + ' m';
+                    state.obstacle.height = newH;
+                    state.obstacle.width = wVal;
+                }
+                state.obstacle.width = parseFloat(obsWSlider.value);
+                state.obstacle.height = parseFloat(obsHSlider.value);
+            }
+        }
+
+        function forceSyncObstacle() {
+            const shape = state.obstacle.shape;
+            if (shape === 'hemisphere') {
+                let w = parseFloat(obsWSlider.value);
+                let newH = w * 0.5;
+                if (newH < 0.5) newH = 0.5;
+                if (newH > 100) newH = 100;
+                obsHSlider.value = newH;
+                obsHDisplay.textContent = newH.toFixed(1) + ' m';
+                state.obstacle.height = newH;
+                state.obstacle.width = w;
+            } else if (shape === 'bowl') {
+                let w = parseFloat(obsWSlider.value);
+                let newH = w * 0.5;
+                if (newH < 0.5) newH = 0.5;
+                if (newH > 100) newH = 100;
+                obsHSlider.value = newH;
+                obsHDisplay.textContent = newH.toFixed(1) + ' m';
+                state.obstacle.height = newH;
+                state.obstacle.width = w;
+            }
+        }
+
+        // ---------- 碰撞检测 ----------
+        function pointInObstacle(px, py) {
+            const o = state.obstacle;
+            if (!o.enabled) return false;
+            const { ox, oy, w, h } = getObstaclePx();
+            const shape = o.shape;
+            const r = BALL_R;
+
+            if (shape === 'rectangle') {
+                return (px + r > ox && px - r < ox + w && py + r > oy && py - r < oy + h);
+            }
+            if (shape === 'triangle') {
+                const A = { x: ox, y: oy + h };
+                const B = { x: ox + w, y: oy };
+                const C = { x: ox + w, y: oy + h };
+                function sign(p1, p2, p3) {
+                    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+                }
+                const d1 = sign({ x: px, y: py }, A, B);
+                const d2 = sign({ x: px, y: py }, B, C);
+                const d3 = sign({ x: px, y: py }, C, A);
+                const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+                return !(hasNeg && hasPos);
+            }
+            // 半球形
+            if (shape === 'hemisphere') {
+                const cx = ox + w / 2;
+                const cy = oy + h;
+                const radius = Math.min(w, h) / 2;
+                const dx = px - cx;
+                const dy = py - cy;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < radius + r && py < cy + r) return true;
+                if (dist < radius && py < cy) return true;
+                return false;
+            }
+            // 碗形：只有弧形外壳参与碰撞，直径（开口）不参与；小球可穿过开口，落到弧形底
+            if (shape === 'bowl') {
+                const cx = ox + w / 2;
+                const cy = oy + h;          // 直径（开口）所在高度 = 地面高度
+                const rx = w / 2;
+                const ry = h;
+
+                // 水平超出碗的范围（含球半径余量）则不可能碰撞
+                if (px < cx - rx - r || px > cx + rx + r) return false;
+
+                // 仅对弧形外壳采样求最近距离，直径所在的水平线段不在碰撞体表面内
+                const steps = 64;
+                let minDist = Infinity;
+                for (let i = 0; i <= steps; i++) {
+                    const ang = (i / steps) * Math.PI;
+                    const x = cx + rx * Math.cos(ang);
+                    const y = cy + ry * Math.sin(ang);
+                    const d = Math.hypot(px - x, py - y);
+                    if (d < minDist) minDist = d;
+                }
+                return minDist < r;
+            }
+            return false;
+        }
+
+        // ---------- 物理更新 ----------
+        function updatePhysics() {
+            if (!state.flying || state.collided || state.finished || state.paused) return;
+
+            state.vy += G * SCALE * DT;
+            state.x += state.vx * DT;
+            state.y += state.vy * DT;
+
+            state.frameCounter++;
+            if (state.frameCounter % state.trailInterval === 0) {
+                const trailX = ORIGIN_X + state.x;
+                const trailY = ORIGIN_Y + state.y;
+                state.trail.push({ x: trailX, y: trailY });
+                if (state.trail.length > 2000) state.trail.shift();
+            }
+
+            if (state.frameCounter % 4 === 0) {
+                state.history.time.push(state.time);
+                state.history.vx.push(state.vx / SCALE);
+                state.history.vy.push(state.vy / SCALE);
+                state.history.dx.push(pxToM(state.x));
+                state.history.dy.push(pxToM(state.y));
+                if (state.history.time.length > state.maxHistory) {
+                    state.history.time.shift();
+                    state.history.vx.shift();
+                    state.history.vy.shift();
+                    state.history.dx.shift();
+                    state.history.dy.shift();
+                }
+                state.chartDirty = true;
+            }
+
+            const ballX = ORIGIN_X + state.x;
+            const ballY = ORIGIN_Y + state.y;
+            if (pointInObstacle(ballX, ballY)) {
+                state.collided = true;
+                state.flying = false;
+                state.collisionMsg = '💥 碰撞障碍物！';
+                state.collisionShow = 120;
+                updateStatus();
+                return;
+            }
+
+            // 落地检测：地面在 ORIGIN_Y + getHeightPx()
+            const groundY = ORIGIN_Y + getHeightPx();
+            // 碗形开口（直径）与地面重合处不视为地面：小球可穿过开口，仅与弧形相碰
+            let overBowlOpening = false;
+            if (state.obstacle.enabled && state.obstacle.shape === 'bowl') {
+                const op = getObstaclePx();
+                const cx = op.ox + op.w / 2;
+                const rx = op.w / 2;
+                if (ballX > cx - rx && ballX < cx + rx) overBowlOpening = true;
+            }
+            if (!overBowlOpening && ballY >= groundY - BALL_R) {
+                state.finished = true;
+                state.flying = false;
+                state.collisionMsg = '✅ 落地';
+                state.collisionShow = 120;
+                updateStatus();
+                return;
+            }
+            if (state.x > W - ORIGIN_X - BALL_R) {
+                state.finished = true;
+                state.flying = false;
+                state.collisionMsg = '➡️ 飞出边界';
+                state.collisionShow = 120;
+                updateStatus();
+                return;
+            }
+
+            state.time += DT;
+            updateDataDisplay();
+        }
+
+        // ---------- 重置 ----------
+        function resetPhysics() {
+            state.x = 0;
+            state.y = 0;
+            state.v0 = parseFloat(v0Slider.value);
+            state.angle = parseFloat(angleSlider.value);
+            state.h_m = parseFloat(hSlider.value);
+            const rad = degToRad(state.angle);
+            state.vx = mToPx(state.v0 * Math.cos(rad));
+            state.vy = -mToPx(state.v0 * Math.sin(rad));
+            state.flying = false;
+            state.collided = false;
+            state.finished = false;
+            state.time = 0;
+            state.collisionMsg = '';
+            state.collisionShow = 0;
+            launchBtn.disabled = false;
+            state.history.time = [];
+            state.history.vx = [];
+            state.history.vy = [];
+            state.history.dx = [];
+            state.history.dy = [];
+            state.chartDirty = true;
+            updateStatus();
+            updateDataDisplay();
+        }
+
+        // ---------- 发射 ----------
+        function launch() {
+            if (state.flying) return;
+            resetPhysics();
+            state.v0 = parseFloat(v0Slider.value);
+            state.angle = parseFloat(angleSlider.value);
+            state.h_m = parseFloat(hSlider.value);
+            const rad = degToRad(state.angle);
+            state.vx = mToPx(state.v0 * Math.cos(rad));
+            state.vy = -mToPx(state.v0 * Math.sin(rad));
+            state.flying = true;
+            state.collided = false;
+            state.finished = false;
+            state.collisionMsg = '';
+            state.collisionShow = 0;
+            launchBtn.disabled = true;
+            state.chartDirty = true;
+            updateStatus();
+        }
+
+        // ---------- 暂停 ----------
+        function togglePause() {
+            state.paused = !state.paused;
+            pauseBtn.textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
+            pauseBtn.classList.toggle('btn-warning', !state.paused);
+            pauseBtn.classList.toggle('btn-primary', state.paused);
+        }
+
+        function clearTrail() {
+            state.trail = [];
+        }
+
+        // ---------- 位移显示切换 ----------
+        function toggleDisplacement() {
+            state.showDisplacement = !state.showDisplacement;
+            toggleDisplacementBtn.textContent = state.showDisplacement ? '📏 隐藏位移' : '📏 显示位移';
+        }
+
+        function updateDataDisplay() {
+            const dx = pxToM(state.x);
+            const dy = pxToM(state.y);
+            const vx = state.vx / SCALE;
+            const vy = state.vy / SCALE;
+            const v = Math.sqrt(vx*vx + vy*vy);
+            dxVal.textContent = dx.toFixed(1) + ' m';
+            dyVal.textContent = dy.toFixed(1) + ' m';
+            vVal.textContent = v.toFixed(1) + ' m/s';
+            tVal.textContent = state.time.toFixed(2) + ' s';
+        }
+
+        function updateStatus() {
+            if (state.flying) {
+                statusBadge.textContent = '✈️ 飞行中';
+                statusBadge.className = 'status flying';
+            } else if (state.collided) {
+                statusBadge.textContent = '💥 碰撞';
+                statusBadge.className = 'status collided';
+            } else if (state.finished) {
+                statusBadge.textContent = '🏁 已落地';
+                statusBadge.className = 'status';
+            } else {
+                statusBadge.textContent = '⏸ 待发射';
+                statusBadge.className = 'status';
+            }
+        }
+
+        // ---------- 矢量标签绘制辅助 ----------
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+        // 从 (x0,y0) 沿 (dx,dy) 画带箭头的速度矢量，并在末端用底色胶囊标注数值
+        // side: 'left' | 'right' | 'up' | 'down' | 'tip'(沿矢量方向延展，默认用于合速度)
+        function drawLabeledVector(x0, y0, dx, dy, lineColor, label, labelColor, side) {
+            const ex = x0 + dx, ey = y0 + dy;
+            const len = Math.hypot(dx, dy);
+            if (len < 1) return;
+            const a = Math.atan2(dy, dx);
+            ctx.save();
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 4;
+            ctx.shadowColor = lineColor;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = lineColor;
+            ctx.beginPath();
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(ex - 11 * Math.cos(a - 0.4), ey - 11 * Math.sin(a - 0.4));
+            ctx.lineTo(ex - 11 * Math.cos(a + 0.4), ey - 11 * Math.sin(a + 0.4));
+            ctx.closePath();
+            ctx.fill();
+
+            // 标签胶囊
+            ctx.font = 'bold 14px "Segoe UI", sans-serif';
+            const tw = ctx.measureText(label).width;
+            const bw = tw + 14, bh = 24;
+            const ux = Math.cos(a), uy = Math.sin(a);
+            let bx, by;
+            if (side === 'left') {            // 竖直速度 vᵧ：标签放竖直线左侧，避开向右的合速度
+                bx = ex - bw - 8; by = ey - bh / 2;
+            } else if (side === 'right') {    // 水平速度 vₓ：标签放水平线右侧
+                bx = ex + 8; by = ey - bh / 2;
+            } else if (side === 'up') {
+                bx = ex - bw / 2; by = ey - bh - 8;
+            } else if (side === 'down') {
+                bx = ex - bw / 2; by = ey + 8;
+            } else {                          // 合速度 v：沿矢量方向延展到末端外侧
+                bx = ex + ux * 12; by = ey + uy * 12;
+                if (ux < 0) bx -= bw;
+                if (uy < 0) by -= bh;
+            }
+            bx = Math.max(2, Math.min(bx, W - bw - 2));
+            by = Math.max(2, Math.min(by, H - bh - 2));
+            ctx.fillStyle = 'rgba(8,18,30,0.88)';
+            roundRect(bx, by, bw, bh, 8); ctx.fill();
+            ctx.strokeStyle = lineColor; ctx.lineWidth = 1.2; ctx.stroke();
+            ctx.fillStyle = labelColor;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, bx + 7, by + bh / 2);
+            ctx.restore();
+        }
+
+        // ---------- 绘制主画布 ----------
+        function render() {
+            ctx.clearRect(0, 0, W, H);
+
+            ctx.save();
+            const cx = W/2, cy = H/2;
+            ctx.translate(cx + camera.x, cy + camera.y);
+            ctx.scale(zoomFactor, zoomFactor);
+            ctx.translate(-cx, -cy);
+
+            // 网格
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, H);
+                ctx.stroke();
+            }
+            for (let y = 0; y < H; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 地面线（绿色虚线）
+            const groundY = ORIGIN_Y + getHeightPx();
+            ctx.save();
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = 'rgba(100, 200, 100, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(W, groundY);
+            ctx.stroke();
+            ctx.restore();
+
+            // 抛出点
+            ctx.save();
+            ctx.fillStyle = 'rgba(100,180,255,0.08)';
+            ctx.beginPath();
+            ctx.arc(ORIGIN_X, ORIGIN_Y, 6, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(200,220,255,0.15)';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('抛出点', ORIGIN_X+14, ORIGIN_Y+5);
+            ctx.restore();
+
+            drawObstacle();
+
+            // 轨迹
+            if (state.trail.length > 1) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(100,200,255,0.3)';
+                ctx.shadowBlur = 12;
+                ctx.setLineDash([4, 6]);
+                ctx.strokeStyle = 'rgba(100,200,255,0.7)';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(state.trail[0].x, state.trail[0].y);
+                for (let i = 1; i < state.trail.length; i++) {
+                    ctx.lineTo(state.trail[i].x, state.trail[i].y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(100,200,255,0.5)';
+                for (let i = 0; i < state.trail.length; i += 3) {
+                    ctx.beginPath();
+                    ctx.arc(state.trail[i].x, state.trail[i].y, 5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // 小球
+            const ballX = ORIGIN_X + state.x;
+            const ballY = ORIGIN_Y + state.y;
+            const isActive = state.flying || state.collided || state.finished;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 16;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 4;
+
+            const grad = ctx.createRadialGradient(ballX-4, ballY-4, 2, ballX, ballY, BALL_R+2);
+            if (state.collided) {
+                grad.addColorStop(0, '#e07070');
+                grad.addColorStop(1, '#a04040');
+            } else {
+                grad.addColorStop(0, '#7fc4ff');
+                grad.addColorStop(1, '#2a6a9a');
+            }
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, BALL_R, 0, Math.PI*2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(ballX-3, ballY-4, 3, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fill();
+            ctx.restore();
+
+            // ---- 合位移 (红色虚线) ----
+            if (state.showDisplacement && isActive) {
+                const startX = ORIGIN_X;
+                const startY = ORIGIN_Y;
+                const endX = ballX;
+                const endY = ballY;
+                // 只有位移大于一定值才显示
+                const dist = Math.sqrt((endX-startX)*(endX-startX) + (endY-startY)*(endY-startY));
+                if (dist > 3) {
+                    ctx.save();
+                    ctx.setLineDash([6, 6]);
+                    ctx.strokeStyle = 'rgba(255, 80, 80, 0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = 'rgba(255, 80, 80, 0.2)';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                    // 箭头（在终点处）
+                    const angle = Math.atan2(endY - startY, endX - startX);
+                    const arrowLen = 10;
+                    ctx.fillStyle = 'rgba(255, 80, 80, 0.8)';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - arrowLen * Math.cos(angle - 0.4), endY - arrowLen * Math.sin(angle - 0.4));
+                    ctx.lineTo(endX - arrowLen * Math.cos(angle + 0.4), endY - arrowLen * Math.sin(angle + 0.4));
+                    ctx.closePath();
+                    ctx.fill();
+                    // 标签 "位移"
+                    const midX = (startX + endX) / 2;
+                    const midY = (startY + endY) / 2 - 12;
+                    ctx.fillStyle = 'rgba(255, 80, 80, 0.7)';
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('位移', midX, midY);
+                    ctx.restore();
+                }
+            }
+
+            // 速度矢量（带实时数值标注）
+            if (isActive) {
+                const scaleVec = 0.30;
+                const vxPx = state.vx * scaleVec;
+                const vyPx = state.vy * scaleVec;
+                const vx_m = state.vx / SCALE;                 // m/s（水平，向右为正）
+                const vy_m = state.vy / SCALE;                 // m/s（竖直，向上为负）
+                const v_m = Math.sqrt(vx_m*vx_m + vy_m*vy_m); // 合速度大小
+
+                if (Math.abs(vxPx) > 0.3 || Math.abs(vyPx) > 0.3) {
+                    // 平行四边形辅助虚线（帮助理解 v = vₓ + vᵧ）
+                    ctx.save();
+                    ctx.setLineDash([3, 5]);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(ballX + vxPx, ballY);
+                    ctx.lineTo(ballX + vxPx, ballY + vyPx);
+                    ctx.moveTo(ballX, ballY + vyPx);
+                    ctx.lineTo(ballX + vxPx, ballY + vyPx);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // 水平速度 vₓ（蓝）—— 标签放右侧
+                    drawLabeledVector(ballX, ballY, vxPx, 0, '#4a8ab5',
+                        'vₓ = ' + vx_m.toFixed(1) + ' m/s', '#9fd0ff', 'right');
+                    // 竖直速度 vᵧ（绿，向上为负，标注绝对值）—— 标签放左侧，避免与合速度重叠
+                    drawLabeledVector(ballX, ballY, 0, vyPx, '#5aaa7a',
+                        'vᵧ = ' + Math.abs(vy_m).toFixed(1) + ' m/s', '#9be8bf', 'left');
+                    // 合速度 v（亮白）—— 沿自身方向延展到末端外侧
+                    drawLabeledVector(ballX, ballY, vxPx, vyPx, 'rgba(230,240,255,0.95)',
+                        'v = ' + v_m.toFixed(1) + ' m/s', '#ffffff');
+                }
+            }
+
+            if (state.collisionShow > 0 && state.collisionMsg) {
+                ctx.save();
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                const alpha = Math.min(1, state.collisionShow/30);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = state.collided ? '#d47a7a' : '#7fc4ff';
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 20;
+                ctx.fillText(state.collisionMsg, W/2, 48);
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = 'rgba(200,220,255,0.15)';
+            ctx.fillText('← vₓ  vᵧ  v →', 20, H-14);
+            ctx.restore();
+
+            ctx.restore(); // 缩放变换结束
+        }
+
+        // ---------- 绘制障碍物 ----------
+        function drawObstacle() {
+            const o = state.obstacle;
+            if (!o.enabled) return;
+            const { ox, oy, w, h } = getObstaclePx();
+            const shape = o.shape;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 4;
+
+            const fillColor = 'rgba(200,160,120,0.35)';
+            const strokeColor = 'rgba(200,160,120,0.7)';
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 3;
+
+            if (shape === 'rectangle') {
+                ctx.fillStyle = fillColor;
+                ctx.fillRect(ox, oy, w, h);
+                ctx.strokeRect(ox, oy, w, h);
+                ctx.strokeStyle = 'rgba(200,160,120,0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < w; i += 14) {
+                    ctx.beginPath();
+                    ctx.moveTo(ox+i, oy);
+                    ctx.lineTo(ox+i, oy+h);
+                    ctx.stroke();
+                }
+            } else if (shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(ox, oy+h);
+                ctx.lineTo(ox+w, oy);
+                ctx.lineTo(ox+w, oy+h);
+                ctx.closePath();
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(200,160,120,0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 8; i++) {
+                    const t = i/8;
+                    const x1 = ox + t*w;
+                    const y1 = oy + h - t*h;
+                    const x2 = ox + t*w + 6;
+                    const y2 = oy + h - t*h - 6;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            } else if (shape === 'hemisphere') {
+                const cx = ox + w / 2;
+                const cy = oy + h;
+                const radius = Math.min(w, h) / 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI, true);
+                ctx.closePath();
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(200,160,120,0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i+1)/6 * Math.PI;
+                    const rr = radius * 0.5;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rr, 0, Math.PI, true);
+                    ctx.stroke();
+                }
+            } else if (shape === 'bowl') {
+                const cx = ox + w / 2;
+                const cy = oy + h;
+                const rx = w / 2;
+                const ry = h;
+
+                ctx.beginPath();
+                for (let i = 0; i <= 30; i++) {
+                    const t = i / 30;
+                    const angle = t * Math.PI;
+                    const x = cx + rx * Math.cos(angle);
+                    const y = cy + ry * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                ctx.setLineDash([4, 6]);
+                ctx.strokeStyle = 'rgba(200,160,120,0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx - rx, cy);
+                ctx.lineTo(cx + rx, cy);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = 'rgba(200,160,120,0.15)';
+                ctx.stroke();
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(200,180,160,0.15)';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('⌵', cx, cy + ry * 0.6);
+            }
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(200,180,160,0.2)';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'left';
+            const label = shape === 'triangle' ? '▽ 斜面' :
+                          shape === 'rectangle' ? '▢ 矩形' :
+                          shape === 'hemisphere' ? '◗ 半球' : '◗ 碗形';
+            ctx.fillText(label, ox+4, oy+14);
+
+            ctx.restore();
+        }
+
+        // ---------- 绘制图表 ----------
+        function drawCharts() {
+            if (!state.chartDirty) return;
+            drawChart(velCtx, velChartCanvas, '速度 (m/s)', ['vx', 'vy'], '#4a8ab5', '#5aaa7a');
+            drawChart(dispCtx, dispChartCanvas, '位移 (m)', ['dx', 'dy'], '#d4c05a', '#d47a7a');
+            state.chartDirty = false;
+        }
+
+        function drawChart(ctx, canvas, yLabel, keys, color1, color2) {
+            const W = canvas.clientWidth;
+            const H = canvas.clientHeight;
+            if (W === 0 || H === 0) return;
+
+            ctx.clearRect(0, 0, W, H);
+
+            const data = state.history;
+            const len = data.time.length;
+            if (len < 2) {
+                ctx.fillStyle = 'rgba(200,220,255,0.28)';
+                ctx.font = '13px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('发射后显示曲线…', W/2, H/2);
+                return;
+            }
+
+            const margin = { top: 30, bottom: 28, left: 46, right: 14 };
+            const plotW = W - margin.left - margin.right;
+            const plotH = H - margin.top - margin.bottom;
+
+            // 取值范围（含 0 参考线）
+            let minVal = Infinity, maxVal = -Infinity;
+            keys.forEach(key => {
+                for (let v of data[key]) {
+                    if (v < minVal) minVal = v;
+                    if (v > maxVal) maxVal = v;
+                }
+            });
+            if (minVal > 0) minVal = 0;
+            if (maxVal < 0) maxVal = 0;
+            const range = maxVal - minVal;
+            if (range < 0.1) { minVal -= 0.5; maxVal += 0.5; }
+            else { minVal -= range * 0.12; maxVal += range * 0.12; }
+
+            // 横向网格 + Y 轴刻度值
+            ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = 'rgba(200,220,255,0.5)';
+            ctx.font = '11px "Segoe UI", sans-serif';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i <= 4; i++) {
+                const y = margin.top + plotH * (1 - i/4);
+                ctx.beginPath();
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(margin.left + plotW, y);
+                ctx.stroke();
+                const val = minVal + (maxVal - minVal) * i/4;
+                ctx.fillText(val.toFixed(1), margin.left - 6, y);
+            }
+            // 坐标轴
+            ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, margin.top + plotH);
+            ctx.lineTo(margin.left + plotW, margin.top + plotH);
+            ctx.stroke();
+
+            // X 轴刻度（时间）
+            const tData = data.time;
+            const tMin = tData[0], tMax = tData[tData.length-1];
+            const tRange = tMax - tMin || 0.1;
+            ctx.fillStyle = 'rgba(200,220,255,0.5)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= 4; i++) {
+                const x = margin.left + plotW * i/4;
+                const tv = tMin + tRange * i/4;
+                ctx.fillText(tv.toFixed(1), x, margin.top + plotH + 6);
+            }
+            ctx.fillStyle = 'rgba(200,220,255,0.42)';
+            ctx.fillText('t (s)', margin.left + plotW/2, H - 12);
+
+            // 曲线
+            keys.forEach((key, idx) => {
+                const arr = data[key];
+                const color = idx === 0 ? color1 : color2;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.6;
+                ctx.lineJoin = 'round';
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+                for (let i = 0; i < len; i++) {
+                    const x = margin.left + (tData[i] - tMin) / tRange * plotW;
+                    const y = margin.top + plotH * (1 - (arr[i] - minVal) / (maxVal - minVal));
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            });
+
+            // 图例 + 实时数值（左上角）
+            const cur1 = data[keys[0]][len-1];
+            const cur2 = data[keys[1]][len-1];
+            const sym = k => (k === 'vx' ? 'vₓ' : k === 'vy' ? 'vᵧ' : k === 'dx' ? 'x' : 'y');
+            ctx.font = 'bold 12px "Segoe UI", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = color1;
+            ctx.fillText('● ' + sym(keys[0]) + ' = ' + cur1.toFixed(1), margin.left + 6, margin.top + 8);
+            ctx.fillStyle = color2;
+            ctx.fillText('● ' + sym(keys[1]) + ' = ' + cur2.toFixed(1), margin.left + 6, margin.top + 24);
+
+            // Y 轴单位
+            ctx.fillStyle = 'rgba(200,220,255,0.4)';
+            ctx.font = '11px "Segoe UI", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(yLabel, margin.left + 4, margin.top - 12);
+        }
+
+        // ---------- 动画 ----------
+        function animate() {
+            updatePhysics();
+            if (state.collisionShow > 0) {
+                state.collisionShow--;
+                if (state.collisionShow === 0) state.collisionMsg = '';
+            }
+            render();
+            drawCharts();
+            requestAnimationFrame(animate);
+        }
+
+        // ---------- 尺寸自适应 ----------
+        function resizeCanvas() {
+            const wrap = canvasWrap;
+            const rect = wrap.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            W = rect.width || 820;
+            H = rect.height || 620;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.scale(dpr, dpr);
+            render();
+        }
+
+        function resizeCharts() {
+            [velChartCanvas, dispChartCanvas].forEach(c => {
+                const w = c.clientWidth;
+                const h = c.clientHeight;
+                if (w > 0 && h > 0) {
+                    const dpr = window.devicePixelRatio || 1;
+                    c.width = w * dpr;
+                    c.height = h * dpr;
+                    const cx = c.getContext('2d');
+                    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    c.style.width = w + 'px';
+                    c.style.height = h + 'px';
+                }
+            });
+            state.chartDirty = true;
+            drawCharts();
+        }
+
+        // ---------- 事件绑定 ----------
+        v0Slider.addEventListener('input', function() {
+            state.v0 = parseFloat(this.value);
+            v0Display.textContent = state.v0.toFixed(1) + ' m/s';
+            if (!state.flying && !state.collided && !state.finished) {
+                const rad = degToRad(state.angle);
+                state.vx = mToPx(state.v0 * Math.cos(rad));
+                state.vy = -mToPx(state.v0 * Math.sin(rad));
+                updateDataDisplay();
+                render();
+            }
+        });
+
+        angleSlider.addEventListener('input', function() {
+            state.angle = parseFloat(this.value);
+            angleDisplay.textContent = state.angle.toFixed(0) + '°';
+            if (!state.flying && !state.collided && !state.finished) {
+                const rad = degToRad(state.angle);
+                state.vx = mToPx(state.v0 * Math.cos(rad));
+                state.vy = -mToPx(state.v0 * Math.sin(rad));
+                updateDataDisplay();
+                render();
+            }
+        });
+
+        hSlider.addEventListener('input', function() {
+            state.h_m = parseFloat(this.value);
+            hDisplay.textContent = state.h_m.toFixed(1) + ' m';
+            if (!state.flying && !state.collided && !state.finished) {
+                // 更新地面线等
+                render();
+            }
+        });
+
+        obsDistSlider.addEventListener('input', function() {
+            state.obstacle.dist = parseFloat(this.value);
+            obsDistDisplay.textContent = state.obstacle.dist.toFixed(1) + ' m';
+            if (!state.flying) render();
+        });
+
+        obsHSlider.addEventListener('input', function() {
+            state.obstacle.height = parseFloat(this.value);
+            obsHDisplay.textContent = state.obstacle.height.toFixed(1) + ' m';
+            syncObstacleSize('height');
+            if (!state.flying) render();
+        });
+
+        obsWSlider.addEventListener('input', function() {
+            state.obstacle.width = parseFloat(this.value);
+            obsWDisplay.textContent = state.obstacle.width.toFixed(1) + ' m';
+            syncObstacleSize('width');
+            if (!state.flying) render();
+        });
+
+        obsShape.addEventListener('change', function() {
+            state.obstacle.shape = this.value;
+            forceSyncObstacle();
+            if (!state.flying) render();
+        });
+
+        obsEnable.addEventListener('change', function() {
+            state.obstacle.enabled = this.checked;
+            if (!state.flying) render();
+        });
+
+        zoomSlider.addEventListener('input', function() {
+            zoomFactor = parseFloat(this.value);
+            zoomDisplay.textContent = Math.round(zoomFactor * 100) + '%';
+            render();
+        });
+
+        // 拖拽
+        canvas.addEventListener('mousedown', function(e) {
+            if (e.button === 0) {
+                isDragging = true;
+                dragStart.x = e.clientX;
+                dragStart.y = e.clientY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                const dx = e.clientX - dragStart.x;
+                const dy = e.clientY - dragStart.y;
+                camera.x += dx;
+                camera.y += dy;
+                dragStart.x = e.clientX;
+                dragStart.y = e.clientY;
+                render();
+            }
+        });
+
+        window.addEventListener('mouseup', function() {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            }
+        });
+
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.05 : 0.05;
+            let newZoom = zoomFactor + delta;
+            newZoom = Math.max(0.3, Math.min(2.5, newZoom));
+            zoomFactor = newZoom;
+            zoomSlider.value = zoomFactor;
+            zoomDisplay.textContent = Math.round(zoomFactor * 100) + '%';
+            render();
+        }, { passive: false });
+
+        launchBtn.addEventListener('click', launch);
+        resetBtn.addEventListener('click', function() {
+            resetPhysics();
+            launchBtn.disabled = false;
+            render();
+        });
+        pauseBtn.addEventListener('click', togglePause);
+        clearTrailBtn.addEventListener('click', clearTrail);
+
+        toggleDisplacementBtn.addEventListener('click', toggleDisplacement);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (state.flying) return;
+                launch();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                resetPhysics();
+                launchBtn.disabled = false;
+                render();
+            }
+            if (e.key === 'p' || e.key === 'P') {
+                togglePause();
+            }
+        });
+
+        // ---------- 初始化 ----------
+        function init() {
+            state.obstacle.dist = parseFloat(obsDistSlider.value);
+            state.obstacle.height = parseFloat(obsHSlider.value);
+            state.obstacle.width = parseFloat(obsWSlider.value);
+            state.obstacle.shape = obsShape.value;
+            state.obstacle.enabled = obsEnable.checked;
+            obsDistDisplay.textContent = state.obstacle.dist.toFixed(1) + ' m';
+            obsHDisplay.textContent = state.obstacle.height.toFixed(1) + ' m';
+            obsWDisplay.textContent = state.obstacle.width.toFixed(1) + ' m';
+            forceSyncObstacle();
+
+            state.h_m = parseFloat(hSlider.value);
+            hDisplay.textContent = state.h_m.toFixed(1) + ' m';
+            v0Display.textContent = state.v0.toFixed(1) + ' m/s';
+            angleDisplay.textContent = state.angle.toFixed(0) + '°';
+
+            resetPhysics();
+            resizeCanvas();
+            resizeCharts();
+
+            window.addEventListener('resize', function() {
+                resizeCanvas();
+                resizeCharts();
+            });
+
+            state.chartDirty = true;
+            drawCharts();
+            animate();
+        }
+
+        init();
+    })();
+</script>
+</body>
+</html>

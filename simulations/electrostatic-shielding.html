@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>静电屏蔽 · 球壳与薄壳</title>
+<style>
+:root{ --bg:#0b1020; --glass:rgba(255,255,255,0.06); --line:rgba(255,255,255,0.12);
+       --txt:#e8edf7; --accent:#5ad1ff; }
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);background:radial-gradient(1200px 800px at 70% -10%,#1b2550 0%,#0b1020 60%);}
+.app{display:flex;height:100vh;gap:14px;padding:14px;}
+.panel{width:300px;flex:0 0 300px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:18px;padding:18px;overflow:auto;}
+.panel h1{font-size:18px;margin:0 0 4px;}
+.panel .sub{font-size:12px;opacity:.6;margin-bottom:14px;}
+.group{margin-bottom:16px;}
+.group>label{display:block;font-size:13px;opacity:.8;margin-bottom:7px;}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{flex:1;min-width:64px;padding:9px 8px;border:1px solid var(--line);background:rgba(255,255,255,0.04);
+  color:var(--txt);border-radius:11px;cursor:pointer;font-size:13px;transition:.15s;}
+.btn:hover{border-color:var(--accent);}
+.btn.on{background:linear-gradient(135deg,#2b6cff33,#5ad1ff33);border-color:var(--accent);color:#fff;box-shadow:0 0 12px #5ad1ff44;}
+input[type=range]{width:100%;}
+.sliderval{font-size:12px;opacity:.7;float:right;}
+.checks label{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer;}
+.stage{flex:1;position:relative;background:var(--glass);border:1px solid var(--line);border-radius:18px;
+  overflow:hidden;display:flex;align-items:center;justify-content:center;}
+canvas{max-width:100%;max-height:100%;border-radius:12px;}
+.hint{position:absolute;left:14px;top:12px;font-size:12px;background:rgba(0,0,0,0.35);
+  padding:8px 12px;border-radius:10px;max-width:60%;line-height:1.5;}
+.verdict{position:absolute;left:14px;bottom:14px;font-size:13px;background:rgba(0,0,0,0.4);
+  padding:10px 14px;border-radius:12px;max-width:64%;line-height:1.6;border:1px solid var(--line);}
+.verdict b{color:var(--accent);}
+.loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(5,8,18,0.55);font-size:15px;letter-spacing:2px;}
+.legend{position:absolute;right:14px;top:12px;font-size:11px;background:rgba(0,0,0,0.35);
+  padding:8px 11px;border-radius:10px;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>静电屏蔽</h1>
+    <div class="sub">导体壳 · 外屏蔽 / 内屏蔽 · 接地效应</div>
+    <div class="group">
+      <label>导体形状</label>
+      <div class="btnrow" id="shapeRow">
+        <button class="btn on" data-shape="sphere">金属球壳</button>
+        <button class="btn" data-shape="box">长方体薄壳</button>
+      </div>
+    </div>
+    <div class="group">
+      <label>屏蔽类型</label>
+      <div class="btnrow" id="modeRow">
+        <button class="btn on" data-mode="outer">外屏蔽</button>
+        <button class="btn" data-mode="inner">内屏蔽</button>
+      </div>
+    </div>
+    <div class="group">
+      <label>接地</label>
+      <div class="btnrow" id="groundRow">
+        <button class="btn on" data-ground="0">不接地</button>
+        <button class="btn" data-ground="1">接地</button>
+      </div>
+    </div>
+    <div class="group">
+      <label>电荷量 Q <span class="sliderval" id="qv">+0.80</span></label>
+      <input type="range" id="qSlider" min="-1" max="1" step="0.02" value="0.8"/>
+      <div style="font-size:11px;opacity:.55;margin-top:4px;">正 / 负：壳外或壳内放置的正 / 负电荷</div>
+    </div>
+    <div class="group checks">
+      <label><input type="checkbox" id="cbLines" checked/> 电场线（全空间）</label>
+      <label><input type="checkbox" id="cbCharges" checked/> 导体表面感应电荷</label>
+      <label><input type="checkbox" id="cbHeat"/> 电势热力图</label>
+    </div>
+  </aside>
+  <main class="stage">
+    <canvas id="cv"></canvas>
+    <div class="hint" id="hint"></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="legend">红＝强场　青＝弱场<br/>红点＋ 正感应　蓝点− 负感应</div>
+    <div class="loading" id="loading">求解中…</div>
+  </main>
+</div>
+<script>
+"use strict";
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 780, H = 546;
+cv.width = W; cv.height = H;
+
+// 计算域在可视画布 [0,1]×[0,1] 之外再延伸 PAD，使“无限远”边界远离画布，
+// 电场线在画布内始终朝外散开，而不会贴在画布边缘。
+const PAD = 0.85;
+const U0 = -PAD, U1 = 1 + PAD;
+const V0 = -PAD, V1 = 1 + PAD;
+const NX = 240, NY = 240;
+const SRC_D0 = 0.02;
+
+const state = {
+  shape:'sphere', mode:'outer', grounded:false, Q:0.8,
+  showLines:true, showCharges:true, showHeat:false
+};
+
+const N = (NX+1)*(NY+1);
+let phi = new Float64Array(N);
+let fixed = new Uint8Array(N);
+let type = new Uint8Array(N);      // 0 空气 1 导体 2 源
+let srcVal = 0;
+let srcU = 0.5, srcV = 0.5;
+
+const idx = (i,j)=> j*(NX+1)+i;
+const Uof = i => U0 + (i/NX)*(U1-U0);
+const Vof = j => V0 + (j/NY)*(V1-V0);
+const CENTER = {u:0.5, v:0.5};
+
+function geomParams(){
+  if(state.shape==='sphere') return {Ro:0.27, t:0.045};
+  return {Xo:0.30, Yo:0.205, t:0.04};
+}
+
+function isConductor(u,v){
+  // 仅可视区域 [0,1] 内可能是导体；域外一律空气（边界不是实体）
+  if(u<0||u>1||v<0||v>1) return false;
+  const g = geomParams();
+  const du=u-CENTER.u, dv=v-CENTER.v;
+  if(state.shape==='sphere'){
+    const r=Math.hypot(du,dv);
+    return r < g.Ro && r > g.Ro - g.t;
+  } else {
+    const ax=Math.abs(du), ay=Math.abs(dv);
+    const inOuter = ax < g.Xo && ay < g.Yo;
+    const inInner = ax < g.Xo - g.t && ay < g.Yo - g.t;
+    return inOuter && !inInner;
+  }
+}
+
+// 远处边界电势：按“无限远”处应有的势设定（保证画布内线朝外散开）
+function srcCoulomb(U,V){
+  const d = Math.hypot(U-srcU, V-srcV);
+  return srcVal * (SRC_D0 / Math.max(d, 1e-4));
+}
+function farBoundary(U,V){
+  if(state.mode==='outer') return srcCoulomb(U,V);  // 外部电荷：远处仍为其库仑势
+  if(state.grounded) return 0;                      // 内屏蔽接地：电荷入地，远处场≈0
+  return srcCoulomb(U,V);                            // 内屏蔽不接地：外壳带净电，远处≈源势
+}
+
+function build(){
+  phi.fill(0); fixed.fill(0); type.fill(0);
+  for(let j=0;j<=NY;j++) for(let i=0;i<=NX;i++){
+    const U=Uof(i), V=Vof(j);
+    const onBoundary = (i===0||i===NX||j===0||j===NY);
+    if(onBoundary){ fixed[idx(i,j)]=1; phi[idx(i,j)]=farBoundary(U,V); continue; }
+    if(isConductor(U,V)){ type[idx(i,j)]=1; if(state.grounded){ fixed[idx(i,j)]=1; phi[idx(i,j)]=0; } }
+  }
+  if(state.mode==='outer'){ srcU=0.84; srcV=0.5; }
+  else { srcU=0.5; srcV=0.5; }
+  srcVal = state.Q>=0 ? 1.0 : -1.0;
+  if(Math.abs(state.Q) > 0.02){
+    const rc = 0.02;
+    const spanU = U1-U0;
+    const rcn = Math.max(1, Math.round(rc*NX/spanU));
+    const ci=Math.round((srcU-U0)/spanU*NX), cj=Math.round((srcV-V0)/(V1-V0)*NY);
+    for(let dj=-rcn;dj<=rcn;dj++) for(let di=-rcn;di<=rcn;di++){
+      if(di*di+dj*dj>rcn*rcn) continue;
+      const i=ci+di, j=cj+dj;
+      if(i<1||i>NX-1||j<1||j>NY-1) continue;
+      if(type[idx(i,j)]===1) continue;
+      type[idx(i,j)]=2; fixed[idx(i,j)]=1; phi[idx(i,j)]=srcVal;
+    }
+  }
+}
+
+function solve(){
+  build();
+  const w=1.7, IT=600;
+  for(let it=0; it<IT; it++){
+    for(let j=1;j<NY;j++) for(let i=1;i<NX;i++){
+      const k=idx(i,j);
+      if(fixed[k]) continue;
+      if(type[k]===1 && !state.grounded) continue;
+      phi[k] = (1-w)*phi[k] + w*0.25*(phi[idx(i-1,j)]+phi[idx(i+1,j)]+phi[idx(i,j-1)]+phi[idx(i,j+1)]);
+    }
+    if(!state.grounded){
+      // 浮动导体：保持等势（导体净电荷守恒，整体电位自洽）
+      let sum=0, cnt=0;
+      for(let j=1;j<NY;j++) for(let i=1;i<NX;i++){
+        const k=idx(i,j);
+        if(type[k]!==1) continue;
+        const nb=[[i-1,j],[i+1,j],[i,j-1],[i,j+1]];
+        for(let t=0;t<4;t++){
+          const nk=idx(nb[t][0],nb[t][1]);
+          if(type[nk]!==1 && !fixed[nk]){ sum+=phi[nk]; cnt++; }
+        }
+      }
+      if(cnt>0){ const avg=sum/cnt; for(let j=1;j<NY;j++) for(let i=1;i<NX;i++){ if(type[idx(i,j)]===1) phi[idx(i,j)]=avg; } }
+    }
+  }
+}
+
+function fieldAt(U,V){
+  let i0=Math.round((U-U0)/(U1-U0)*NX), j0=Math.round((V-V0)/(V1-V0)*NY);
+  i0=Math.max(1,Math.min(NX-1,i0)); j0=Math.max(1,Math.min(NY-1,j0));
+  const dU=(U1-U0)/NX, dV=(V1-V0)/NY;
+  const ex = -(phi[idx(i0+1,j0)]-phi[idx(i0-1,j0)])/(2*dU);
+  const ey = -(phi[idx(i0,j0+1)]-phi[idx(i0,j0-1)])/(2*dV);
+  return {ex,ey};
+}
+
+// 单方向追踪：sign=+1 顺电场，sign=-1 逆电场；抵达导体表面即终止（绝不画入金属）
+// 注意：参数用 su,sv 命名，避免遮蔽全局 U0/V0（计算域下界）
+function traceOne(su,sv, sign, ds, MAX){
+  const pts=[];
+  let U=su, V=sv;
+  for(let s=0;s<MAX;s++){
+    const f=fieldAt(U,V);
+    const mag=Math.hypot(f.ex,f.ey);
+    if(mag<1e-7){ break; }
+    const dirx = sign*f.ex/mag, diry = sign*f.ey/mag;
+    pts.push({U,V,e:mag});
+    const step=(kx,ky)=>{
+      const fU=U+0.5*ds*kx, fV=V+0.5*ds*ky;
+      const ff=fieldAt(fU,fV); const m=Math.hypot(ff.ex,ff.ey);
+      return m<1e-9 ? [kx,ky] : [ff.ex/m*sign, ff.ey/m*sign];
+    };
+    const k1=[dirx,diry];
+    const k2=step(k1[0],k1[1]);
+    const k3=step(k2[0],k2[1]);
+    const fU=U+ds*k3[0], fV=V+ds*k3[1];
+    const ff=fieldAt(fU,fV); const m=Math.hypot(ff.ex,ff.ey);
+    const k4 = m<1e-9 ? k3 : [ff.ex/m*sign, ff.ey/m*sign];
+    const nU = U + ds/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    const nV = V + ds/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+    if(nU< -0.18 || nU>1.18 || nV< -0.18 || nV>1.18){ pts.push({U:nU,V:nV,e:mag}); break; }
+    const ni=Math.round((nU-U0)/(U1-U0)*NX), nj=Math.round((nV-V0)/(V1-V0)*NY);
+    if(type[idx(ni,nj)]===1) break;                       // 触及导体表面：终止
+    if(Math.hypot(nU-srcU, nV-srcV) < 0.012) break;       // 触及源电荷：终止
+    U=nU; V=nV;
+  }
+  return pts;
+}
+
+// 双向追踪，得到完整一根电场线
+function traceLine(U,V){
+  const fwd = traceOne(U,V, +1, 0.006, 1400);
+  const bwd = traceOne(U,V, -1, 0.006, 1400);
+  bwd.reverse();
+  if(bwd.length) bwd.pop();   // 去掉与 fwd 起点重复的点
+  return bwd.concat(fwd);
+}
+
+// 收集金属壳表面 → 空气的每个边界面元（外法向方向）。
+// 一个金属格可有多个空气邻居（内/外/侧），每个都返回一个种子，确保金属壳整圈都有可见电场线。
+function boundaryCharge(){
+  const out=[]; let maxAbs=1e-9;
+  const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  for(let j=1;j<NY;j++) for(let i=1;i<NX;i++){
+    const k=idx(i,j);
+    if(type[k]!==1) continue;          // 仅看导体格
+    const Cu=Uof(i), Cv=Vof(j);
+    for(const [di,dj] of dirs){
+      const ni=i+di, nj=j+dj;
+      if(ni<1||ni>NX-1||nj<1||nj>NY-1) continue;
+      if(type[idx(ni,nj)]!==0) continue;   // 仅空气邻居
+      const Au=Uof(ni), Av=Vof(nj);
+      let nu=Au-Cu, nv=Av-Cv;
+      const nl=Math.hypot(nu,nv); if(nl<1e-9) continue;
+      nu/=nl; nv/=nl;
+      const f=fieldAt(Au,Av);
+      const En = f.ex*nu + f.ey*nv;
+      out.push({wu:Cu, wv:Cv, airU:Au, airV:Av, q:En, nu, nv});
+      if(Math.abs(En)>maxAbs) maxAbs=Math.abs(En);
+    }
+  }
+  if(maxAbs<1e-9) return out;
+  for(const o of out) o.q /= maxAbs;
+  return out;
+}
+
+// 收集电场线种子：源种子总是双向画；金属壳两侧种子按场景取合适方向
+// - 外屏蔽（源在壳外）：金属壳内表面空气侧画 +E 段到金属壳；外表面空气侧画 -E 段追到源（与源种子的 +E 段自然衔接）
+// - 内屏蔽（源在壳内）：金属壳内表面空气侧画 +E 段到金属壳（与源种子 +E 段衔接）；外表面空气侧画 +E 段朝外散开到无穷远
+// 这样画出的每一根电场线都"从一端连到另一端"，不出现冗余短线。
+function collectSeeds(){
+  const seeds=[];
+  if(Math.abs(state.Q) > 0.02){
+    const R=0.022, M=48;
+    for(let a=0;a<M;a++){ const ang=a/M*2*Math.PI; seeds.push({u:srcU+R*Math.cos(ang), v:srcV+R*Math.sin(ang), dir:'both'}); }
+  }
+  const sig=boundaryCharge();
+  for(const s of sig){
+    if(Math.abs(s.q)<0.05) continue;        // 极弱场忽略，避免线条过密
+    const off=0.006;
+    const u=s.airU + s.nu*off, v=s.airV + s.nv*off;
+    const r=Math.hypot(u-0.5, v-0.5);
+    if(r > 0.225 && r < 0.27){
+      // 金属壳内表面空气侧
+      if(state.mode==='outer'){
+        // 外屏蔽下，金属壳内表面是"电场线终点"（源→金属壳）→ +E 段追到内表面
+        seeds.push({u, v, dir:'fwd'});
+      } else {
+        // 内屏蔽下，金属壳内表面是"电场线起点"（内表面→源）→ -E 段追到源
+        seeds.push({u, v, dir:'bwd'});
+      }
+    } else if(r > 0.27 && r < 0.30){
+      // 金属壳外表面空气侧
+      if(state.mode==='outer'){
+        // 外屏蔽下，外表面是"电场线起点"（金属壳→源）→ -E 段追到源
+        // 但源种子的 +E 段已经覆盖，所以这里跳过避免画冗余短线
+        // seeds.push({u, v, dir:'bwd'});  // 暂略
+      } else {
+        // 内屏蔽下，外表面是"电场线起点"（外表面→无穷远）→ +E 段朝外散开
+        seeds.push({u, v, dir:'fwd'});
+      }
+    }
+  }
+  return seeds;
+}
+
+function visRange(){
+  const i0=Math.round((0-U0)/(U1-U0)*NX), i1=Math.round((1-U0)/(U1-U0)*NX);
+  const j0=Math.round((0-V0)/(V1-V0)*NY), j1=Math.round((1-V0)/(V1-V0)*NY);
+  return {i0,i1,j0,j1};
+}
+
+function drawHeat(){
+  const {i0,i1,j0,j1}=visRange();
+  let lo=1e9, hi=-1e9;
+  for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+    const p=phi[idx(i,j)]; if(p<lo)lo=p; if(p>hi)hi=p;
+  }
+  const span=(hi-lo)||1;
+  const off=document.createElement('canvas'); off.width=i1-i0+1; off.height=j1-j0+1;
+  const octx=off.getContext('2d');
+  const img=octx.createImageData(i1-i0+1,j1-j0+1);
+  let n=0;
+  for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+    const t=(phi[idx(i,j)]-lo)/span;
+    let r,g,b;
+    if(t<0.5){ const s=t/0.5; r=0; g=Math.round(40*s+8); b=Math.round(110*s+50); }
+    else { const s=(t-0.5)/0.5; r=Math.round(50+205*s); g=Math.round(50*(1-s)); b=Math.round(50*(1-s)); }
+    const o=n*4; img.data[o]=r; img.data[o+1]=g; img.data[o+2]=b; img.data[o+3]=255; n++;
+  }
+  octx.putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(off,0,0,(i1-i0+1),(j1-j0+1),0,0,W,H);
+}
+
+function drawLine(pts, emax){
+  if(pts.length<2) return;
+  for(let n=1;n<pts.length;n++){
+    const a=pts[n-1], b=pts[n];
+    const e=(a.e+b.e)/2;
+    const t=Math.min(1, e/(emax*0.6+1e-9));
+    const hue=190*(1-t);
+    ctx.strokeStyle=`hsla(${hue},85%,62%,0.75)`;
+    ctx.lineWidth=1.3;
+    ctx.beginPath();
+    ctx.moveTo(a.U*W, a.V*H);
+    ctx.lineTo(b.U*W, b.V*H);
+    ctx.stroke();
+  }
+}
+
+function fillMetal(){
+  const grad=ctx.createLinearGradient(0,0,W,H);
+  grad.addColorStop(0,'#c9d4e6'); grad.addColorStop(0.5,'#9fb0c8'); grad.addColorStop(1,'#c9d4e6');
+  ctx.fillStyle=grad; ctx.fill('evenodd');
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function drawConductor(){
+  ctx.save();
+  if(state.shape==='sphere'){
+    const g=geomParams();
+    const cx=CENTER.u*W, cy=CENTER.v*H, ro=g.Ro*W, ri=(g.Ro-g.t)*W;
+    ctx.beginPath(); ctx.arc(cx,cy,ro,0,Math.PI*2); ctx.arc(cx,cy,ri,0,Math.PI*2,true);
+    fillMetal();
+  } else {
+    const g=geomParams();
+    const x0=(CENTER.u-g.Xo)*W, x1=(CENTER.u+g.Xo)*W, y0=(CENTER.v-g.Yo)*H, y1=(CENTER.v+g.Yo)*H;
+    const ti=g.t*W;
+    ctx.beginPath();
+    ctx.rect(x0,y0,x1-x0,y1-y0);
+    ctx.rect(x0+ti,y0+ti,(x1-x0)-2*ti,(y1-y0)-2*ti);
+    fillMetal();
+  }
+  ctx.restore();
+}
+
+function drawSurfaceCharges(){
+  const sig=boundaryCharge();
+  for(const s of sig){
+    if(Math.abs(s.q)<0.04) continue;
+    const x=s.wu*W, y=s.wv*H;
+    const pos=s.q>0;
+    ctx.fillStyle= pos ? 'rgba(255,90,90,0.95)' : 'rgba(90,160,255,0.95)';
+    ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(pos?'+':'−', x, y);
+  }
+}
+
+function drawSource(){
+  if(Math.abs(state.Q)<=0.02) return;
+  const x=srcU*W, y=srcV*H;
+  const pos=state.Q>=0;
+  ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2);
+  ctx.fillStyle= pos?'rgba(255,120,120,0.95)':'rgba(110,170,255,0.95)'; ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(pos?'+':'−', x, y);
+  ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2); ctx.stroke();
+}
+
+function drawAnnotations(){
+  const cx=CENTER.u*W, cy=CENTER.v*H;
+  ctx.fillStyle='rgba(20,28,48,0.85)'; ctx.font='13px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('空腔', cx, cy);
+  if(state.grounded){
+    const gy = state.shape==='sphere' ? (CENTER.v+geomParams().Ro)*H+15 : (CENTER.v+geomParams().Yo)*H+15;
+    ctx.fillStyle='rgba(120,220,255,0.95)'; ctx.font='13px sans-serif';
+    ctx.fillText('⏚ 接地', cx, gy);
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0f1e'; ctx.fillRect(0,0,W,H);
+  if(state.showHeat) drawHeat();
+  const {i0,i1,j0,j1}=visRange();
+  let emax=1e-9;
+  for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
+    const f=fieldAt(Uof(i),Vof(j)); const m=Math.hypot(f.ex,f.ey); if(m>emax)emax=m;
+  }
+  if(state.showLines){
+    const seeds=collectSeeds();
+    for(const s of seeds){
+      if(s.dir==='fwd')      drawLine(traceOne(s.u,s.v, +1, 0.006, 1400), emax);
+      else if(s.dir==='bwd') drawLine(traceOne(s.u,s.v, -1, 0.006, 1400), emax);
+      else                   drawLine(traceLine(s.u,s.v), emax);
+    }
+  }
+  drawConductor();
+  if(state.showCharges) drawSurfaceCharges();
+  drawSource();
+  drawAnnotations();
+}
+
+function updateText(){
+  const shapeTxt = state.shape==='sphere' ? '金属球壳' : '长方体薄壳';
+  const modeTxt  = state.mode==='outer' ? '外屏蔽（外部带电体）' : '内屏蔽（内部带电体）';
+  document.getElementById('hint').innerHTML = `${shapeTxt} · ${modeTxt} · ${state.grounded?'已接地':'不接地'}`;
+  let v='';
+  if(state.mode==='outer'){
+    v='<b>外屏蔽：</b>外部带电体在导体外，导体内部空腔电场为 <b>0</b>，内部仪器不受外部电场影响。接地与否都不改变空腔内的零场（接地只改变导体整体电势）。';
+  } else {
+    if(state.grounded){
+      v='<b>内屏蔽（接地）：</b>内部带电体使内表面感应异号电荷，外表面电荷经接地线流入大地，<b>外部电场≈0</b>，外壳对外不显电性——屏蔽最彻底。';
+    } else {
+      v='<b>内屏蔽（不接地）：</b>内部带电体使外表面带同性净电荷，<b>外部仍有电场</b>；若要完全屏蔽外部，需将外壳接地。';
+    }
+  }
+  if(Math.abs(state.Q)<=0.02) v='未放置外加电荷：导体为等势体，内部与外部均无电场。';
+  document.getElementById('verdict').innerHTML=v;
+}
+
+let recomputeTimer=null;
+function recompute(){
+  const ld=document.getElementById('loading');
+  ld.style.display='flex';
+  if(recomputeTimer) clearTimeout(recomputeTimer);
+  recomputeTimer=setTimeout(()=>{
+    solve();
+    draw();
+    updateText();
+    ld.style.display='none';
+  }, 60);
+}
+
+function bindRow(id, attr, key, parse){
+  const row=document.getElementById(id);
+  row.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    for(const c of row.children) c.classList.remove('on');
+    b.classList.add('on');
+    state[key] = parse ? parse(b.dataset[attr]) : b.dataset[attr];
+    recompute();
+  });
+}
+bindRow('shapeRow','shape','shape');
+bindRow('modeRow','mode','mode');
+bindRow('groundRow','ground','grounded', v=> v==='1');
+
+document.getElementById('qSlider').addEventListener('input', e=>{
+  state.Q=parseFloat(e.target.value);
+  document.getElementById('qv').textContent=(state.Q>=0?'+':'')+state.Q.toFixed(2);
+  recompute();
+});
+document.getElementById('cbLines').addEventListener('change', e=>{ state.showLines=e.target.checked; draw(); });
+document.getElementById('cbCharges').addEventListener('change', e=>{ state.showCharges=e.target.checked; draw(); });
+document.getElementById('cbHeat').addEventListener('change', e=>{ state.showHeat=e.target.checked; draw(); });
+
+recompute();
+</script>
+</body>
+</html>

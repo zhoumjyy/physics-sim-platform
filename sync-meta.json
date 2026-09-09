@@ -1,0 +1,5 @@
+{
+  "lastSync": "2026-09-08T10:35:09.257Z",
+  "manifestVersion": 13,
+  "note": "v10 修复多点电荷模拟器启动崩溃：v8重构时误删隐藏文件输入 mImportFile，导致 getElementById('mImportFile').onchange 抛 TypeError，整段脚本中断、渲染循环未启动，添加电荷后画布空白。补回该元素并新增自检 DOM 完整性守护（严格 stub 实跑脚本断言不抛错）。"
+}

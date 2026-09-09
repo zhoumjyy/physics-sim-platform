@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📐 匀变速直线运动 · 微元法演示</title>
+    <style>
+        /* ===== 全局深色毛玻璃风格 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 20% 30%, #162b3a, #0a1420);
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #eef4fc;
+        }
+        .sim-card {
+            width: 100%;
+            max-width: 1600px;
+            height: 94vh;
+            min-height: 760px;
+            background: rgba(18, 34, 50, 0.40);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ===== 顶部栏 ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 32px;
+            background: rgba(0, 0, 0, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header .title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #d6e6ff;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .header .title span {
+            font-weight: 300;
+            font-size: 18px;
+            color: #8aacd4;
+            opacity: 0.7;
+        }
+        .header .formula-badge {
+            font-size: 18px;
+            color: #7fc4ff;
+            background: rgba(64, 175, 255, 0.06);
+            padding: 4px 24px;
+            border-radius: 40px;
+            border: 1px solid rgba(64, 175, 255, 0.08);
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+
+        /* ===== 主体 ===== */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ===== 左侧画布 ===== */
+        .canvas-wrap {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.12);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        .canvas-wrap canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: rgba(8, 18, 30, 0.4);
+            cursor: default;
+        }
+
+        /* ===== 右侧控制面板 ===== */
+        .panel {
+            width: 360px;
+            min-width: 280px;
+            background: rgba(0, 0, 0, 0.10);
+            border-left: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 18px 20px 22px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .panel::-webkit-scrollbar { width: 4px; }
+        .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+
+        .panel .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6a8fb0;
+            opacity: 0.5;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+
+        .ctrl-group {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 10px 14px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .ctrl-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 500;
+            color: #c0d6f0;
+            margin-bottom: 2px;
+        }
+        .ctrl-group label span {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #8aacd4;
+            font-size: 14px;
+            min-width: 50px;
+            text-align: center;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #2a4a6a, #4a8ab5);
+            border-radius: 10px;
+            outline: none;
+            margin: 4px 0 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            box-shadow: 0 2px 10px rgba(0,20,40,0.4);
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #d6e6ff;
+            border: 2px solid #4a8ab5;
+            cursor: pointer;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: #c0d6f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            letter-spacing: 0.3px;
+            min-width: 60px;
+        }
+        .btn-primary {
+            background: rgba(64, 175, 255, 0.12);
+            border-color: rgba(64, 175, 255, 0.15);
+            color: #7fc4ff;
+        }
+        .btn-primary:hover {
+            background: rgba(64, 175, 255, 0.2);
+            border-color: rgba(64, 175, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        .btn-primary.active {
+            background: rgba(200, 80, 80, 0.12);
+            border-color: rgba(200, 80, 80, 0.15);
+            color: #d47a7a;
+        }
+        .btn-secondary { background: rgba(255, 255, 255, 0.03); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255,255,255,0.08); }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 14px;
+            font-size: 15px;
+            color: #c8daf0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 14px;
+            padding: 8px 14px;
+        }
+        .data-grid .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .data-grid .item:last-child,
+        .data-grid .item:nth-last-child(2) { border-bottom: none; }
+        .data-grid .label { opacity: 0.5; font-weight: 400; }
+        .data-grid .value { font-weight: 600; color: #d6e6ff; font-variant-numeric: tabular-nums; }
+        .data-grid .value.highlight { color: #7fc4ff; }
+        .data-grid .value.error { color: #d47a7a; }
+
+        /* ===== 面积对比卡片（课堂重点，放大突出） ===== */
+        .area-section {
+            background: rgba(64, 175, 255, 0.06);
+            border-color: rgba(64, 175, 255, 0.14);
+            padding: 14px 16px 16px;
+            box-shadow: 0 0 0 1px rgba(64,175,255,0.05), 0 8px 24px -12px rgba(64,175,255,0.25);
+        }
+        .area-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .area-cell {
+            background: rgba(0, 0, 0, 0.28);
+            border-radius: 14px;
+            padding: 12px 10px 14px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .area-label {
+            font-size: 13px;
+            color: #8aacd4;
+            opacity: 0.85;
+            margin-bottom: 6px;
+            line-height: 1.35;
+        }
+        .area-num {
+            font-size: 30px;
+            font-weight: 700;
+            color: #d6e6ff;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .area-num .unit { font-size: 14px; font-weight: 500; color: #6a8fb0; margin-left: 3px; }
+        .area-num.highlight { color: #7fc4ff; text-shadow: 0 0 18px rgba(127,196,255,0.35); }
+        .area-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            font-size: 15px;
+            color: #c8daf0;
+        }
+        .area-formula span, .area-error span { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .area-formula span { color: #d6e6ff; }
+        .area-error span { color: #d47a7a; }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1200px) {
+            .panel { width: 300px; min-width: 220px; padding: 14px 14px 18px; }
+        }
+        @media (max-width: 900px) {
+            .main { flex-direction: column; }
+            .panel { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); max-height: 400px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; }
+            .panel .ctrl-group { flex: 1; min-width: 160px; }
+            .canvas-wrap { min-height: 340px; }
+            .header .title { font-size: 20px; }
+            .header .formula-badge { font-size: 15px; padding: 2px 16px; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .sim-card { border-radius: 24px; height: auto; min-height: 90vh; }
+            .header { padding: 10px 16px; }
+            .header .title { font-size: 17px; }
+            .header .formula-badge { font-size: 13px; padding: 2px 12px; }
+            .panel { max-height: 360px; padding: 10px 12px; }
+            .panel .ctrl-group { min-width: 130px; padding: 8px 10px; }
+            .data-grid { font-size: 13px; grid-template-columns: 1fr; }
+            .btn { font-size: 13px; padding: 6px 0; }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="sim-card" id="app">
+    <!-- 顶部栏 -->
+    <div class="header">
+        <div class="title">
+            📐 微元法 · 位移公式推导
+            <span>匀变速直线运动</span>
+        </div>
+        <div class="formula-badge" id="formulaBadge">x = v₀t + ½at²</div>
+    </div>
+
+    <!-- 主体 -->
+    <div class="main">
+        <!-- 画布 -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="panel" id="panel">
+            <!-- 控制按钮 -->
+            <div class="ctrl-group">
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="playBtn">▶ 自动演示</button>
+                    <button class="btn btn-secondary" id="resetBtn">⟳ 重置</button>
+                </div>
+            </div>
+
+            <!-- 参数 -->
+            <div class="ctrl-group">
+                <div class="section-title">⚙️ 运动参数</div>
+                <label>初速度 v₀ <span id="v0Display">2.0 m/s</span></label>
+                <input type="range" id="v0Slider" min="0" max="8" step="0.5" value="2" />
+                <label style="margin-top:6px;">加速度 a <span id="aDisplay">1.0 m/s²</span></label>
+                <input type="range" id="aSlider" min="0.1" max="4" step="0.1" value="1" />
+                <label style="margin-top:6px;">总时间 t <span id="tDisplay">6.0 s</span></label>
+                <input type="range" id="tSlider" min="1" max="10" step="0.5" value="6" />
+            </div>
+
+            <!-- 微元控制 -->
+            <div class="ctrl-group">
+                <div class="section-title">📐 微元分割</div>
+                <label>微元数量 n <span id="nDisplay">8</span></label>
+                <input type="range" id="nSlider" min="2" max="80" step="1" value="8" />
+                <div style="display:flex; justify-content:space-between; font-size:12px; color:#6a8fb0; opacity:0.4; padding:0 4px;">
+                    <span>2</span>
+                    <span>80</span>
+                </div>
+            </div>
+
+            <!-- 面积对比（课堂重点，放大突出） -->
+            <div class="ctrl-group area-section">
+                <div class="section-title">📊 面积对比 · 微元法核心</div>
+                <div class="area-compare">
+                    <div class="area-cell">
+                        <div class="area-label">矩形面积和<br>（微元法）</div>
+                        <div class="area-num highlight" id="sumVal">0.00</div>
+                    </div>
+                    <div class="area-cell">
+                        <div class="area-label">真实面积<br>（梯形）</div>
+                        <div class="area-num" id="realVal">0.00</div>
+                    </div>
+                </div>
+                <div class="area-footer">
+                    <div class="area-formula">位移公式 <span id="formulaVal">x = 0.00</span></div>
+                    <div class="area-error">误差 <span id="errorVal">0.00%</span></div>
+                </div>
+            </div>
+
+            <!-- 微元法说明 -->
+            <div class="ctrl-group" style="padding:8px 14px; background:rgba(64,175,255,0.03); border-color:rgba(64,175,255,0.05);">
+                <div style="font-size:13px; color:#8aacd4; line-height:1.6; opacity:0.6;">
+                    💡 <b style="color:#7fc4ff;">微元法思想</b>：将运动分割为 n 个微小时间段 Δt，
+                    每个微元内近似为匀速运动，位移 = v·Δt。
+                    当 n → ∞ 时，矩形面积和趋近于真实位移。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    //  📐 匀变速直线运动 · 微元法演示
+    //  核心思想：用矩形面积逼近 v-t 曲线下面积
+    // ================================================================
+    (function() {
+        'use strict';
+
+        // ---------- DOM 引用 ----------
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrap = document.getElementById('canvasWrap');
+
+        const v0Slider = document.getElementById('v0Slider');
+        const aSlider = document.getElementById('aSlider');
+        const tSlider = document.getElementById('tSlider');
+        const nSlider = document.getElementById('nSlider');
+        const v0Display = document.getElementById('v0Display');
+        const aDisplay = document.getElementById('aDisplay');
+        const tDisplay = document.getElementById('tDisplay');
+        const nDisplay = document.getElementById('nDisplay');
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const sumVal = document.getElementById('sumVal');
+        const realVal = document.getElementById('realVal');
+        const formulaVal = document.getElementById('formulaVal');
+        const errorVal = document.getElementById('errorVal');
+        const formulaBadge = document.getElementById('formulaBadge');
+
+        // ---------- 画布尺寸 ----------
+        let W = 820, H = 620;
+        const MARGIN = { top: 50, bottom: 110, left: 70, right: 40 };
+
+        // ---------- 参数 ----------
+        let params = {
+            v0: 2.0,
+            a: 1.0,
+            t: 6.0,
+            n: 8,
+        };
+
+        // ---------- 状态 ----------
+        let isPlaying = false;
+        let animationId = null;
+
+        // ---------- 计算 ----------
+        function calcV(t) {
+            return params.v0 + params.a * t;
+        }
+
+        function calcRealArea() {
+            const v0 = params.v0;
+            const vt = calcV(params.t);
+            return (v0 + vt) / 2 * params.t;
+        }
+
+        function calcRectAreaSum() {
+            const n = params.n;
+            const dt = params.t / n;
+            let sum = 0;
+            for (let i = 0; i < n; i++) {
+                const ti = i * dt;
+                const vi = calcV(ti);
+                sum += vi * dt;
+            }
+            return sum;
+        }
+
+        // ---------- 绘制 ----------
+        function render() {
+            const dpr = window.devicePixelRatio || 1;
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            ctx.clearRect(0, 0, W, H);
+
+            // 背景网格
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, H);
+                ctx.stroke();
+            }
+            for (let y = 0; y < H; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(W, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 计算绘图区域
+            const plotX = MARGIN.left;
+            const plotY = MARGIN.top;
+            const plotW = W - MARGIN.left - MARGIN.right;
+            const plotH = H - MARGIN.top - MARGIN.bottom;
+
+            const v0 = params.v0;
+            const a = params.a;
+            const tTotal = params.t;
+            const vt = calcV(tTotal);
+            const vMax = Math.max(vt, v0) * 1.2 + 0.5;
+            const vMin = 0;
+
+            // 坐标轴范围
+            const xMin = 0;
+            const xMax = tTotal * 1.1 + 0.5;
+            const yMin = vMin;
+            const yMax = vMax;
+
+            // 映射函数
+            function toCanvasX(t) {
+                return plotX + (t - xMin) / (xMax - xMin) * plotW;
+            }
+
+            function toCanvasY(v) {
+                return plotY + plotH - (v - yMin) / (yMax - yMin) * plotH;
+            }
+
+            // ---- 坐标轴 ----
+            ctx.save();
+            ctx.strokeStyle = 'rgba(200,220,255,0.2)';
+            ctx.lineWidth = 1.5;
+            // x轴
+            ctx.beginPath();
+            ctx.moveTo(plotX, plotY + plotH);
+            ctx.lineTo(plotX + plotW + 10, plotY + plotH);
+            ctx.stroke();
+            // y轴
+            ctx.beginPath();
+            ctx.moveTo(plotX, plotY - 10);
+            ctx.lineTo(plotX, plotY + plotH + 10);
+            ctx.stroke();
+
+            // 轴标签
+            ctx.fillStyle = 'rgba(225,238,255,0.95)';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText('t / s', plotX + plotW + 10, plotY + plotH + 84);
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText('v / (m·s⁻¹)', plotX - 40, plotY - 18);
+
+            // 刻度
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillStyle = 'rgba(225,238,255,0.9)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            // x轴刻度
+            const xStep = Math.ceil(tTotal / 6);
+            for (let t = 0; t <= tTotal + 0.1; t += xStep) {
+                const x = toCanvasX(t);
+                ctx.beginPath();
+                ctx.moveTo(x, plotY + plotH);
+                ctx.lineTo(x, plotY + plotH + 6);
+                ctx.stroke();
+                ctx.fillText(t.toFixed(1), x, plotY + plotH + 30);
+            }
+            // y轴刻度
+            const yStep = Math.ceil(vMax / 6);
+            for (let v = 0; v <= vMax + 0.1; v += yStep) {
+                const y = toCanvasY(v);
+                ctx.beginPath();
+                ctx.moveTo(plotX, y);
+                ctx.lineTo(plotX - 6, y);
+                ctx.stroke();
+                ctx.textAlign = 'right';
+                ctx.fillText(v.toFixed(1), plotX - 10, y + 7);
+            }
+            ctx.restore();
+
+            // ---- 绘制微元矩形 ----
+            const n = params.n;
+            const dt = tTotal / n;
+
+            // 先绘制所有矩形（半透明）
+            ctx.save();
+            for (let i = 0; i < n; i++) {
+                const ti = i * dt;
+                const vi = calcV(ti);
+                const x1 = toCanvasX(ti);
+                const x2 = toCanvasX(ti + dt);
+                const y1 = toCanvasY(0);
+                const y2 = toCanvasY(vi);
+
+                // 矩形填充
+                const alpha = 0.15 + 0.25 * (1 - i / n);
+                ctx.fillStyle = `rgba(100, 180, 255, ${alpha})`;
+                ctx.fillRect(x1, y2, x2 - x1, y1 - y2);
+
+                // 矩形边框
+                ctx.strokeStyle = 'rgba(100, 180, 255, 0.25)';
+                ctx.lineWidth = 0.8;
+                ctx.strokeRect(x1, y2, x2 - x1, y1 - y2);
+
+                // 在矩形顶部标注速度值 (n较小时显示)
+                if (n <= 16) {
+                    ctx.textAlign = 'center';
+                    ctx.font = 'bold 22px sans-serif';
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = 'rgba(6,16,34,0.92)';
+                    ctx.strokeText(vi.toFixed(1), (x1 + x2) / 2, y2 - 10);
+                    ctx.fillStyle = 'rgba(255,255,255,0.98)';
+                    ctx.fillText(vi.toFixed(1), (x1 + x2) / 2, y2 - 10);
+                }
+            }
+            ctx.restore();
+
+            // ---- 绘制 v-t 直线 ----
+            ctx.save();
+            ctx.strokeStyle = '#7fc4ff';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = 'rgba(127,196,255,0.2)';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            const startX = toCanvasX(0);
+            const startY = toCanvasY(v0);
+            const endX = toCanvasX(tTotal);
+            const endY = toCanvasY(vt);
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.restore();
+
+            // ---- 标注关键点 ----
+            ctx.save();
+            ctx.fillStyle = 'rgba(160,215,255,0.98)';
+            ctx.font = 'bold 26px sans-serif';
+            ctx.textAlign = 'left';
+            // 起点标注
+            ctx.strokeStyle = 'rgba(6,16,34,0.9)';
+            ctx.lineWidth = 4;
+            ctx.strokeText(`v₀ = ${v0.toFixed(1)}`, startX + 8, startY - 8);
+            ctx.fillText(`v₀ = ${v0.toFixed(1)}`, startX + 8, startY - 8);
+            // 终点标注
+            ctx.textAlign = 'right';
+            ctx.strokeText(`v = ${vt.toFixed(1)}`, endX - 8, endY - 8);
+            ctx.fillText(`v = ${vt.toFixed(1)}`, endX - 8, endY - 8);
+            // 时间标注
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(225,238,255,0.9)';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillText(`t = ${tTotal.toFixed(1)} s`, (startX + endX) / 2, plotY + plotH + 56);
+            ctx.restore();
+
+            // ---- 绘制梯形区域（半透明填充，表示真实面积） ----
+            ctx.save();
+            ctx.globalAlpha = 0.06;
+            ctx.fillStyle = '#7fc4ff';
+            ctx.beginPath();
+            ctx.moveTo(startX, toCanvasY(0));
+            ctx.lineTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.lineTo(endX, toCanvasY(0));
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+
+            // ---- 显示 n 值 ----
+            ctx.save();
+            ctx.fillStyle = 'rgba(225,238,255,0.95)';
+            ctx.font = 'bold 26px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`n = ${n}`, plotX + 12, plotY + 32);
+            ctx.fillStyle = 'rgba(225,238,255,0.85)';
+            ctx.font = 'bold 22px sans-serif';
+            const areaSum = calcRectAreaSum();
+            const realArea = calcRealArea();
+            ctx.fillText(`Σ ≈ ${areaSum.toFixed(2)}`, plotX + 12, plotY + 62);
+            ctx.fillText(`真实 = ${realArea.toFixed(2)}`, plotX + 12, plotY + 90);
+            ctx.restore();
+
+            // ---- 在顶部中央显示公式 ----
+            ctx.save();
+            ctx.fillStyle = 'rgba(160,215,255,0.98)';
+            ctx.font = 'bold 30px "Times New Roman", serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            const formulaText = `x = v₀t + ½at² = ${realArea.toFixed(2)} m`;
+            ctx.fillText(formulaText, W / 2, MARGIN.top - 14);
+            ctx.restore();
+
+            // ---- 图例 ----
+            ctx.save();
+            // 矩形图例
+            ctx.fillStyle = 'rgba(100, 180, 255, 0.5)';
+            ctx.strokeStyle = 'rgba(100, 180, 255, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(W - MARGIN.right - 160, H - MARGIN.bottom - 46, 24, 18);
+            ctx.strokeRect(W - MARGIN.right - 160, H - MARGIN.bottom - 46, 24, 18);
+            ctx.fillStyle = 'rgba(225,238,255,0.95)';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('微元矩形', W - MARGIN.right - 130, H - MARGIN.bottom - 32);
+
+            // v-t 直线图例
+            ctx.strokeStyle = '#7fc4ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(W - MARGIN.right - 160, H - MARGIN.bottom - 16);
+            ctx.lineTo(W - MARGIN.right - 136, H - MARGIN.bottom - 16);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(225,238,255,0.95)';
+            ctx.fillText('v-t 图像', W - MARGIN.right - 130, H - MARGIN.bottom - 10);
+            ctx.restore();
+
+            // ---- 更新数据面板 ----
+            updateData();
+
+            ctx.restore(); // dpr
+        }
+
+        // ---------- 更新数据 ----------
+        function updateData() {
+            const areaSum = calcRectAreaSum();
+            const realArea = calcRealArea();
+            const error = realArea > 0 ? ((realArea - areaSum) / realArea * 100) : 0;
+
+            sumVal.innerHTML = areaSum.toFixed(3) + '<span class="unit"> m</span>';
+            realVal.innerHTML = realArea.toFixed(3) + '<span class="unit"> m</span>';
+            formulaVal.textContent = `x = ${realArea.toFixed(3)} m`;
+            errorVal.textContent = error.toFixed(2) + '%';
+
+            // 误差颜色
+            if (error < 1) {
+                errorVal.style.color = '#5aaa7a';
+            } else if (error < 5) {
+                errorVal.style.color = '#d4c05a';
+            } else {
+                errorVal.style.color = '#d47a7a';
+            }
+
+            // 更新徽章
+            formulaBadge.textContent = `x = v₀t + ½at² = ${realArea.toFixed(2)}`;
+        }
+
+        // ---------- 尺寸自适应 ----------
+        function resizeCanvas() {
+            const wrap = canvasWrap;
+            const rect = wrap.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            W = rect.width || 820;
+            H = rect.height || 620;
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.scale(dpr, dpr);
+            render();
+        }
+
+        // ---------- 自动演示 ----------
+        function startAutoPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            playBtn.textContent = '⏹ 停止';
+            playBtn.classList.add('active');
+
+            // 从 n=2 开始，逐渐增加到 80
+            let currentN = 2;
+            const maxN = 80;
+
+            function step() {
+                if (!isPlaying) {
+                    playBtn.textContent = '▶ 自动演示';
+                    playBtn.classList.remove('active');
+                    return;
+                }
+                if (currentN > maxN) {
+                    isPlaying = false;
+                    playBtn.textContent = '▶ 自动演示';
+                    playBtn.classList.remove('active');
+                    return;
+                }
+                params.n = currentN;
+                nSlider.value = currentN;
+                nDisplay.textContent = currentN;
+                render();
+
+                currentN += 1;
+                // 动态调整步长：初始慢，后面快
+                let delay = 60 + 120 / (currentN / 5 + 1);
+                if (currentN > 50) delay = 40;
+                setTimeout(step, delay);
+            }
+
+            step();
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            playBtn.textContent = '▶ 自动演示';
+            playBtn.classList.remove('active');
+        }
+
+        function toggleAutoPlay() {
+            if (isPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+        // ---------- 重置 ----------
+        function resetAll() {
+            stopAutoPlay();
+            params.n = parseInt(nSlider.value);
+            render();
+        }
+
+        // ---------- 事件绑定 ----------
+        v0Slider.addEventListener('input', function() {
+            params.v0 = parseFloat(this.value);
+            v0Display.textContent = params.v0.toFixed(1) + ' m/s';
+            if (!isPlaying) render();
+        });
+
+        aSlider.addEventListener('input', function() {
+            params.a = parseFloat(this.value);
+            aDisplay.textContent = params.a.toFixed(1) + ' m/s²';
+            if (!isPlaying) render();
+        });
+
+        tSlider.addEventListener('input', function() {
+            params.t = parseFloat(this.value);
+            tDisplay.textContent = params.t.toFixed(1) + ' s';
+            if (!isPlaying) render();
+        });
+
+        nSlider.addEventListener('input', function() {
+            params.n = parseInt(this.value);
+            nDisplay.textContent = params.n;
+            if (!isPlaying) render();
+        });
+
+        playBtn.addEventListener('click', toggleAutoPlay);
+        resetBtn.addEventListener('click', resetAll);
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'Space') {
+                e.preventDefault();
+                toggleAutoPlay();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                resetAll();
+            }
+        });
+
+        // ---------- 窗口变化 ----------
+        window.addEventListener('resize', function() {
+            resizeCanvas();
+        });
+
+        // ---------- 初始化 ----------
+        function init() {
+            // 同步初始值
+            params.v0 = parseFloat(v0Slider.value);
+            params.a = parseFloat(aSlider.value);
+            params.t = parseFloat(tSlider.value);
+            params.n = parseInt(nSlider.value);
+
+            v0Display.textContent = params.v0.toFixed(1) + ' m/s';
+            aDisplay.textContent = params.a.toFixed(1) + ' m/s²';
+            tDisplay.textContent = params.t.toFixed(1) + ' s';
+            nDisplay.textContent = params.n;
+
+            resizeCanvas();
+
+            // 额外 resize 确保正确
+            setTimeout(resizeCanvas, 50);
+
+            console.log('📐 微元法演示已启动');
+            console.log(`v₀ = ${params.v0}, a = ${params.a}, t = ${params.t}, n = ${params.n}`);
+            console.log('按 空格键 启动/停止自动演示，按 R 键 重置');
+        }
+
+        // 等待 DOM 完全加载
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // 暴露一些变量到全局，方便调试
+        window.__microDemo = {
+            params: params,
+            render: render,
+            startAutoPlay: startAutoPlay,
+            stopAutoPlay: stopAutoPlay,
+            resetAll: resetAll,
+        };
+
+    })();
+</script>
+</body>
+</html>
