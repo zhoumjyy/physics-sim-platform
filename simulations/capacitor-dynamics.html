@@ -508,12 +508,12 @@ function drawSwitch(closed, x, y) {
     ctx.fillStyle = '#caa15a';
     ctx.beginPath(); ctx.arc(p1.x, p1.y, 4, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(p2.x, p2.y, 4, 0, Math.PI*2); ctx.fill();
-    // 刀闸
+    // 刀闸（用与导线一致的中性金属色，避免看起来像黄色线段）
     if (closed) {
-        ctx.strokeStyle = '#e8c87a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.strokeStyle = '#9fb0be'; ctx.lineWidth = 4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
     } else {
-        ctx.strokeStyle = '#e8c87a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.strokeStyle = '#9fb0be'; ctx.lineWidth = 4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p1.x + L*0.42, p1.y - 16); ctx.stroke();
     }
     ctx.restore();
@@ -647,7 +647,7 @@ function drawFlowLabel(cx, y, dir, alpha) {
     const txt = dir > 0 ? '▶ 电荷流入电容器' : '◀ 电荷流出电容器';
     ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
     const w = ctx.measureText(txt).width + 18;
-    ctx.fillStyle = dir > 0 ? 'rgba(255,180,80,0.92)' : 'rgba(120,180,255,0.92)';
+    ctx.fillStyle = dir > 0 ? 'rgba(255,140,60,0.95)' : 'rgba(90,150,240,0.95)';
     roundRect(cx - w/2, y - 14, w, 22, 10); ctx.fill();
     ctx.fillStyle = '#1a1a1a';
     ctx.fillText(txt, cx, y + 4);
