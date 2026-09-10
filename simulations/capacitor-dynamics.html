@@ -174,7 +174,7 @@
 //  平行板电容器 · 动态变化模拟器（v3）
 //  纯 canvas + 原生 JS，零外部依赖，自包含单 HTML，可独立以 iframe 嵌入
 //  v3 改进：①删除演示按钮组(避免与滑条重复) ②断电导线明显两段+开路标记
-//         ④电荷移动延迟启动+方向箭头+流入流出标签 ⑤电场线密度∝E(充电插介质密度不变)
+//         ④电荷移动延迟启动+方向箭头+流入流出标签 ⑤电场线总条数∝总电荷Q(电荷不变条数不变)，线等距排布⇒疏密∝面密度σ
 // ============================================================
 const EPS0 = 8.854e-12; // F/m
 const MATERIALS = {
@@ -245,11 +245,14 @@ function computeTarget(Qprev, p) {
 function physRefE() { return physFromParams({ A_cm2: 500, d_mm: 1, er: 1, mode: 'charge', V0: 20 }).E; }
 function physRefQ() { return physFromParams({ A_cm2: 1000, d_mm: 1, er: 1, mode: 'charge', V0: 20 }).Q; }
 
-// 电场线数量映射（**严格正比于 E**，E 不变时密度不变）
-function fieldLineCount(E) {
-    if (E <= 0) return 4;
-    const f = clamp(E / E_REF, 0.05, 1.2);
-    return Math.round(4 + 30 * f);
+// 电场线总条数：随极板总电荷 Q **单调变化**（对数刻度，覆盖电容器参数的大动态范围）
+// ⇒ 依据高斯定理：电场线总数代表净电荷多少，所以"电荷数量不变 → 条数不变"。
+//   线在板间等距排布（见 drawFieldLines），故单位高度的线数（疏密）∝ 总条数/面积 ∝ Q/A = 电荷面密度 σ。
+function fieldLineCount(Q) {
+    if (!(Q > 0)) return 3;
+    const Qmin = 5e-11, Qmax = 1.2e-6;
+    const t = clamp((Math.log(Q) - Math.log(Qmin)) / (Math.log(Qmax) - Math.log(Qmin)), 0, 1);
+    return Math.round(4 + 42 * t);
 }
 
 // ============================================================
@@ -258,6 +261,7 @@ function fieldLineCount(E) {
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let cssW = 800, cssH = 600, dpr = 1;
+let lastNL = 0, lastPlateH = 0;   // 供自检读取：最近一次渲染的电场线条数 / 极板高
 
 function resize() {
     const r = cv.getBoundingClientRect();
@@ -398,9 +402,9 @@ function drawCharges(pxL, pxR, pt, topY, botY) {
     }
     ctx.restore();
 }
-// 电场线：密度严格正比于 E（不依赖 σ 也不依赖 εᵣ）
+// 电场线：总条数由总电荷 Q 决定；线在板高方向等距排布 ⇒ 疏密 ∝ σ
 function drawFieldLines(pxL, pxR, pt, topY, botY) {
-    const nL = fieldLineCount(disp.E);
+    const nL = fieldLineCount(disp.Q);
     const x0 = pxL + pt/2, x1 = pxR - pt/2;
     const alpha = clamp(0.25 + 0.55 * (disp.E / E_REF), 0.18, 0.85);
     ctx.save();
@@ -724,7 +728,7 @@ function render() {
 
     const cx = cssW * 0.46, cy = cssH * 0.52;
     const baseY = cssH * 0.86;
-    const plateH = lerp(cssH * 0.30, cssH * 0.62, (disp.A - 100) / 900);
+    const plateH = clamp(cssH * 0.34 * (disp.A / 500), cssH * 0.18, cssH * 0.66);   // 板高 ∝ 正对面积 A（保证疏密 ∝ σ）
     const gap = lerp(cssW * 0.045, cssW * 0.175, (disp.d - 1) / 9);
     const pt = 18;
     const pxL = cx - gap/2, pxR = cx + gap/2;
@@ -801,7 +805,8 @@ function render() {
     // 介质
     drawDielectric(pxL, pxR, topY, botY);
     drawGlow(pxL, pxR, topY, botY);
-    drawFieldLines(pxL, pxR, pt, topY, botY);
+    lastNL = drawFieldLines(pxL, pxR, pt, topY, botY);
+    lastPlateH = plateH;
     drawPlate(pxL, topY, botY, true);
     drawPlate(pxR, topY, botY, false);
     drawCharges(pxL, pxR, pt, topY, botY);
@@ -859,7 +864,8 @@ function noteHTML() {
     if (state.mode === 'charge' && !state.diode) {
         return '<b>充电（电源接通 · 开关闭合）</b>：电压 U 被电源锁定为 <b>U = V₀</b>。' +
             '改变 A、d、εᵣ 时电容 C = ε₀εᵣA/d 变化，电荷量 <b>Q = C·U</b> 随之变化，电荷经导线流入/流出极板。' +
-            '插电介质使 Q 增大；改 d 使 E = V₀/d 变化（电场线密度随之变）；改 A 时 E 不变（电场线密度不变）。';
+            '电场线总条数正比于极板总电荷 Q（电荷不变条数不变）；线在极板间等距排布，故<b>疏密 = 单位面积线数 ∝ 电荷面密度 σ = Q/A</b>。' +
+            '插电介质使 Q 增大（σ 增大，电场线变密）；改 d 使 E = V₀/d 变化（增 d 则 Q、σ 减小，电场线变疏）；改 A 时若 Q 变则 σ 相应变化。';
     }
     if (state.mode === 'charge' && state.diode) {
         return '<b>充电（接入二极管 · 单向阀）</b>：二极管只允许电荷 <b>流入</b> 电容、阻断回流。' +
@@ -867,7 +873,8 @@ function noteHTML() {
     }
     return '<b>断电（电源断开 · 开关打开）</b>：极板与外界绝缘，<b>电荷量 Q 守恒不变</b>。' +
         '改变 A、d、εᵣ 时电压 <b>U = Q/C</b> 与场强 <b>E = σ/ε₀εᵣ</b> 随之变化。' +
-        '改变 d 时 E 不变（电场线密度不变）；改变 A 或 εᵣ 时 E 变化（电场线密度相应变化）。';
+        '电场线总条数正比于 Q（电荷守恒故条数不变）；线在板间等距排布，故<b>疏密 ∝ 电荷面密度 σ = Q/A</b>。' +
+        '改变 d 时 A、Q 不变（σ 不变，电场线疏密不变）；增大 A 则 σ = Q/A 减小（电场线变疏）；插入 εᵣ 更大的介质则 σ 减小（电场线变疏、E 减小）。';
 }
 
 // ============================================================
@@ -947,7 +954,7 @@ function toggleOverlay(btnId, panelId) {
 let drag = null; // {type:'d'|'A', ...}
 function getGeom() {
     const cx = cssW * 0.46, cy = cssH * 0.52;
-    const plateH = lerp(cssH * 0.30, cssH * 0.62, (disp.A - 100) / 900);
+    const plateH = clamp(cssH * 0.34 * (disp.A / 500), cssH * 0.18, cssH * 0.66);   // 板高 ∝ 正对面积 A（保证疏密 ∝ σ）
     const gap = lerp(cssW * 0.045, cssW * 0.175, (disp.d - 1) / 9);
     const pt = 18;
     const pxL = cx - gap/2, pxR = cx + gap/2;
@@ -1077,6 +1084,8 @@ window.__sim = {
     getQ: () => actualQ,
     getFlowAlpha: () => flowAlpha,
     getPendingDir: () => pendingDir,
+    getNL: () => lastNL,
+    getPlateH: () => lastPlateH,
     frame,  // 供自检调用 3 帧不报错
     step(p) { return computeTarget(actualQ == null ? 0 : actualQ, p); }
 };
