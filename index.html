@@ -1024,14 +1024,13 @@
                         item.dataset.id = sim.id;
 
                         const isComing = sim.src === 'about:blank' || !sim.src;
-                        const badgeClass = isComing ? 'badge coming' : 'badge';
                         item.innerHTML = `
                             <span class="icon">${sim.icon}</span>
                             <div class="info">
                                 <div class="name">${sim.name}</div>
                                 <div class="desc">${sim.description || ''}</div>
                             </div>
-                            <span class="${badgeClass}">${isComing ? '⏳ 即将上线' : 'HTML'}</span>
+                            ${isComing ? '<span class="badge coming">⏳ 即将上线</span>' : ''}
                         `;
                         item.addEventListener('click', () => loadSimulation(sim.id));
                         list.appendChild(item);
