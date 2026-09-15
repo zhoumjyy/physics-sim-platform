@@ -664,9 +664,10 @@ function buildSeeds(){
       seeds.push({ rho: R + rc * Math.cos(a), z: rc * Math.sin(a) });
     }
   } else if (state.body === 'disk'){
-    const eps = R * 0.05, nt = 11;
+    // 修正：均匀带电介质薄圆盘，两面面积相同、电荷面密度相同，种子按面积均匀分布。
+    const eps = R * 0.05, nt = 14;
     for (let k = 0; k <= nt; k++){
-      const rp = R * k / nt;
+      const rp = R * Math.sqrt(k / nt);                               // 按圆面积均匀分布
       seeds.push({ rho: rp, z: eps });
       seeds.push({ rho: rp, z: -eps });
     }
@@ -676,22 +677,17 @@ function buildSeeds(){
       seeds.push({ rho: R + rc * Math.cos(a), z: rc * Math.sin(a) });
     }
   } else if (state.body === 'shell'){
-    // 物理依据（2026-09-08 复核，库仑积分）：穹顶外表面通量≈82%，开口(凹侧空腔)≈18%；
-    // 轴上 |E| 凸侧(穹顶外)≈1.6、凹侧(碗内)≈0.28 → 凸侧场强更大、电场线应更密。
-    // 场线数∝通量，故外表面种子远多于内表面（原 17/23 反了，已纠正为 34/8）。
-    const eps = R * 0.05, N = 33;
-    for (let k = 0; k <= N; k++){
-      const th = Math.PI / 2 * (k / N) * 0.94 + 0.03;
-      const rp = R * Math.sin(th), zp = R * Math.cos(th);
-      const nx = Math.sin(th), nz2 = Math.cos(th);
-      seeds.push({ rho: rp + nx * eps, z: zp + nz2 * eps });          // 外表面（凸侧，场强大→线密）
-    }
-    const nin = 8;
-    for (let k = 1; k <= nin; k++){
-      const th = Math.PI / 2 * (k / (nin + 1)) * 0.9 + 0.06;
-      const rp = R * Math.sin(th), zp = R * Math.cos(th);
-      const nx = Math.sin(th), nz2 = Math.cos(th);
-      seeds.push({ rho: rp - nx * eps, z: zp - nz2 * eps });          // 内表面（凹侧，进入空腔，向外穿出开口）
+    // 修正：均匀带电介质半球壳，电荷面密度 σ 处处相等。
+    // 电场线种子按表面积均匀分布，因此外凸面与内凹面的种子数相同、且各自沿 θ 均匀分布。
+    const eps = R * 0.05, N = 26;
+    for (let side = 0; side < 2; side++){
+      const sign = side === 0 ? 1 : -1;
+      for (let k = 0; k <= N; k++){
+        const th = Math.PI / 2 * (k / N) * 0.94 + 0.03;
+        const rp = R * Math.sin(th), zp = R * Math.cos(th);
+        const nx = Math.sin(th), nz2 = Math.cos(th);
+        seeds.push({ rho: rp + sign * nx * eps, z: zp + sign * nz2 * eps });
+      }
     }
     const rc = R * 0.12;
     for (let k = 0; k < 6; k++){
@@ -699,17 +695,19 @@ function buildSeeds(){
       seeds.push({ rho: R + rc * Math.cos(a), z: rc * Math.sin(a) });
     }
   } else { // solid
-    const eps = R * 0.06, N = 14;
-    for (let k = 1; k <= N; k++){
-      const th = Math.PI / 2 * (k / N) * 0.92 + 0.05;
+    // 修正：均匀带电介质实心半球，电荷体密度均匀 → 表面各面电荷面密度相同。
+    // 电场线种子按表面积分配：曲面面积 2πR²，底面面积 πR²，比例为 2:1。
+    const eps = R * 0.06, Ncurv = 26, Nbase = 12;
+    for (let k = 1; k <= Ncurv; k++){
+      const th = Math.PI / 2 * (k / Ncurv) * 0.92 + 0.05;
       const rp = R * Math.sin(th), zp = R * Math.cos(th);
       const nx = Math.sin(th), nz2 = Math.cos(th);
-      seeds.push({ rho: rp + nx * eps, z: zp + nz2 * eps });          // 外表面
+      seeds.push({ rho: rp + nx * eps, z: zp + nz2 * eps });          // 曲面
     }
-    const nt = 16, eps2 = R * 0.05;
-    for (let k = 0; k <= nt; k++){
-      const rp = R * k / nt;
-      seeds.push({ rho: rp, z: -eps2 });                              // 底面下方（进入空白半球）
+    const eps2 = R * 0.05;
+    for (let k = 0; k <= Nbase; k++){
+      const rp = R * Math.sqrt(k / Nbase);                            // 按圆面积均匀分布
+      seeds.push({ rho: rp, z: -eps2 });                              // 底面下方
     }
     const rc = R * 0.12;
     for (let k = 0; k < 6; k++){
@@ -834,9 +832,10 @@ function buildHeat(){
   const img = heatCtx.createImageData(HEAT, HEAT);
   const d = img.data;
   const R = phys().R;
+  // 增强色温对比：低电势不再压成黑色，高电势更暖更亮，整体从深紫蓝→青→黄→橙红
   const stops = [
-    [0.00, 13, 20, 32], [0.35, 18, 58, 95], [0.62, 14, 116, 144],
-    [0.84, 34, 211, 238], [1.00, 253, 230, 138]
+    [0.00, 26, 22, 72], [0.18, 24, 76, 162], [0.42, 30, 170, 210],
+    [0.70, 34, 211, 238], [0.88, 253, 204, 70], [1.00, 255, 82, 62]
   ];
   const color = (t) => {
     t = Math.max(0, Math.min(1, t));
@@ -947,9 +946,9 @@ function renderStatic(){
   ctx.fillText('O', W / 2 - 9, H / 2 + 13);
   // 等势线
   if (state.showEqui){
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.3;
     for (const L of contourSegs){
-      const alpha = 0.15 + 0.6 * L.frac;
+      const alpha = 0.32 + 0.55 * L.frac;
       ctx.strokeStyle = 'rgba(251,191,36,' + alpha.toFixed(2) + ')';
       ctx.beginPath();
       for (const sg of L.segs){
@@ -1436,6 +1435,9 @@ if (!echartsReady()){
 }
 recompute();
 requestAnimationFrame(loop);
+
+// 暴露给无浏览器自检与外部调试
+window.__sim = { buildSeeds, state, phys, traceField, sampleE, fieldLines: () => fieldLines };
 
 })();
 </script>
