@@ -917,7 +917,7 @@ function renderStatic(){
   if (state.showHeat){
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(heatCanvas, 0, 0, W, H);
-    ctx.fillStyle = 'rgba(6,11,20,0.18)';
+    ctx.fillStyle = 'rgba(6,11,20,0.08)';   // 降低遮罩，让色温更明显
     ctx.fillRect(0, 0, W, H);
   }
   // 参考圆
