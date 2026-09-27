@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 14,
+  "manifestVersion": 15,
   "categories": [
     {
       "id": "mechanics",
@@ -80,6 +80,13 @@
                 "description": "充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态",
                 "icon": "🔋",
                 "src": "simulations/capacitor-dynamics.html"
+            },
+            {
+                "id": "divider-limit",
+                "name": "限流式与分压式",
+                "description": "滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇",
+                "icon": "🔌",
+                "src": "simulations/限流式与分压式.html"
             },
             {
                 "id": "magnetic-field",
