@@ -57,7 +57,7 @@ const testCode = `
 ;global.__T = {
   uLimit:uLimit, uDiv:uDiv, iLimit:iLimit, iDiv:iDiv, recType:recType,
   svgLimit:svgLimit, svgDiv:svgDiv, drawPlot:drawPlot, update:update,
-  tToR:tToR, rToT:rToT, rxAxisMax:rxAxisMax, niceNum:niceNum,
+  tToR:tToR, rToT:rToT, rxAxisMax:rxAxisMax, niceNum:niceNum, rxFamily:rxFamily,
   setVals:function(e,r,rx,ss){ E=e;R0=r;Rx=rx;sL=ss;sD=ss; }
 };`;
 try { eval(code + testCode); }
@@ -102,6 +102,30 @@ T.setVals(3,20,20,0.5); assert(T.rxAxisMax()===50, 'Rx=20,R0=20 → 横轴上限
 T.setVals(3,20,200,0.5);assert(T.rxAxisMax()===300,'Rx=200（> 量程档 200）→ 横轴上限自动升到 300 Ω');
 T.setVals(3,500,500,0.5);assert(T.rxAxisMax()===500,'极端值 500 Ω 仍在量程内');
 assert(T.niceNum(0.017)===0.02, '电流轴自动量程向上取整（0.017 → 0.02）');
+
+console.log('— 函数簇与滑条归属（本次修正的核心）—');
+T.setVals(3,20,20,0.5);
+var famRx = T.rxFamily();
+assert(famRx.length === 6 && near(famRx[0], 4) && near(famRx[5], 200, 1e-6), '横轴=滑片位置时，函数簇取 Rₓ = 0.2/0.5/1/2/5/10 倍 R₀（20Ω → 4…200Ω）');
+T.setVals(3,500,500,0.5);
+var famBig = T.rxFamily();
+assert(famBig.every(function(v){ return v >= 0.1 && v <= 500; }) && famBig.length >= 1, 'R₀=500Ω 时函数簇取值被夹在 0.1~500 Ω 内且去重');
+
+// 横轴=滑片位置（默认）：曲线由 Rₓ 决定 → 改 Rₓ 换曲线
+T.setVals(3,20,20,0.5);
+var uS_small = T.uLimit(20,20,0.5), uS_big = T.uLimit(400,20,0.5);
+assert(uS_small < uS_big, '限流式：横轴=滑片位置时，不同 Rₓ 对应不同曲线（Rₓ↑ → Uₓ↑）');
+// 滑片位置作为自变量：限流式递减、分压式递增
+var uSeq = [0,0.25,0.5,0.75,1].map(function(ss){ return T.uLimit(60,20,ss); });
+var monoDown = uSeq.every(function(v,i){ return i===0 || v <= uSeq[i-1] + 1e-12; });
+assert(monoDown, '限流式：Uₓ 随滑片位置单调递减（滑片接入越多，分压越小）');
+var dSeq = [0,0.25,0.5,0.75,1].map(function(ss){ return T.uDiv(60,20,ss); });
+var monoUp = dSeq.every(function(v,i){ return i===0 || v >= dSeq[i-1] - 1e-12; });
+assert(monoUp, '分压式：Uₓ 随滑片位置单调递增（0 → E）');
+assert(near(T.uDiv(60,20,0.5), 1.5/(3+0.25), 1e-9), '分压式 s=50% 的数值抽查（Rx=3R₀ → Uₓ/E ≈ 0.462）');
+// 横轴=待测电阻（备选模式）：曲线由滑片位置决定
+var uR = [0.3,0.9].map(function(ss){ return T.uLimit(20,20,ss); });
+assert(uR[0] !== uR[1], '切到「横轴=Rₓ」后，曲线改由滑片位置决定（s=30% 与 90% 曲线不同）');
 
 console.log('— 渲染自检 —');
 let ok = true;
