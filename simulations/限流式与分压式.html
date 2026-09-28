@@ -6,197 +6,192 @@
 <title>限流式与分压式 · 滑动变阻器接法选择</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { min-height: 100%; }
+    html, body { height: 100%; }
     body {
         background: radial-gradient(circle at 30% 15%, #16384f 0%, #0b1826 58%, #060d16 100%);
         font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
         display: flex; justify-content: center; align-items: stretch;
-        padding: 10px; font-size: 16px; color: #eef4fc; overflow: auto;
+        padding: 6px; color: #eef4fc; overflow: hidden; font-size: 15px;
     }
     .sim-card {
-        width: 100%; max-width: 100%; height: 98vh; min-height: 700px;
+        width: 100%; max-width: 2200px; height: 100%;
         background: rgba(18, 34, 50, 0.40);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border-radius: 26px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        box-shadow: 0 30px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+        border-radius: 20px; border: 1px solid rgba(255,255,255,0.07);
+        box-shadow: 0 24px 50px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
         display: flex; flex-direction: column; overflow: hidden;
     }
 
-    /* ===== 顶部工具条 ===== */
+    /* ===== 顶部共享参数 ===== */
     .toolbar {
-        flex-shrink: 0;
-        background: rgba(0,0,0,0.20);
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        padding: 9px 16px; display: flex; flex-direction: column; gap: 8px;
+        flex: 0 0 auto; background: rgba(0,0,0,0.20);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        padding: 7px 14px; display: flex; flex-direction: column; gap: 6px;
     }
-    .toolbar .row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .toolbar .row.right { margin-left: auto; }
-    .toolbar .title { font-size: 18px; font-weight: 600; color: #d6e6ff; display: flex; align-items: center; gap: 9px; margin-right: 8px; }
-    .toolbar .title small { opacity: 0.5; font-weight: 300; font-size: 12px; }
-    .status { font-size: 13px; color: #cfe2ff; background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.05); padding: 5px 13px; border-radius: 30px; flex: 1 1 auto; min-width: 240px; }
+    .tb-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .title { font-size: 17px; font-weight: 600; color: #d6e6ff; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+    .title small { opacity: 0.48; font-weight: 300; font-size: 12px; }
+    .status { font-size: 12.5px; color: #cfe2ff; background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 20px; flex: 1 1 auto; min-width: 200px; }
+    .group { display: flex; align-items: center; gap: 7px; padding: 4px 11px;
+        background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; }
+    .group-label { font-size: 12px; color: #7fa6d0; white-space: nowrap; }
+    .val { font-size: 13px; color: #ffe2a8; min-width: 66px; text-align: right; font-variant-numeric: tabular-nums; }
 
-    .group { display: flex; align-items: center; gap: 8px;
-        padding: 5px 12px; background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; }
-    .group-label { font-size: 12px; color: #7fa6d0; letter-spacing: 1px; margin-right: 2px; opacity: 0.85; white-space: nowrap; }
-    .val { font-size: 13px; color: #ffe2a8; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
-
-    button {
-        font-family: inherit; font-size: 13px; color: #eaf2ff; cursor: pointer;
-        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 10px; padding: 7px 12px; transition: all 0.15s ease; white-space: nowrap;
-    }
+    button { font-family: inherit; font-size: 12.5px; color: #eaf2ff; cursor: pointer;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+        border-radius: 9px; padding: 5px 10px; transition: all 0.15s ease; white-space: nowrap; }
     button:hover { background: rgba(255,255,255,0.12); }
     button:active { transform: translateY(1px); }
-    button.active { background: rgba(90,170,255,0.30); border-color: rgba(120,190,255,0.6); color: #fff; box-shadow: 0 0 14px rgba(90,170,255,0.25); }
-    button.lim.active { background: rgba(255,184,107,0.30); border-color: rgba(255,200,140,0.6); box-shadow: 0 0 14px rgba(255,184,107,0.25); }
-    button.div.active { background: rgba(95,176,255,0.30); border-color: rgba(140,200,255,0.6); box-shadow: 0 0 14px rgba(95,176,255,0.25); }
+    button.mini { font-size: 11.5px; padding: 3px 8px; border-radius: 7px; }
+    button.active { background: rgba(90,170,255,0.30); border-color: rgba(120,190,255,0.6); color: #fff; }
 
-    input[type=range] { -webkit-appearance: none; appearance: none; width: 130px; height: 6px; border-radius: 4px;
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 4px;
         background: linear-gradient(90deg, #4a8fd8, #2b5a8c); outline: none; cursor: pointer; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
         background: #eaf2ff; border: 2px solid #4a8fd8; box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-    input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #eaf2ff; border: 2px solid #4a8fd8; }
+    input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%;
+        background: #eaf2ff; border: 2px solid #4a8fd8; }
+    #sE { width: 108px; } #sR0 { width: 148px; } #sRx { width: 148px; }
 
-    /* ===== 舞台 ===== */
-    .stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 12px; gap: 12px; }
-    .cols { display: flex; gap: 14px; align-items: stretch; }
-    .col-circuits { flex: 0 0 460px; display: flex; flex-direction: column; gap: 12px; }
-    .col-plots { flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px; min-width: 360px; }
-
-    .circuit-box { background: rgba(10,20,32,0.45); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 8px 12px 12px; }
-    .circuit-box svg { width: 100%; height: auto; display: block; }
-    .circuit-head { font-size: 14px; color: #cfe2ff; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    /* ===== 舞台：左右两列 ===== */
+    .stage { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px; }
+    .col { display: flex; flex-direction: column; min-height: 0; gap: 6px;
+        background: rgba(10,20,32,0.42); border: 1px solid rgba(255,255,255,0.06); border-radius: 15px; padding: 8px 10px 9px; }
+    .col-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #cfe2ff; flex: 0 0 auto; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
     .badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; }
     .badge.rec { background: rgba(120,210,140,0.25); color: #bff3cf; }
     .badge.no { background: rgba(255,255,255,0.06); color: #8aa0b8; }
-    .live { margin-top: 4px; font-size: 13px; color: #c7d8ee; font-variant-numeric: tabular-nums; }
+    .live { margin-left: auto; font-size: 12.5px; color: #c7d8ee; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .live b { color: #ffe2a8; }
 
-    .plot-box { background: rgba(10,20,32,0.45); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 8px 12px 10px; display: flex; flex-direction: column; }
-    .plot-title { font-size: 13px; color: #cfe2ff; margin-bottom: 6px; }
-    .plot-box canvas { width: 100%; height: 226px; display: block; }
+    .circuit-wrap { flex: 0 0 auto; height: clamp(116px, 23vh, 196px); }
+    .circuit-wrap svg { width: 100%; height: 100%; display: block; }
 
-    .panel-note { background: rgba(10,20,32,0.55); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 12px 16px; font-size: 13px; line-height: 1.62; color: #c7d8ee; }
-    .panel-note h4 { color: #ffd27a; margin-bottom: 6px; font-size: 13px; }
-    .panel-note b { color: #eaf2ff; }
-    .panel-note .amber { color: #ffd9a8; }
-    .panel-note .blue { color: #a9d6ff; }
+    .ctrl { flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 11px; padding: 4px 9px; }
+    .ctrl-label { font-size: 12px; color: #7fa6d0; white-space: nowrap; }
+    .ctrl input[type=range] { flex: 1 1 auto; min-width: 90px; }
+    .ctrl-val { font-size: 12.5px; color: #ffe2a8; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
 
-    @media (max-width: 920px) {
-        .cols { flex-wrap: wrap; }
-        .col-circuits { flex: 1 1 100%; }
-        .col-plots { flex: 1 1 100%; }
+    .plot-wrap { flex: 1 1 auto; min-height: 120px; }
+    .plot-wrap canvas { width: 100%; height: 100%; display: block; }
+    .foot { flex: 0 0 auto; font-size: 12px; color: #a9c4e0; line-height: 1.45; }
+    .foot b { color: #e6f1ff; }
+    .foot .amber { color: #ffd9a8; }
+    .foot .blue { color: #a9d6ff; }
+
+    @media (max-width: 860px) {
+        body { overflow: auto; }
+        .stage { grid-template-columns: 1fr; }
+        .circuit-wrap { height: 170px; }
+        .plot-wrap { min-height: 180px; }
     }
 </style>
 </head>
 <body>
 <div class="sim-card">
     <div class="toolbar">
-        <div class="row">
-            <div class="title">限流式与分压式 <small>滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇</small></div>
+        <div class="tb-row">
+            <div class="title">限流式与分压式 <small>滑动变阻器接法选择 · 电路图 + Uₓ / I 函数簇（线性坐标）</small></div>
             <div class="status" id="statusPill">…</div>
-            <div class="row right">
-                <button id="tCircuits" class="active">电路图</button>
-                <button id="tPlot" class="active">函数图</button>
-                <button id="tNote" class="active">说明</button>
-            </div>
         </div>
-        <div class="row">
+        <div class="tb-row">
             <div class="group">
                 <span class="group-label">电源 E</span>
                 <input type="range" id="sE" min="1" max="12" step="0.5" value="3" />
                 <span class="val" id="vE">3.0 V</span>
             </div>
             <div class="group">
-                <span class="group-label">变阻器 R₀</span>
-                <input type="range" id="sR0" min="5" max="50" step="1" value="20" />
-                <span class="val" id="vR0">20 Ω</span>
+                <span class="group-label">滑动变阻器 R₀</span>
+                <input type="range" id="sR0" min="0" max="1000" step="1" value="609" />
+                <span class="val" id="vR0">20.0 Ω</span>
             </div>
             <div class="group">
-                <span class="group-label">待测 Rₓ</span>
-                <input type="range" id="sRx" min="1" max="400" step="1" value="20" />
-                <span class="val" id="vRx">20 Ω</span>
+                <span class="group-label">待测电阻 Rₓ</span>
+                <input type="range" id="sRx" min="0" max="1000" step="1" value="609" />
+                <span class="val" id="vRx">20.0 Ω</span>
             </div>
             <div class="group">
-                <span class="group-label">滑片位置</span>
-                <input type="range" id="sS" min="0" max="100" step="1" value="50" />
-                <span class="val" id="vS">50 %</span>
-            </div>
-            <div class="group">
-                <span class="group-label">函数簇接法</span>
-                <button id="fLimit" class="lim active">限流式</button>
-                <button id="fDiv" class="div">分压式</button>
+                <span class="group-label">快捷</span>
+                <button class="mini" data-rx="200" data-r0="10">Rₓ ≫ R₀</button>
+                <button class="mini" data-rx="50" data-r0="50">Rₓ ≈ R₀</button>
+                <button class="mini" data-rx="10" data-r0="200">Rₓ ≪ R₀</button>
             </div>
         </div>
     </div>
 
     <div class="stage">
-        <div class="cols" id="cols">
-            <div class="col-circuits" id="colCircuits">
-                <div class="circuit-box">
-                    <div class="circuit-head">限流式接法 <span class="badge no" id="badgeLimit">—</span></div>
-                    <svg id="svgLimit" viewBox="0 0 440 300" preserveAspectRatio="xMidYMid meet"></svg>
-                    <div class="live" id="liveLimit"></div>
-                </div>
-                <div class="circuit-box">
-                    <div class="circuit-head">分压式接法 <span class="badge no" id="badgeDiv">—</span></div>
-                    <svg id="svgDiv" viewBox="0 0 440 300" preserveAspectRatio="xMidYMid meet"></svg>
-                    <div class="live" id="liveDiv"></div>
-                </div>
+        <!-- ===== 左：限流式 ===== -->
+        <div class="col">
+            <div class="col-head">
+                <span class="dot" style="background:#ffb86b"></span>限流式接法
+                <span class="badge no" id="bL">—</span>
+                <span class="live">Uₓ = <b id="uL">—</b> V &nbsp; I = <b id="iL">—</b> A</span>
             </div>
-            <div class="col-plots" id="colPlots">
-                <div class="plot-box">
-                    <div class="plot-title">调控特性：当前 Rₓ 下，Uₓ/E 随滑片位置变化（两法对比）</div>
-                    <canvas id="cv1"></canvas>
-                </div>
-                <div class="plot-box">
-                    <div class="plot-title" id="plot2title">函数簇（限流式）：Uₓ 实线·左轴，I 虚线·右轴，随 Rₓ 变化（s = 0 / 50 / 100%）</div>
-                    <canvas id="cv2"></canvas>
-                </div>
+            <div class="circuit-wrap"><svg id="svgL" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div class="ctrl">
+                <span class="ctrl-label">本图滑片位置</span>
+                <input type="range" id="sSL" min="0" max="100" step="1" value="50" />
+                <span class="ctrl-val" id="vSL">50%</span>
+                <button class="mini" id="axL">横轴：Rₓ</button>
             </div>
+            <div class="plot-wrap"><canvas id="cvL"></canvas></div>
+            <div class="foot" id="fL"></div>
         </div>
 
-        <div class="panel-note" id="noteBox">
-            <h4>选择原则（滑动变阻器 · 限流式 / 分压式）</h4>
-            <b>限流式</b>：变阻器与待测电阻<b>串联</b>，滑片改变串联阻值 Rₚ。Uₓ = E·Rₓ/(Rₓ+Rₚ)，Rₚ∈[0,R₀]，调节范围为 [E·Rₓ/(Rₓ+R₀), E]，<b>下限不为 0</b>。<br/>
-            <b>分压式</b>：变阻器两端接电源，待测电阻并联在滑片与一端之间。Uₓ 可在 <b>[0, E]</b> 内连续调节，范围更宽。<br/>
-            <span class="amber">当 Rₓ ≫ R₀（如 Rₓ ≥ 5R₀）</span>：限流式串联阻值相对 Rₓ 很小，滑片几乎不改变电流与电压（左下图电压曲线贴近顶部），调节失效 → 应选<b>分压式</b>。<br/>
-            <span class="blue">当 Rₓ 与 R₀ 接近或更小（Rₓ ≲ 5R₀）</span>：限流式已有足够调节范围，且更节能、电路更简单 → 优先选<b>限流式</b>。<br/>
-            补充：只要实验要求待测电阻两端电压<b>从 0 起连续调节</b>，无论比值如何都必须用分压式；若 Rₓ ≪ R₀，分压式电压分布严重不均（非线性）且功耗大，更不宜用。
+        <!-- ===== 右：分压式 ===== -->
+        <div class="col">
+            <div class="col-head">
+                <span class="dot" style="background:#5fb0ff"></span>分压式接法
+                <span class="badge no" id="bD">—</span>
+                <span class="live">Uₓ = <b id="uD">—</b> V &nbsp; I = <b id="iD">—</b> A</span>
+            </div>
+            <div class="circuit-wrap"><svg id="svgD" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div class="ctrl">
+                <span class="ctrl-label">本图滑片位置</span>
+                <input type="range" id="sSD" min="0" max="100" step="1" value="50" />
+                <span class="ctrl-val" id="vSD">50%</span>
+                <button class="mini" id="axD">横轴：Rₓ</button>
+            </div>
+            <div class="plot-wrap"><canvas id="cvD"></canvas></div>
+            <div class="foot" id="fD"></div>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-//  限流式与分压式 · 物理与绘图
-//  约定：s = 滑片位置比例 [0,1]；Rₚ(限流)=s·R₀；分压并联段 = s·R₀
+//  限流式与分压式
+//  共享参数：E / R₀ / Rₓ（顶部工具条）
+//  两列各自独立：滑片位置 s → 驱动本列电路图 + 本列函数图
 // ============================================================
-var E = 3.0, R0 = 20, Rx = 20, s = 0.5, famType = 'limit';
+var E = 3.0, R0 = 20, Rx = 20;
+var sL = 0.5, sD = 0.5;                 // 两列各自的滑片位置
+var xModeL = 'rx', xModeD = 'rx';       // 各自函数图横轴
+var R_MIN = 0.1, R_MAX = 500;
 
-function uLimit(rx, r0, ss){ return rx / (rx + ss * r0); }                 // 限流式 Uₓ/E
+function uLimit(rx, r0, ss){ return rx / (rx + ss * r0); }                        // 限流式 Uₓ/E
 function uDiv(rx, r0, ss){ var k = rx / r0; return k * ss / (k + ss * (1 - ss)); } // 分压式 Uₓ/E
-function iLimit(rx, r0, ss){ return E / (rx + ss * r0); }                   // 限流式 I
-function iDiv(rx, r0, ss){ return E * ss / (rx + ss * (1 - ss) * r0); }     // 分压式 I
+function iLimit(rx, r0, ss){ return E / (rx + ss * r0); }                          // 限流式 I (A)
+function iDiv(rx, r0, ss){ return E * ss / (rx + ss * (1 - ss) * r0); }            // 分压式 I (A)
 
 function recType(){ return (Rx / R0 >= 5) ? 'div' : 'limit'; }
+
+// ---------- 阻值滑条：对数映射 0.1 ~ 500 Ω ----------
+function tToR(t){ return R_MIN * Math.pow(R_MAX / R_MIN, t / 1000); }
+function rToT(v){ return 1000 * Math.log(v / R_MIN) / Math.log(R_MAX / R_MIN); }
+function fmtR(v){ return v < 10 ? v.toFixed(2) : (v < 100 ? v.toFixed(1) : v.toFixed(0)); }
+function fmtI(v){ return Math.abs(v) < 1 ? v.toFixed(3) : v.toFixed(2); }
 
 // ---------- SVG 小工具 ----------
 function ln(x1, y1, x2, y2, st, w){ return '<path d="M '+x1+' '+y1+' L '+x2+' '+y2+'" fill="none" stroke="'+(st||'#cdd9e8')+'" stroke-width="'+(w||2)+'" stroke-linecap="round"/>'; }
 function node(x, y){ return '<circle cx="'+x+'" cy="'+y+'" r="3.2" fill="#cdd9e8"/>'; }
-function txt(x, y, t, o){ o = o || {}; return '<text x="'+x+'" y="'+y+'" fill="'+(o.fill||'#dce8f6')+'" font-size="'+(o.size||12)+'" text-anchor="'+(o.anchor||'middle')+'" font-family="Segoe UI, sans-serif">'+(o.pre||'')+t+(o.post||'')+'</text>'; }
+function txt(x, y, t, o){ o = o || {}; return '<text x="'+x+'" y="'+y+'" fill="'+(o.fill||'#dce8f6')+'" font-size="'+(o.size||12)+'" text-anchor="'+(o.anchor||'middle')+'" font-family="Segoe UI, sans-serif">'+t+'</text>'; }
 function circ(x, y, r, fill, st){ return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+(fill||'none')+'" stroke="'+(st||'#cdd9e8')+'" stroke-width="2"/>'; }
-function battery(bx, cy){
-    var g = '';
-    g += '<line x1="'+(bx-12)+'" y1="'+(cy-8)+'" x2="'+(bx+12)+'" y2="'+(cy-8)+'" stroke="#ffd27a" stroke-width="3"/>';
-    g += '<line x1="'+(bx-7)+'" y1="'+(cy+3)+'" x2="'+(bx+7)+'" y2="'+(cy+3)+'" stroke="#9fb6d4" stroke-width="3"/>';
-    g += txt(bx+22, cy-4, '+', {fill:'#ffd27a', anchor:'start', size:14});
-    g += txt(bx+22, cy+9, '−', {fill:'#9fb6d4', anchor:'start', size:14});
-    return g;
-}
+function poly(pts, fill){ return '<polygon points="'+pts+'" fill="'+fill+'"/>'; }
 function vzig(x, y, len, amp, n){
     var seg = len / (2 * n), pts = [];
     for (var i = 0; i <= 2 * n; i++){
@@ -206,244 +201,270 @@ function vzig(x, y, len, amp, n){
     }
     return 'M ' + pts.join(' L ');
 }
+function zpath(x, y, len, amp, n){
+    return '<path d="'+vzig(x, y, len, amp, n)+'" fill="none" stroke="#cdd9e8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+}
+function battery(bx, cy){
+    var g = '';
+    g += '<line x1="'+(bx-12)+'" y1="'+(cy-8)+'" x2="'+(bx+12)+'" y2="'+(cy-8)+'" stroke="#ffd27a" stroke-width="3"/>';
+    g += '<line x1="'+(bx-7)+'" y1="'+(cy+3)+'" x2="'+(bx+7)+'" y2="'+(cy+3)+'" stroke="#9fb6d4" stroke-width="3"/>';
+    g += txt(bx+17, cy-4, '+', {fill:'#ffd27a', anchor:'start', size:13});
+    g += txt(bx+17, cy+9, '−', {fill:'#9fb6d4', anchor:'start', size:13});
+    return g;
+}
+
+var RT = 46, RB = 146, XB = 62, XR = 400;   // 上/下导轨、电源竖线、右支路
 
 // ---------- 限流式电路 ----------
 function svgLimit(){
-    var Lx = 200, Rx1 = 340, y = 110;
-    var wx = Lx + s * (Rx1 - Lx);
     var e = [];
-    e.push(ln(40,110,110,110));
-    e.push(ln(110,110,125,110));
-    e.push(circ(140,110,15,'rgba(20,40,60,0.6)','#9fd0ff'));
-    e.push(txt(140,114,'A',{fill:'#9fd0ff',size:14}));
-    e.push(ln(155,110,170,110));
-    e.push(ln(170,110,Lx,110));
-    e.push(ln(Rx1,110,380,110));
-    e.push(ln(380,110,380,160));
-    e.push('<path d="'+vzig(380,160,50,7,6)+'" fill="none" stroke="#cdd9e8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
-    e.push(ln(380,210,40,210));
-    // 电压表
-    e.push(ln(380,160,410,160));
-    e.push(circ(410,185,15,'rgba(20,40,60,0.6)','#ffd27a'));
-    e.push(txt(410,189,'V',{fill:'#ffd27a',size:14}));
-    e.push(ln(410,170,410,160));
-    e.push(ln(410,200,410,210));
-    e.push(ln(410,210,380,210));
+    e.push(ln(XB, RT, XR, RT));
+    e.push(ln(XR, RB, XB, RB));
     // 电源
-    e.push(battery(40,160));
-    e.push(ln(40,110,40,152));
-    e.push(ln(40,168,40,210));
-    // 变阻器
-    e.push('<rect x="'+Lx+'" y="104" width="'+(Rx1-Lx)+'" height="12" rx="3" fill="rgba(255,255,255,0.05)" stroke="#5b7da0" stroke-width="1"/>');
-    e.push('<rect x="'+Lx+'" y="104" width="'+Math.max(0,wx-Lx).toFixed(1)+'" height="12" rx="3" fill="rgba(255,184,107,0.22)"/>');
-    e.push(ln(wx,96,wx,104,'#ffb86b',2));
-    e.push('<path d="M '+(wx-5)+' 96 L '+(wx+5)+' 96 L '+wx+' 104 Z" fill="#ffb86b"/>');
-    e.push(circ(wx,110,3.5,'#ffb86b'));
-    // 标注
-    e.push(txt(40,100,'E = '+E.toFixed(1)+' V',{fill:'#ffd27a',size:12}));
-    e.push(txt((Lx+Rx1)/2, 92, 'R₀ = '+R0+' Ω',{fill:'#cdd9e8',size:12}));
-    e.push(txt(380,148,'Rₓ = '+Rx+' Ω',{fill:'#cdd9e8',size:12}));
-    e.push(txt(wx, 84, '滑片 '+Math.round(s*100)+'%',{fill:'#ffb86b',size:11}));
-    e.push(node(40,110), node(40,210), node(380,160), node(380,210));
+    e.push(ln(XB, RT, XB, 88)); e.push(ln(XB, 99, XB, RB)); e.push(battery(XB, 96));
+    e.push(txt(XB, RT - 8, 'E = '+E.toFixed(1)+' V', {fill:'#ffd27a', size:11.5}));
+    // 电流表
+    e.push(ln(XB, RT, 88, RT));
+    e.push(circ(101, RT, 13, 'rgba(20,40,60,0.6)', '#9fd0ff'));
+    e.push(txt(101, RT + 4, 'A', {fill:'#9fd0ff', size:12}));
+    e.push(ln(114, RT, 150, RT));
+    // 滑动变阻器（串联在干路）
+    var wx = 150 + sL * (320 - 150);
+    e.push('<rect x="150" y="'+(RT-7)+'" width="170" height="14" rx="3" fill="rgba(255,255,255,0.05)" stroke="#5b7da0" stroke-width="1"/>');
+    e.push('<rect x="150" y="'+(RT-7)+'" width="'+Math.max(0, wx-150).toFixed(1)+'" height="14" rx="3" fill="rgba(255,184,107,0.22)"/>');
+    e.push(ln(wx, RT - 22, wx, RT - 9, '#ffb86b', 2));
+    e.push(poly((wx-5)+' '+(RT-10)+' '+(wx+5)+' '+(RT-10)+' '+wx+' '+(RT-2), '#ffb86b'));
+    e.push(circ(wx, RT, 3.6, '#ffb86b', '#ffb86b'));
+    e.push(txt(235, RT - 14, 'R₀ = '+fmtR(R0)+' Ω', {fill:'#cdd9e8', size:11.5}));
+    e.push(ln(320, RT, XR, RT));
+    // 待测电阻 Rₓ
+    e.push(ln(XR, RT, XR, 72)); e.push(zpath(XR, 72, 48, 7, 5)); e.push(ln(XR, 120, XR, RB));
+    // 电压表（并联在 Rₓ 两端）
+    e.push(ln(XR, 72, 452, 72)); e.push(ln(452, 72, 452, 83));
+    e.push(circ(452, 96, 13, 'rgba(20,40,60,0.6)', '#ffd27a'));
+    e.push(txt(452, 100, 'V', {fill:'#ffd27a', size:12}));
+    e.push(ln(452, 109, 452, 120)); e.push(ln(452, 120, XR, 120));
+    e.push(txt(XR, RB + 18, 'Rₓ = '+fmtR(Rx)+' Ω', {fill:'#cdd9e8', size:11.5}));
+    e.push(node(XB, RT), node(XB, RB), node(XR, RT), node(XR, RB));
     return e.join('');
 }
 
 // ---------- 分压式电路 ----------
 function svgDiv(){
-    var A = 60, B = 380, y = 110;
-    var Cx = B - s * (B - A);
-    var vx = Math.max(30, Cx - 35);
-    var ax = Math.min(398, Cx + 18);
+    var ys = RB - sD * (RB - RT);           // 滑片触点高度（s=0 在下端）
+    var len = RB - ys;                      // 并联给 Rₓ 的那一段
     var e = [];
-    // 电源
-    e.push(battery(40,160));
-    e.push(ln(40,110,40,152));
-    e.push(ln(40,168,40,210));
-    e.push(txt(40,100,'E = '+E.toFixed(1)+' V',{fill:'#ffd27a',size:12}));
-    // 变阻器两端接电源
-    e.push(ln(40,110,A,110));
-    e.push(ln(A,110,B,110));
-    e.push(ln(B,110,B,210));
-    e.push(ln(B,210,40,210));
-    e.push('<rect x="'+A+'" y="104" width="'+(B-A)+'" height="12" rx="3" fill="rgba(255,255,255,0.05)" stroke="#5b7da0" stroke-width="1"/>');
-    e.push('<rect x="'+A+'" y="104" width="'+(Cx-A).toFixed(1)+'" height="12" rx="3" fill="rgba(255,255,255,0.04)"/>');
-    e.push('<rect x="'+Cx.toFixed(1)+'" y="104" width="'+(B-Cx).toFixed(1)+'" height="12" rx="3" fill="rgba(95,176,255,0.22)"/>');
-    e.push(ln(Cx,96,Cx,104,'#5fb0ff',2));
-    e.push('<path d="M '+(Cx-5)+' 96 L '+(Cx+5)+' 96 L '+Cx+' 104 Z" fill="#5fb0ff"/>');
-    e.push(circ(Cx,110,3.5,'#5fb0ff'));
-    // 待测电阻支路（与 C–B 段并联）
-    e.push(ln(Cx,110,Cx,160));
-    e.push('<path d="'+vzig(Cx,160,50,7,6)+'" fill="none" stroke="#cdd9e8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
-    e.push(ln(Cx,210,B,210));
-    // 电压表（跨 Rx）
-    e.push(ln(Cx,110,vx,110));
-    e.push(circ(vx,140,15,'rgba(20,40,60,0.6)','#ffd27a'));
-    e.push(txt(vx,144,'V',{fill:'#ffd27a',size:14}));
-    e.push(ln(vx,125,vx,110));
-    e.push(ln(vx,155,vx,210));
-    e.push(ln(vx,210,Cx,210));
-    // 电流表（串联在 Rx 支路）
-    e.push(ln(Cx,210,ax-15,210));
-    e.push(circ(ax,210,15,'rgba(20,40,60,0.6)','#9fd0ff'));
-    e.push(txt(ax,214,'A',{fill:'#9fd0ff',size:14}));
-    e.push(ln(ax+15,210,B,210));
-    // 标注
-    e.push(txt((A+B)/2, 92, 'R₀ = '+R0+' Ω',{fill:'#cdd9e8',size:12}));
-    e.push(txt(Cx, 150, 'Rₓ = '+Rx+' Ω',{fill:'#cdd9e8',size:12}));
-    e.push(txt(Cx, 84, '滑片 '+Math.round(s*100)+'%',{fill:'#5fb0ff',size:11}));
-    e.push(node(40,110), node(40,210), node(A,110), node(B,110), node(B,210), node(Cx,110), node(Cx,210));
+    e.push(ln(XB, RT, XR, RT));
+    e.push(ln(XR, RB, XB, RB));
+    e.push(ln(XB, RT, XB, 88)); e.push(ln(XB, 99, XB, RB)); e.push(battery(XB, 96));
+    e.push(txt(XB, RT - 8, 'E = '+E.toFixed(1)+' V', {fill:'#ffd27a', size:11.5}));
+    // 变阻器全阻 R₀ 跨接在电源两端
+    e.push(zpath(XR, RT, RB - RT, 7, 7));
+    e.push(txt(XR + 13, 100, 'R₀ = '+fmtR(R0)+' Ω', {fill:'#cdd9e8', size:11.5, anchor:'start'}));
+    // 滑片触头
+    e.push(poly((XR-16)+' '+(ys-5)+' '+(XR-16)+' '+(ys+5)+' '+(XR-4)+' '+ys, '#5fb0ff'));
+    e.push(circ(XR, ys, 3.6, '#5fb0ff', '#5fb0ff'));
+    // Rₓ 支路：触头 → 电流表 → Rₓ → 下导轨
+    e.push(ln(XR, ys, 387, ys));
+    e.push(circ(374, ys, 13, 'rgba(20,40,60,0.6)', '#9fd0ff'));
+    e.push(txt(374, ys + 4, 'A', {fill:'#9fd0ff', size:12}));
+    e.push(ln(361, ys, 350, ys));
+    if (len >= 30){
+        e.push(ln(350, ys, 350, ys + 8));
+        e.push(zpath(350, ys + 8, len - 16, 7, Math.max(2, Math.round((len - 16) / 15))));
+        e.push(ln(350, RB - 8, 350, RB));
+    } else {
+        e.push(ln(350, ys, 350, RB));
+    }
+    // 电压表（并联在 Rₓ 两端）
+    if (len >= 36){
+        var cy = (ys + RB) / 2;
+        e.push(ln(350, ys, 310, ys)); e.push(ln(310, ys, 310, cy - 13));
+        e.push(circ(310, cy, 13, 'rgba(20,40,60,0.6)', '#ffd27a'));
+        e.push(txt(310, cy + 4, 'V', {fill:'#ffd27a', size:12}));
+        e.push(ln(310, cy + 13, 310, RB)); e.push(ln(310, RB, 350, RB));
+    }
+    e.push(txt(350, RB + 18, 'Rₓ = '+fmtR(Rx)+' Ω', {fill:'#cdd9e8', size:11.5}));
+    e.push(node(XB, RT), node(XB, RB), node(XR, RT), node(XR, RB), node(XR, ys));
     return e.join('');
 }
 
-// ---------- 绘图工具 ----------
-function legend(ctx, x, y, items){
-    ctx.font = '11px Segoe UI, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    var yy = y;
-    items.forEach(function(it){
-        ctx.strokeStyle = it[0]; ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + 18, yy); ctx.stroke();
-        ctx.fillStyle = '#cdd9e8'; ctx.fillText(it[1], x + 24, yy);
-        yy += 16;
-    });
+// ---------- 绘图：坐标轴全部线性 ----------
+function niceNum(v){
+    if (!(v > 0)) return 1;
+    var e10 = Math.pow(10, Math.floor(Math.log10(v))), f = v / e10;
+    var nf = f <= 1 ? 1 : (f <= 2 ? 2 : (f <= 5 ? 5 : 10));
+    return nf * e10;
+}
+function rxAxisMax(){
+    var want = Math.max(Rx, R0, 1) * 1.05;
+    var list = [1, 2, 5, 10, 20, 50, 100, 150, 200, 300, 400, 500];
+    for (var i = 0; i < list.length; i++) if (list[i] >= want) return list[i];
+    return 500;
 }
 
-// ---------- 图1：调控特性 ----------
-function drawCV1(){
-    var cv = document.getElementById('cv1'); if (!cv) return;
+function drawPlot(cvId, kind, sCur, xMode){
+    var cv = document.getElementById(cvId); if (!cv) return;
     var ctx = cv.getContext('2d');
     var dpr = window.devicePixelRatio || 1;
     var W = cv.clientWidth, H = cv.clientHeight;
-    if (W < 10 || H < 10) return;
-    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,W,H);
-    var m = {l:42,r:14,t:16,b:30}, x0=m.l, x1=W-m.r, y0=H-m.b, y1=m.t;
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1; ctx.strokeRect(x0,y1,x1-x0,y0-y1);
-    ctx.font = '11px Segoe UI, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    for (var i=0;i<=4;i++){
-        var fx=i/4, px=x0+fx*(x1-x0);
-        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.beginPath(); ctx.moveTo(px,y1); ctx.lineTo(px,y0); ctx.stroke();
-        ctx.fillStyle='#9fb6d4'; ctx.fillText(Math.round(fx*100)+'%', px, y0+14);
-    }
-    ctx.textAlign='right';
-    for (var j=0;j<=4;j++){
-        var fy=j/4, py=y0-fy*(y0-y1);
-        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.beginPath(); ctx.moveTo(x0,py); ctx.lineTo(x1,py); ctx.stroke();
-        ctx.fillStyle='#9fb6d4'; ctx.fillText(fy.toFixed(2), x0-5, py+4);
-    }
-    ctx.textAlign='left'; ctx.fillStyle='#cdd9e8'; ctx.fillText('Uₓ/E', x0+4, y1+12);
-    ctx.textAlign='center'; ctx.fillStyle='#9fb6d4'; ctx.fillText('滑片位置 s', (x0+x1)/2, H-4);
-    function curve(fn,color){
-        ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.beginPath();
-        for (var k=0;k<=120;k++){ var ss=k/120, u=fn(Rx,R0,ss), px=x0+ss*(x1-x0), py=y0-u*(y0-y1);
-            if(k===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
-        ctx.stroke();
-    }
-    curve(uLimit,'#ffb86b'); curve(uDiv,'#5fb0ff');
-    var sx = x0 + s*(x1-x0);
-    ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.moveTo(sx,y1); ctx.lineTo(sx,y0); ctx.stroke(); ctx.setLineDash([]);
-    function dot(u,color){ var py=y0-u*(y0-y1); ctx.fillStyle=color; ctx.beginPath(); ctx.arc(sx,py,4,0,7); ctx.fill();
-        ctx.strokeStyle='#0b1826'; ctx.lineWidth=1.5; ctx.stroke(); }
-    dot(uLimit(Rx,R0,s),'#ffb86b'); dot(uDiv(Rx,R0,s),'#5fb0ff');
-    legend(ctx, x1-104, y1+8, [['#ffb86b','限流式'],['#5fb0ff','分压式']]);
-}
+    if (W < 20 || H < 20) return;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
 
-// ---------- 图2：函数簇 ----------
-function drawCV2(){
-    var cv = document.getElementById('cv2'); if (!cv) return;
-    var ctx = cv.getContext('2d');
-    var dpr = window.devicePixelRatio || 1;
-    var W = cv.clientWidth, H = cv.clientHeight;
-    if (W < 10 || H < 10) return;
-    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,W,H);
-    var m = {l:46,r:48,t:16,b:34}, x0=m.l, x1=W-m.r, y0=H-m.b, y1=m.t;
-    var rMin = 0.05 * R0, rMax = 20 * R0;
-    var lx = function(rx){ return x0 + (Math.log(rx / rMin) / Math.log(rMax / rMin)) * (x1 - x0); };
-    var uy = function(u){ return y0 - (u / E) * (y0 - y1); };
-    var iMin = E / (30 * R0), iMax = E / (0.05 * R0), iMid = Math.sqrt(iMin * iMax);
-    var iy = function(I){ return y0 - (Math.log(Math.max(I,iMin) / iMin) / Math.log(iMax / iMin)) * (y0 - y1); };
-    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.strokeRect(x0,y1,x1-x0,y0-y1);
-    ctx.font='11px Segoe UI, sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-    [0.05,0.1,0.2,0.5,1,2,5,10,20].forEach(function(r){
-        var px=lx(r*R0);
-        ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(px,y1); ctx.lineTo(px,y0); ctx.stroke();
-        ctx.fillStyle='#9fb6d4'; ctx.fillText(r+'R₀', px, y0+14);
+    var fam  = (kind === 'limit') ? uLimit : uDiv;
+    var famI = (kind === 'limit') ? iLimit : iDiv;
+    var accent = (kind === 'limit') ? '#ffb86b' : '#5fb0ff';
+    var m = {l: 46, r: 50, t: 12, b: 30};
+    var x0 = m.l, x1 = W - m.r, y0 = H - m.b, y1 = m.t;
+
+    var Xmax, curX;
+    var uAt, iAt;
+    if (xMode === 's'){
+        Xmax = 1; curX = sCur;
+        uAt = function(v){ return E * fam(Rx, R0, v); };
+        iAt = function(v){ return famI(Rx, R0, v); };
+    } else {
+        Xmax = rxAxisMax(); curX = Rx;
+        uAt = function(v){ return E * fam(v, R0, sCur); };
+        iAt = function(v){ return famI(v, R0, sCur); };
+    }
+    var xToPx = function(v){ return x0 + (v / Xmax) * (x1 - x0); };
+
+    // ---- 右轴（电流）量程：线性，自动取整 ----
+    var iMaxSample = 0;
+    for (var q = 1; q <= 80; q++){
+        var xv = (xMode === 's') ? (q / 80) : (Xmax * q / 80);
+        var iv = iAt(xv);
+        if (iv > iMaxSample) iMaxSample = iv;
+    }
+    (xMode === 'rx' ? [0.2, 0.4, 0.6, 0.8, 1.0] : []).forEach(function(ss){
+        for (var r = 1; r <= 40; r++){
+            var xv2 = Xmax * r / 40;
+            var f2 = (kind === 'limit') ? iLimit(xv2, R0, ss) : iDiv(xv2, R0, ss);
+            if (f2 > iMaxSample) iMaxSample = f2;
+        }
     });
-    ctx.textAlign='right';
-    [0,0.5,1].forEach(function(f){
-        var py=y0-f*(y0-y1);
-        ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(x0,py); ctx.lineTo(x1,py); ctx.stroke();
-        ctx.fillStyle='#ffd9a8'; ctx.fillText((f*E).toFixed(1), x0-4, py+4);
-    });
-    ctx.textAlign='left';
-    [iMin,iMid,iMax].forEach(function(I){
-        var py=iy(I);
-        ctx.strokeStyle='rgba(95,176,255,0.10)'; ctx.beginPath(); ctx.moveTo(x0,py); ctx.lineTo(x1,py); ctx.stroke();
-        ctx.fillStyle='#a9d6ff'; ctx.fillText(I.toFixed(3), x1+4, py+4);
-    });
-    var pal = (famType==='limit')
-        ? {0:'#ffd9a8', 0.5:'#ffb86b', 1:'#e08e3a'}
-        : {0:'#a9d6ff', 0.5:'#5fb0ff', 1:'#2f7fd0'};
-    var fam = (famType==='limit') ? uLimit : uDiv;
-    var famI = (famType==='limit') ? iLimit : iDiv;
-    [0,0.5,1].forEach(function(ss){
-        ctx.strokeStyle=pal[ss]; ctx.lineWidth=2.2; ctx.beginPath();
-        for (var k=0;k<=160;k++){ var rx=rMin*Math.pow(rMax/rMin,k/160), px=lx(rx), py=uy(E*fam(rx,R0,ss));
-            if(k===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
-        ctx.stroke();
-        ctx.strokeStyle=pal[ss]; ctx.lineWidth=1.6; ctx.setLineDash([5,4]); ctx.beginPath();
-        for (var q=0;q<=160;q++){ var rx2=rMin*Math.pow(rMax/rMin,q/160), px2=lx(rx2), I=famI(rx2,R0,ss), py2=iy(I);
-            if(q===0) ctx.moveTo(px2,py2); else ctx.lineTo(px2,py2); }
+    var iTop = niceNum(iMaxSample * 1.1);
+
+    var uToPy = function(u){ return y0 - (u / E) * (y0 - y1); };
+    var iToPy = function(I){ return y0 - (I / iTop) * (y0 - y1); };
+
+    // ---- 网格与刻度（线性） ----
+    ctx.font = '11px Segoe UI, sans-serif'; ctx.textBaseline = 'alphabetic';
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
+    ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, y1, x1 - x0, y0 - y1); ctx.clip();
+
+    var xTicks = 5, k;
+    ctx.textAlign = 'center';
+    for (k = 0; k <= xTicks; k++){
+        var frac = k / xTicks, px = x0 + frac * (x1 - x0);
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath(); ctx.moveTo(px, y1); ctx.lineTo(px, y0); ctx.stroke();
+        var xv2 = frac * Xmax;
+        var lab = xMode === 's' ? Math.round(frac * 100) + '%' : (Xmax >= 10 ? xv2.toFixed(0) : xv2.toFixed(1));
+        ctx.fillStyle = '#9fb6d4'; ctx.fillText(lab, px, y0 + 14);
+    }
+    ctx.textAlign = 'right';
+    for (k = 0; k <= 4; k++){
+        var fy = k / 4, py = y0 - fy * (y0 - y1);
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x1, py); ctx.stroke();
+        ctx.fillStyle = '#ffd9a8'; ctx.fillText((fy * E).toFixed(1), x0 - 5, py + 4);
+        ctx.fillStyle = '#8fd8b4'; ctx.fillText((fy * iTop).toFixed(iTop < 1 ? 3 : 2), x1 + 5, py + 4);
+    }
+
+    function line(fnU, color, width, dash){
+        ctx.strokeStyle = color; ctx.lineWidth = width;
+        ctx.setLineDash(dash || []);
+        ctx.beginPath();
+        for (var j = 0; j <= 180; j++){
+            var xv = (xMode === 's') ? (j / 180) : (Xmax * j / 180);
+            var px = xToPx(xv), py = fnU(xv);
+            if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
         ctx.stroke(); ctx.setLineDash([]);
-    });
-    if (Rx >= rMin && Rx <= rMax){
-        var px = lx(Rx), u = E*fam(Rx,R0,s), I = famI(Rx,R0,s);
-        ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.setLineDash([4,4]);
-        ctx.beginPath(); ctx.moveTo(px,y1); ctx.lineTo(px,y0); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = (famType==='limit') ? '#ffb86b' : '#5fb0ff';
-        ctx.beginPath(); ctx.arc(px, uy(u), 4, 0, 7); ctx.fill();
-        ctx.strokeStyle='#0b1826'; ctx.lineWidth=1.5; ctx.stroke();
-        ctx.beginPath(); ctx.arc(px, iy(I), 4, 0, 7); ctx.fill(); ctx.stroke();
     }
-    ctx.fillStyle='#ffd9a8'; ctx.textAlign='left'; ctx.fillText('Uₓ/V 实线', x0+4, y1+12);
-    ctx.fillStyle='#a9d6ff'; ctx.textAlign='right'; ctx.fillText('I/A 对数 虚线', x1-4, y1+12);
-    ctx.fillStyle='#9fb6d4'; ctx.textAlign='center'; ctx.fillText('待测电阻 Rₓ（横轴对数 · 以 R₀ 为单位）', (x0+x1)/2, H-4);
-    legend(ctx, x0+6, y0-30, [['#e08e3a','s=100%'],['#ffb86b','s=50%'],['#ffd9a8','s=0%']]);
+
+    // ---- 横轴为 Rₓ：先画淡色函数簇（不同滑片位置） ----
+    if (xMode === 'rx'){
+        [0.2, 0.4, 0.6, 0.8, 1.0].forEach(function(ss){
+            if (Math.abs(ss - sCur) < 0.005) return;
+            line(function(v){ return uToPy(E * fam(v, R0, ss)); }, 'rgba(190,210,235,0.22)', 1.4, []);
+        });
+    }
+    // ---- 当前曲线：Uₓ 实线 / I 虚线 ----
+    line(function(v){ return uToPy(uAt(v)); }, '#ffd27a', 2.4, []);
+    line(function(v){ return iToPy(iAt(v)); }, '#7fd4a8', 1.9, [6, 4]);
+
+    // ---- 当前工作点 ----
+    var cxp = xToPx(curX);
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)'; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cxp, y1); ctx.lineTo(cxp, y0); ctx.stroke(); ctx.setLineDash([]);
+    function dot(py, color){
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cxp, py, 4, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#0b1826'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    dot(uToPy(uAt(curX)), '#ffd27a');
+    dot(iToPy(iAt(curX)), '#7fd4a8');
+    ctx.restore();
+
+    // ---- 标注 ----
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffd9a8'; ctx.fillText('Uₓ / V（实线）', x0 + 6, y1 + 12);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#8fd8b4'; ctx.fillText('I / A（虚线）', x1 - 6, y1 + 12);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#9fb6d4';
+    ctx.fillText(xMode === 's' ? '滑片位置 s（线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 3);
 }
 
 // ---------- 更新 ----------
 function update(){
     document.getElementById('vE').textContent = E.toFixed(1) + ' V';
-    document.getElementById('vR0').textContent = R0 + ' Ω';
-    document.getElementById('vRx').textContent = Rx + ' Ω';
-    document.getElementById('vS').textContent = Math.round(s*100) + ' %';
-    document.getElementById('svgLimit').innerHTML = svgLimit();
-    document.getElementById('svgDiv').innerHTML = svgDiv();
-    var uL = E*uLimit(Rx,R0,s), iL = iLimit(Rx,R0,s);
-    var uD = E*uDiv(Rx,R0,s), iD = iDiv(Rx,R0,s);
-    document.getElementById('liveLimit').innerHTML = 'Uₓ = <b style="color:#ffd9a8">'+uL.toFixed(2)+' V</b> &nbsp; I = <b style="color:#ffd9a8">'+iL.toFixed(3)+' A</b>';
-    document.getElementById('liveDiv').innerHTML = 'Uₓ = <b style="color:#a9d6ff">'+uD.toFixed(2)+' V</b> &nbsp; I = <b style="color:#a9d6ff">'+iD.toFixed(3)+' A</b>';
+    document.getElementById('vR0').textContent = fmtR(R0) + ' Ω';
+    document.getElementById('vRx').textContent = fmtR(Rx) + ' Ω';
+    document.getElementById('vSL').textContent = Math.round(sL * 100) + '%';
+    document.getElementById('vSD').textContent = Math.round(sD * 100) + '%';
+
+    document.getElementById('svgL').innerHTML = svgLimit();
+    document.getElementById('svgD').innerHTML = svgDiv();
+
+    var uL = E * uLimit(Rx, R0, sL), iL = iLimit(Rx, R0, sL);
+    var uD = E * uDiv(Rx, R0, sD), iDv = iDiv(Rx, R0, sD);
+    document.getElementById('uL').textContent = uL.toFixed(2);
+    document.getElementById('iL').textContent = fmtI(iL);
+    document.getElementById('uD').textContent = uD.toFixed(2);
+    document.getElementById('iD').textContent = fmtI(iDv);
 
     var rec = recType(), k = Rx / R0;
-    var bl = document.getElementById('badgeLimit'), bd = document.getElementById('badgeDiv');
-    bl.className = 'badge ' + (rec==='limit'?'rec':'no');
-    bl.textContent = (rec==='limit') ? '✓ 推荐' : '—';
-    bd.className = 'badge ' + (rec==='div'?'rec':'no');
-    bd.textContent = (rec==='div') ? '✓ 推荐' : '—';
+    var bL = document.getElementById('bL'), bD = document.getElementById('bD');
+    bL.className = 'badge ' + (rec === 'limit' ? 'rec' : 'no');
+    bL.textContent = (rec === 'limit') ? '✓ 推荐' : '—';
+    bD.className = 'badge ' + (rec === 'div' ? 'rec' : 'no');
+    bD.textContent = (rec === 'div') ? '✓ 推荐' : '—';
 
-    var msg;
-    if (rec==='div') msg = 'Rₓ/R₀ = '+k.toFixed(2)+'（Rₓ ≫ R₀）→ 推荐<span class="blue">分压式</span>：限流式滑片几乎不改变电压，调节范围过小';
-    else {
-        msg = 'Rₓ/R₀ = '+k.toFixed(2)+' → 推荐<span class="amber">限流式</span>（更节能、电路更简单）';
-        if (k < 0.2) msg += '；此时分压式非线性严重且耗能大';
-        else msg += '；若实验要求电压从 0 起连续调节，则仍须用分压式';
-    }
-    document.getElementById('statusPill').innerHTML = msg;
-    document.getElementById('plot2title').innerHTML = '函数簇（'+(famType==='limit'?'限流式':'分压式')+'）：Uₓ 实线·左轴，I 虚线·右轴，随 Rₓ 变化（s = 0 / 50 / 100%）';
-    drawCV1(); drawCV2();
+    var loL = E * uLimit(Rx, R0, 1);
+    document.getElementById('fL').innerHTML =
+        'Uₓ 可调范围 <b>' + loL.toFixed(2) + ' ~ ' + E.toFixed(1) + ' V</b>（下限不为 0）；' +
+        '调节幅度占全量程 <b class="amber">' + ((1 - loL / E) * 100).toFixed(1) + '%</b>。' +
+        (rec === 'div' ? '　<span class="amber">Rₓ ≫ R₀，此区间被压得很窄，几乎调不动。</span>' : '');
+    document.getElementById('fD').innerHTML =
+        'Uₓ 可调范围 <b>0 ~ ' + E.toFixed(1) + ' V</b>（恒为全量程，<span class="blue">可从 0 起调</span>）；' +
+        '代价是干路电流始终为 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电。';
+
+    document.getElementById('statusPill').innerHTML =
+        'Rₓ/R₀ = ' + k.toFixed(2) + '　→　推荐 <b style="color:' + (rec === 'div' ? '#a9d6ff' : '#ffd9a8') + '">' +
+        (rec === 'div' ? '分压式' : '限流式') + '</b>' +
+        (rec === 'div' ? '（限流式几乎调节不动）' : (k < 0.2 ? '（此时分压式非线性严重且耗能大）' : '（更节能、电路更简单；若要求电压从 0 起调则仍须分压式）'));
+
+    document.getElementById('axL').textContent = '横轴：' + (xModeL === 'rx' ? 'Rₓ' : '滑片');
+    document.getElementById('axD').textContent = '横轴：' + (xModeD === 'rx' ? 'Rₓ' : '滑片');
+    document.getElementById('axL').classList.toggle('active', xModeL === 's');
+    document.getElementById('axD').classList.toggle('active', xModeD === 's');
+
+    drawPlot('cvL', 'limit', sL, xModeL);
+    drawPlot('cvD', 'div', sD, xModeD);
 }
 
 // ---------- 事件 ----------
@@ -452,27 +473,39 @@ function bindRange(id, fn){
     el.addEventListener('input', function(){ fn(parseFloat(el.value)); update(); });
 }
 bindRange('sE', function(v){ E = v; });
-bindRange('sR0', function(v){ R0 = v; });
-bindRange('sRx', function(v){ Rx = v; });
-bindRange('sS', function(v){ s = v / 100; });
-document.getElementById('fLimit').addEventListener('click', function(){
-    famType='limit'; this.classList.add('active'); document.getElementById('fDiv').classList.remove('active'); update();
-});
-document.getElementById('fDiv').addEventListener('click', function(){
-    famType='div'; this.classList.add('active'); document.getElementById('fLimit').classList.remove('active'); update();
-});
-function bindToggle(id, elId){
-    document.getElementById(id).addEventListener('click', function(){
-        this.classList.toggle('active');
-        document.getElementById(elId).style.display = this.classList.contains('active') ? '' : 'none';
+bindRange('sR0', function(v){ R0 = tToR(v); });
+bindRange('sRx', function(v){ Rx = tToR(v); });
+bindRange('sSL', function(v){ sL = v / 100; });
+bindRange('sSD', function(v){ sD = v / 100; });
+
+// 快捷按钮：设定共享参数
+var presets = document.querySelectorAll('[data-rx]');
+for (var pi = 0; pi < presets.length; pi++){
+    presets[pi].addEventListener('click', function(){
+        Rx = parseFloat(this.getAttribute('data-rx'));
+        R0 = parseFloat(this.getAttribute('data-r0'));
+        document.getElementById('sRx').value = rToT(Rx);
+        document.getElementById('sR0').value = rToT(R0);
+        update();
     });
 }
-bindToggle('tCircuits','colCircuits');
-bindToggle('tPlot','colPlots');
-bindToggle('tNote','noteBox');
-window.addEventListener('resize', function(){ drawCV1(); drawCV2(); });
 
-function init(){ update(); }
+function bindAxis(btnId, setter, getter){
+    document.getElementById(btnId).addEventListener('click', function(){
+        setter(getter() === 'rx' ? 's' : 'rx');
+        update();
+    });
+}
+bindAxis('axL', function(v){ xModeL = v; }, function(){ return xModeL; });
+bindAxis('axD', function(v){ xModeD = v; }, function(){ return xModeD; });
+
+window.addEventListener('resize', function(){ update(); });
+
+function init(){
+    document.getElementById('sR0').value = rToT(R0);
+    document.getElementById('sRx').value = rToT(Rx);
+    update();
+}
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 else init();
 </script>
