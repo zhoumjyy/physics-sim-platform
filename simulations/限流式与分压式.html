@@ -331,20 +331,13 @@ function drawPlot(cvId, kind, sCur, xMode){
     }
     var xToPx = function(v){ return x0 + (v / Xmax) * (x1 - x0); };
 
-    // ---- 右轴（电流）量程：线性，自动取整 ----
+    // ---- 右轴（电流）量程：线性，按当前曲线自动取整（保证 I 虚线可见） ----
     var iMaxSample = 0;
     for (var q = 1; q <= 80; q++){
         var xv = (xMode === 's') ? (q / 80) : (Xmax * q / 80);
         var iv = iAt(xv);
         if (iv > iMaxSample) iMaxSample = iv;
     }
-    (xMode === 'rx' ? [0.2, 0.4, 0.6, 0.8, 1.0] : []).forEach(function(ss){
-        for (var r = 1; r <= 40; r++){
-            var xv2 = Xmax * r / 40;
-            var f2 = (kind === 'limit') ? iLimit(xv2, R0, ss) : iDiv(xv2, R0, ss);
-            if (f2 > iMaxSample) iMaxSample = f2;
-        }
-    });
     var iTop = niceNum(iMaxSample * 1.1);
 
     var uToPy = function(u){ return y0 - (u / E) * (y0 - y1); };
