@@ -58,6 +58,7 @@ const testCode = `
   uLimit:uLimit, uDiv:uDiv, iLimit:iLimit, iDiv:iDiv, recType:recType,
   svgLimit:svgLimit, svgDiv:svgDiv, drawPlot:drawPlot, update:update,
   tToR:tToR, rToT:rToT, rxAxisMax:rxAxisMax, niceNum:niceNum, rxFamily:rxFamily,
+  iAxisTop:iAxisTop,
   setVals:function(e,r,rx,ss){ E=e;R0=r;Rx=rx;sL=ss;sD=ss; }
 };`;
 try { eval(code + testCode); }
@@ -102,6 +103,21 @@ T.setVals(3,20,20,0.5); assert(T.rxAxisMax()===50, 'Rx=20,R0=20 → 横轴上限
 T.setVals(3,20,200,0.5);assert(T.rxAxisMax()===300,'Rx=200（> 量程档 200）→ 横轴上限自动升到 300 Ω');
 T.setVals(3,500,500,0.5);assert(T.rxAxisMax()===500,'极端值 500 Ω 仍在量程内');
 assert(T.niceNum(0.017)===0.02, '电流轴自动量程向上取整（0.017 → 0.02）');
+
+console.log('— 电流轴量程包裹性（曲线既不顶穿也不被压扁）—');
+[['limit',0.5,'s'],['limit',0.5,'rx'],['div',0.5,'s'],['div',0.5,'rx'],
+ ['limit',1,'s'],['div',1,'s'],['limit',0,'s'],['div',0,'s']].forEach(function(c){
+  var cases = [[3,20,20],[3,20,200],[12,0.1,500],[3,500,0.1],[1,1,1]];
+  cases.forEach(function(p){
+    T.setVals(p[0], p[1], p[2], c[1]);
+    var r = T.iAxisTop(c[0], c[1], c[2]);
+    assert(r.top >= r.max - 1e-12 && r.max > 0 && r.top <= r.max * 1.45,
+      c[0]+'/'+c[2]+' E='+p[0]+' R₀='+p[1]+' Rₓ='+p[2]+'：量程 '+r.top.toFixed(3)+' ≥ 峰值 '+r.max.toFixed(3)+'（浪费 ≤45%）');
+  });
+});
+T.setVals(3,20,20,0.5);
+assert(near(T.iAxisTop('limit',0.5,'s').top, 0.2, 1e-9), '限流式 Rx=20,R0=20 → 电流轴取 0.2 A（峰值 0.15 A）');
+assert(near(T.iAxisTop('div',0.5,'s').top, 0.2, 1e-9), '分压式 Rx=20,R0=20 → 电流轴同样取 0.2 A（两图量程一致，便于对照）');
 
 console.log('— 函数簇与滑条归属（本次修正的核心）—');
 T.setVals(3,20,20,0.5);
