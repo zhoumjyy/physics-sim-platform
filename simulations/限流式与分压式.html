@@ -14,150 +14,209 @@
         padding: 6px; color: #eef4fc; overflow: hidden; font-size: 15px;
     }
     .sim-card {
-        width: 100%; max-width: 2200px; height: calc(100vh - 12px);
+        width: 100%; max-width: 2400px; height: calc(100vh - 12px);
         background: rgba(18, 34, 50, 0.40);
         backdrop-filter: blur(18px) saturate(180%);
         -webkit-backdrop-filter: blur(18px) saturate(180%);
         border-radius: 20px; border: 1px solid rgba(255,255,255,0.07);
         box-shadow: 0 24px 50px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
-        display: flex; flex-direction: column; overflow: hidden;
+        display: flex; gap: 10px; padding: 10px; overflow: hidden;
     }
 
-    /* ===== 顶部共享参数 ===== */
-    .toolbar {
-        flex: 0 0 auto; background: rgba(0,0,0,0.20);
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-        padding: 7px 14px; display: flex; flex-direction: column; gap: 6px;
+    /* ================= 左侧：参数数据栏 ================= */
+    .side {
+        flex: 0 0 clamp(250px, 21vw, 330px);
+        display: flex; flex-direction: column; gap: 8px;
+        min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 3px;
     }
-    .tb-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .title { font-size: 17px; font-weight: 600; color: #d6e6ff; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-    .title small { opacity: 0.48; font-weight: 300; font-size: 12px; }
-    .status { font-size: 12.5px; color: #cfe2ff; background: rgba(255,255,255,0.035);
-        border: 1px solid rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 20px; flex: 1 1 auto; min-width: 200px; }
-    .group { display: flex; align-items: center; gap: 7px; padding: 4px 11px;
-        background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; }
-    .group-label { font-size: 12px; color: #7fa6d0; white-space: nowrap; }
-    .val { font-size: 13px; color: #ffe2a8; min-width: 66px; text-align: right; font-variant-numeric: tabular-nums; }
+    .side::-webkit-scrollbar { width: 6px; }
+    .side::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    .side::-webkit-scrollbar-track { background: transparent; }
+
+    .side-title { font-size: 16px; font-weight: 600; color: #d6e6ff; line-height: 1.25; flex: 0 0 auto; }
+    .side-title small { display: block; opacity: 0.45; font-weight: 300; font-size: 11.5px; margin-top: 3px; }
+
+    .panel {
+        flex: 0 0 auto;
+        background: rgba(10, 20, 32, 0.46); border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 14px; padding: 9px 11px 10px;
+        display: flex; flex-direction: column; gap: 7px;
+    }
+    .panel-head { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #cfe2ff; }
+    .panel-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+    .panel-head .badge { margin-left: auto; }
+
+    /* 一行控制：左标签 + 右数值 */
+    .ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        font-size: 12px; color: #86acd4; line-height: 1.3; }
+    .ctl b { color: #ffe2a8; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; }
+    .ctl-line { display: flex; flex-direction: column; gap: 4px; }
 
     button { font-family: inherit; font-size: 12.5px; color: #eaf2ff; cursor: pointer;
         background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
         border-radius: 9px; padding: 5px 10px; transition: all 0.15s ease; white-space: nowrap; }
     button:hover { background: rgba(255,255,255,0.12); }
     button:active { transform: translateY(1px); }
-    button.mini { font-size: 11.5px; padding: 3px 8px; border-radius: 7px; }
+    button.mini { font-size: 11.5px; padding: 4px 7px; border-radius: 8px; }
     button.active { background: rgba(90,170,255,0.30); border-color: rgba(120,190,255,0.6); color: #fff; }
 
-    input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 4px;
-        background: linear-gradient(90deg, #4a8fd8, #2b5a8c); outline: none; cursor: pointer; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 7px; border-radius: 5px;
+        background: linear-gradient(90deg, #4a8fd8, #2b5a8c); outline: none; cursor: pointer; display: block; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
         background: #eaf2ff; border: 2px solid #4a8fd8; box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
-    input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%;
+    input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%;
         background: #eaf2ff; border: 2px solid #4a8fd8; }
-    #sE { width: 108px; } #sR0 { width: 148px; } #sRx { width: 148px; }
 
-    /* ===== 舞台：左右两列 ===== */
-    .stage { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px; }
-    .col { display: flex; flex-direction: column; min-height: 0; gap: 6px;
-        background: rgba(10,20,32,0.42); border: 1px solid rgba(255,255,255,0.06); border-radius: 15px; padding: 8px 10px 9px; }
-    .col-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #cfe2ff; flex: 0 0 auto; }
-    .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
-    .badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; }
+    .quick { display: flex; gap: 5px; }
+    .quick button { flex: 1 1 0; min-width: 0; }
+
+    .badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
     .badge.rec { background: rgba(120,210,140,0.25); color: #bff3cf; }
     .badge.no { background: rgba(255,255,255,0.06); color: #8aa0b8; }
-    .live { margin-left: auto; font-size: 12.5px; color: #c7d8ee; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .live b { color: #ffe2a8; }
 
-    .circuit-wrap { flex: 0 0 auto; height: clamp(116px, 23vh, 196px); }
-    .circuit-wrap svg { width: 100%; height: 100%; display: block; }
+    /* 判定结论条 */
+    .verdict { color: #cfe2ff; font-size: 12.5px; line-height: 1.5; }
+    .verdict b { font-weight: 600; }
 
-    .ctrl { flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
-        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 11px; padding: 4px 9px; }
-    .ctrl-label { font-size: 12px; color: #7fa6d0; white-space: nowrap; }
-    .ctrl input[type=range] { flex: 1 1 auto; min-width: 90px; }
-    .ctrl-val { font-size: 12.5px; color: #ffe2a8; min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
-
-    .plot-wrap { flex: 1 1 auto; min-height: 120px; }
-    .plot-wrap canvas { width: 100%; height: 100%; display: block; }
-    .foot { flex: 0 0 auto; font-size: 12px; color: #a9c4e0; line-height: 1.45; }
+    /* 每列结论 */
+    .foot { font-size: 11.5px; color: #a9c4e0; line-height: 1.5; }
     .foot b { color: #e6f1ff; }
     .foot .amber { color: #ffd9a8; }
     .foot .blue { color: #a9d6ff; }
+    .foot .dim { opacity: .65; }
+    .foot .hint { opacity: .62; }
+    .sep { height: 1px; background: rgba(255,255,255,0.07); margin: 1px 0; }
 
-    @media (max-width: 860px) {
-        body { overflow: auto; }
+    /* ================= 右侧：电路图 + 函数图 ================= */
+    .stage {
+        flex: 1 1 auto; min-width: 0; min-height: 0;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .col {
+        display: flex; flex-direction: column; min-height: 0; gap: 7px;
+        background: rgba(10,20,32,0.42); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 15px; padding: 9px 11px 10px;
+    }
+    .col-head { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #cfe2ff; }
+    .col-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+    .col-head .live { margin-left: auto; font-size: 13px; color: #c7d8ee; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .col-head .live b { color: #ffe2a8; font-size: 14px; }
+    .col-head button.mini { margin-left: 6px; }
+    .col-head .live + button.mini { margin-left: 8px; }
+
+    .circuit-wrap { flex: 0 0 auto; height: clamp(112px, 18vh, 178px); }
+    .circuit-wrap svg { width: 100%; height: 100%; display: block; }
+
+    .plot-wrap { flex: 1 1 auto; min-height: 130px; }
+    .plot-wrap canvas { width: 100%; height: 100%; display: block; }
+
+    /* 窄屏回落 */
+    @media (max-width: 1000px) {
+        body { overflow: auto; padding: 6px; }
+        .sim-card { height: auto; flex-direction: column; }
+        .side { flex: 0 0 auto; overflow: visible; }
         .stage { grid-template-columns: 1fr; }
         .circuit-wrap { height: 170px; }
-        .plot-wrap { min-height: 180px; }
+        .plot-wrap { min-height: 300px; }
+    }
+    /* 矮屏：优先保函数图高度 */
+    @media (max-height: 660px) and (min-width: 1001px) {
+        .circuit-wrap { height: clamp(96px, 15vh, 150px); }
+        .side-title small { display: none; }
+    }
+    /* 矮屏紧凑模式：收掉辅助说明文字，保证「左侧参数全部可见、页面不滚动」 */
+    @media (max-height: 800px) and (min-width: 1001px) {
+        .side { gap: 6px; }
+        .side-title small { display: none; }
+        .panel { padding: 7px 9px 8px; gap: 5px; }
+        .foot .hint { display: none; }
+        #statusDetail { display: none; }
+        .foot .br-extra { display: none; }
+        .circuit-wrap { height: clamp(100px, 15vh, 150px); }
     }
 </style>
 </head>
 <body>
 <div class="sim-card">
-    <div class="toolbar">
-        <div class="tb-row">
-            <div class="title">限流式与分压式 <small>滑动变阻器接法选择 · 横轴＝滑片位置，淡色曲线＝不同 Rₓ（线性坐标）</small></div>
-            <div class="status" id="statusPill">…</div>
+
+    <!-- ===================== 左侧：参数数据 ===================== -->
+    <div class="side">
+        <div class="side-title">
+            限流式与分压式
+            <small>滑动变阻器接法选择 · 左侧调参数，右侧看电路与函数图像</small>
         </div>
-        <div class="tb-row">
-            <div class="group">
-                <span class="group-label">电源 E</span>
+
+        <!-- 共享参数 -->
+        <div class="panel">
+            <div class="panel-head"><span class="dot" style="background:#7fd4a8"></span>可调参数</div>
+            <div class="ctl-line">
+                <div class="ctl"><span>电源电动势 E</span><b id="vE">3.0 V</b></div>
                 <input type="range" id="sE" min="1" max="12" step="0.5" value="3" />
-                <span class="val" id="vE">3.0 V</span>
             </div>
-            <div class="group">
-                <span class="group-label">滑动变阻器 R₀</span>
+            <div class="ctl-line">
+                <div class="ctl"><span>滑动变阻器 R₀</span><b id="vR0">20.0 Ω</b></div>
                 <input type="range" id="sR0" min="0" max="1000" step="1" value="609" />
-                <span class="val" id="vR0">20.0 Ω</span>
             </div>
-            <div class="group">
-                <span class="group-label">待测电阻 Rₓ</span>
+            <div class="ctl-line">
+                <div class="ctl"><span>待测电阻 Rₓ</span><b id="vRx">20.0 Ω</b></div>
                 <input type="range" id="sRx" min="0" max="1000" step="1" value="609" />
-                <span class="val" id="vRx">20.0 Ω</span>
             </div>
-            <div class="group">
-                <span class="group-label">快捷</span>
+            <div class="sep"></div>
+            <div class="quick">
                 <button class="mini" data-rx="200" data-r0="10">Rₓ ≫ R₀</button>
                 <button class="mini" data-rx="50" data-r0="50">Rₓ ≈ R₀</button>
                 <button class="mini" data-rx="10" data-r0="200">Rₓ ≪ R₀</button>
             </div>
         </div>
-    </div>
 
-    <div class="stage">
-        <!-- ===== 左：限流式 ===== -->
-        <div class="col">
-            <div class="col-head">
+        <!-- 判定结论 -->
+        <div class="panel verdict" id="statusPill">…</div>
+
+        <!-- 限流式：滑片 + 结论 -->
+        <div class="panel">
+            <div class="panel-head">
                 <span class="dot" style="background:#ffb86b"></span>限流式接法
                 <span class="badge no" id="bL">—</span>
-                <span class="live">Uₓ = <b id="uL">—</b> V &nbsp; I = <b id="iL">—</b> A</span>
             </div>
-            <div class="circuit-wrap"><svg id="svgL" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
-            <div class="ctrl">
-                <span class="ctrl-label">本图滑片位置</span>
-                <input type="range" id="sSL" min="0" max="100" step="1" value="50" />
-                <span class="ctrl-val" id="vSL">50%</span>
-                <button class="mini" id="axL">横轴：滑片位置</button>
-            </div>
-            <div class="plot-wrap"><canvas id="cvL"></canvas></div>
+            <div class="ctl"><span>本图滑片位置 s</span><b id="vSL">50%</b></div>
+            <input type="range" id="sSL" min="0" max="100" step="1" value="50" />
             <div class="foot" id="fL"></div>
         </div>
 
-        <!-- ===== 右：分压式 ===== -->
+        <!-- 分压式：滑片 + 结论 -->
+        <div class="panel">
+            <div class="panel-head">
+                <span class="dot" style="background:#5fb0ff"></span>分压式接法
+                <span class="badge no" id="bD">—</span>
+            </div>
+            <div class="ctl"><span>本图滑片位置 s</span><b id="vSD">50%</b></div>
+            <input type="range" id="sSD" min="0" max="100" step="1" value="50" />
+            <div class="foot" id="fD"></div>
+        </div>
+    </div>
+
+    <!-- ===================== 右侧：两列 ===================== -->
+    <div class="stage">
+        <!-- 左：限流式 -->
+        <div class="col">
+            <div class="col-head">
+                <span class="dot" style="background:#ffb86b"></span>限流式接法
+                <span class="live">Uₓ = <b id="uL">—</b> V &nbsp; I = <b id="iL">—</b> A</span>
+                <button class="mini" id="axL">横轴：滑片位置</button>
+            </div>
+            <div class="circuit-wrap"><svg id="svgL" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div class="plot-wrap"><canvas id="cvL"></canvas></div>
+        </div>
+
+        <!-- 右：分压式 -->
         <div class="col">
             <div class="col-head">
                 <span class="dot" style="background:#5fb0ff"></span>分压式接法
-                <span class="badge no" id="bD">—</span>
                 <span class="live">Uₓ = <b id="uD">—</b> V &nbsp; I = <b id="iD">—</b> A</span>
-            </div>
-            <div class="circuit-wrap"><svg id="svgD" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
-            <div class="ctrl">
-                <span class="ctrl-label">本图滑片位置</span>
-                <input type="range" id="sSD" min="0" max="100" step="1" value="50" />
-                <span class="ctrl-val" id="vSD">50%</span>
                 <button class="mini" id="axD">横轴：滑片位置</button>
             </div>
+            <div class="circuit-wrap"><svg id="svgD" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
             <div class="plot-wrap"><canvas id="cvD"></canvas></div>
-            <div class="foot" id="fD"></div>
         </div>
     </div>
 </div>
@@ -165,7 +224,7 @@
 <script>
 // ============================================================
 //  限流式与分压式
-//  共享参数：E / R₀ / Rₓ（顶部工具条）
+//  共享参数：E / R₀ / Rₓ（左侧参数栏）
 //  两列各自独立：滑片位置 s → 驱动本列电路图 + 本列函数图
 // ============================================================
 var E = 3.0, R0 = 20, Rx = 20;
@@ -293,8 +352,10 @@ function svgDiv(){
 function niceNum(v){
     if (!(v > 0)) return 1;
     var e10 = Math.pow(10, Math.floor(Math.log10(v))), f = v / e10;
-    var nf = f <= 1 ? 1 : (f <= 2 ? 2 : (f <= 5 ? 5 : 10));
-    return nf * e10;
+    // 细档位：避免 1/2/5 粗跳档把量程撑到峰值的 2 倍以上、导致曲线被压扁
+    var steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+    for (var i = 0; i < steps.length; i++) if (f <= steps[i] + 1e-9) return steps[i] * e10;
+    return 10 * e10;
 }
 function rxAxisMax(){
     var want = Math.max(Rx, R0, 1) * 1.05;
@@ -315,6 +376,18 @@ function rxFamily(){
     });
     return arr;
 }
+// 电流轴量程：只按「当前滑片位置对应的那条曲线」取样，自动向上取整
+function iAxisTop(kind, sCur, xMode){
+    var famI = (kind === 'limit') ? iLimit : iDiv;
+    var Xmax = (xMode === 's') ? 1 : rxAxisMax();
+    var mx = 0, N = 160;
+    for (var q = 1; q <= N; q++){
+        var xv = (xMode === 's') ? (q / N) : (Xmax * q / N);
+        var iv = (xMode === 's') ? famI(Rx, R0, xv) : famI(xv, R0, sCur);
+        if (iv > mx) mx = iv;
+    }
+    return { top: niceNum(mx * 1.1), max: mx };
+}
 
 function drawPlot(cvId, kind, sCur, xMode){
     var cv = document.getElementById(cvId); if (!cv) return;
@@ -328,7 +401,8 @@ function drawPlot(cvId, kind, sCur, xMode){
     var fam  = (kind === 'limit') ? uLimit : uDiv;
     var famI = (kind === 'limit') ? iLimit : iDiv;
     var accent = (kind === 'limit') ? '#ffb86b' : '#5fb0ff';
-    var m = {l: 46, r: 50, t: 12, b: 30};
+    // 高图：上下留白更小，左右留给双轴标注
+    var m = {l: 54, r: 60, t: 16, b: 34};
     var x0 = m.l, x1 = W - m.r, y0 = H - m.b, y1 = m.t;
 
     var Xmax, curX;
@@ -344,42 +418,49 @@ function drawPlot(cvId, kind, sCur, xMode){
     }
     var xToPx = function(v){ return x0 + (v / Xmax) * (x1 - x0); };
 
-    // ---- 右轴（电流）量程：线性，按当前曲线自动取整（保证 I 虚线可见） ----
-    var iMaxSample = 0;
-    for (var q = 1; q <= 80; q++){
-        var xv = (xMode === 's') ? (q / 80) : (Xmax * q / 80);
-        var iv = iAt(xv);
-        if (iv > iMaxSample) iMaxSample = iv;
-    }
-    var iTop = niceNum(iMaxSample * 1.1);
+    // ---- 右轴（电流）量程：线性，只按当前曲线自动取整 ----
+    var iTop = iAxisTop(kind, sCur, xMode).top;
 
     var uToPy = function(u){ return y0 - (u / E) * (y0 - y1); };
     var iToPy = function(I){ return y0 - (I / iTop) * (y0 - y1); };
 
     // ---- 网格与刻度（线性） ----
-    ctx.font = '11px Segoe UI, sans-serif'; ctx.textBaseline = 'alphabetic';
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1;
+    ctx.font = '12px Segoe UI, sans-serif'; ctx.textBaseline = 'alphabetic';
+    ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 1;
     ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
-    ctx.save(); ctx.beginPath(); ctx.rect(x0, y1, x1 - x0, y0 - y1); ctx.clip();
 
-    var xTicks = 5, k;
+    var xTicks = 5, k, frac, px, py, fy;
+    // 网格线：严格落在坐标框内，无需裁剪
+    for (k = 0; k <= xTicks; k++){
+        px = x0 + (k / xTicks) * (x1 - x0);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath(); ctx.moveTo(px, y1); ctx.lineTo(px, y0); ctx.stroke();
+    }
+    for (k = 1; k <= 5; k++){
+        py = y0 - (k / 5) * (y0 - y1);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x1, py); ctx.stroke();
+    }
+    // 刻度数字：画在坐标框之外，必须在 clip 之前完成（否则会被裁掉）
     ctx.textAlign = 'center';
     for (k = 0; k <= xTicks; k++){
-        var frac = k / xTicks, px = x0 + frac * (x1 - x0);
-        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-        ctx.beginPath(); ctx.moveTo(px, y1); ctx.lineTo(px, y0); ctx.stroke();
+        frac = k / xTicks; px = x0 + frac * (x1 - x0);
         var xv2 = frac * Xmax;
         var lab = xMode === 's' ? Math.round(frac * 100) + '%' : (Xmax >= 10 ? xv2.toFixed(0) : xv2.toFixed(1));
-        ctx.fillStyle = '#9fb6d4'; ctx.fillText(lab, px, y0 + 14);
+        ctx.fillStyle = '#9fb6d4'; ctx.fillText(lab, px, y0 + 15);
     }
-    ctx.textAlign = 'right';
-    for (k = 0; k <= 4; k++){
-        var fy = k / 4, py = y0 - fy * (y0 - y1);
-        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-        ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x1, py); ctx.stroke();
-        ctx.fillStyle = '#ffd9a8'; ctx.fillText((fy * E).toFixed(1), x0 - 5, py + 4);
-        ctx.fillStyle = '#8fd8b4'; ctx.fillText((fy * iTop).toFixed(iTop < 1 ? 3 : 2), x1 + 5, py + 4);
+    ctx.textAlign = 'right';   // 左轴电压：向左伸出框外
+    for (k = 0; k <= 5; k++){
+        fy = k / 5; py = y0 - fy * (y0 - y1);
+        ctx.fillStyle = '#ffd9a8'; ctx.fillText((fy * E).toFixed(1), x0 - 6, py + 4);
     }
+    ctx.textAlign = 'left';    // 右轴电流：向右伸出框外，不再压住曲线
+    for (k = 0; k <= 5; k++){
+        fy = k / 5; py = y0 - fy * (y0 - y1);
+        ctx.fillStyle = '#8fd8b4'; ctx.fillText((fy * iTop).toFixed(iTop < 1 ? 3 : 2), x1 + 6, py + 4);
+    }
+
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, y1, x1 - x0, y0 - y1); ctx.clip();
 
     function line(fnU, color, width, dash){
         ctx.strokeStyle = color; ctx.lineWidth = width;
@@ -396,31 +477,49 @@ function drawPlot(cvId, kind, sCur, xMode){
     // ---- 淡色函数簇 ----
     //   横轴=滑片位置 s：簇 = 不同「待测电阻 Rₓ」（拖动 Rₓ 滑条换曲线）
     //   横轴=待测电阻 Rₓ：簇 = 不同「滑片位置」（拖动滑片滑条换曲线）
-    var famLabels = [];
+    var famFns = [], famTexts = [];
     if (xMode === 's'){
         rxFamily().forEach(function(rxf){
             if (Math.abs(rxf - Rx) < 0.02 * Rx) return;
-            line(function(v){ return uToPy(E * fam(rxf, R0, v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
-            famLabels.push({ y: uToPy(E * fam(rxf, R0, 0.62)), t: fmtR(rxf) + 'Ω' });
+            var fnU = function(v){ return E * fam(rxf, R0, v); };
+            line(function(v){ return uToPy(fnU(v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
+            famFns.push(function(fr){ return uToPy(fnU(fr)); });
+            famTexts.push(fmtR(rxf) + 'Ω');
         });
     } else {
         [0.2, 0.4, 0.6, 0.8, 1.0].forEach(function(ss){
             if (Math.abs(ss - sCur) < 0.005) return;
-            line(function(v){ return uToPy(E * fam(v, R0, ss)); }, 'rgba(190,210,235,0.22)', 1.4, []);
-            famLabels.push({ y: uToPy(E * fam(Rx, R0, ss)), t: 's=' + Math.round(ss * 100) + '%' });
+            var fnU2 = function(v){ return E * fam(v, R0, ss); };
+            line(function(v){ return uToPy(fnU2(v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
+            famFns.push(function(fr){ return uToPy(fnU2(fr * Xmax)); });
+            famTexts.push('s=' + Math.round(ss * 100) + '%');
         });
     }
+    // 标注横坐标：在所有候选位置里挑「各条曲线垂直间距最大」的那个，
+    // 这样标出来的数字才真正贴着各自的曲线、不会糊成一团。
+    var labFrac = 0.64, bestGap = -1;
+    [0.10, 0.18, 0.26, 0.34, 0.42, 0.50, 0.58, 0.66, 0.74, 0.82].forEach(function(f){
+        var ys = famFns.map(function(fn){ return fn(f); }).sort(function(a, b){ return a - b; });
+        var mg = 1e9;
+        for (var i2 = 1; i2 < ys.length; i2++) mg = Math.min(mg, ys[i2] - ys[i2 - 1]);
+        if (ys.length < 2) mg = 0;
+        if (mg > bestGap){ bestGap = mg; labFrac = f; }
+    });
+    var labX = x0 + labFrac * (x1 - x0);
+    if (labX > x1 - 48) labX = x1 - 48;
+    var famLabels = famFns.map(function(fn, i2){ return { y: fn(labFrac), t: famTexts[i2] }; });
+
     // ---- 当前曲线：Uₓ 实线 / I 虚线 ----
-    line(function(v){ return uToPy(uAt(v)); }, '#ffd27a', 2.4, []);
-    line(function(v){ return iToPy(iAt(v)); }, '#7fd4a8', 1.9, [6, 4]);
+    line(function(v){ return uToPy(uAt(v)); }, '#ffd27a', 2.6, []);
+    line(function(v){ return iToPy(iAt(v)); }, '#7fd4a8', 2.0, [7, 5]);
 
     // ---- 当前工作点 ----
     var cxp = xToPx(curX);
-    ctx.strokeStyle = 'rgba(255,255,255,0.32)'; ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(cxp, y1); ctx.lineTo(cxp, y0); ctx.stroke(); ctx.setLineDash([]);
     function dot(py, color){
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cxp, py, 4, 0, 7); ctx.fill();
-        ctx.strokeStyle = '#0b1826'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cxp, py, 4.6, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#0b1826'; ctx.lineWidth = 1.6; ctx.stroke();
     }
     dot(uToPy(uAt(curX)), '#ffd27a');
     dot(iToPy(iAt(curX)), '#7fd4a8');
@@ -428,28 +527,40 @@ function drawPlot(cvId, kind, sCur, xMode){
     // ---- 函数簇曲线标注（标出每条淡色曲线对应的参数） ----
     if (famLabels.length){
         famLabels.sort(function(a, b){ return a.y - b.y; });
-        for (var fi = 1; fi < famLabels.length; fi++){
-            if (famLabels[fi].y - famLabels[fi - 1].y < 11) famLabels[fi].y = famLabels[fi - 1].y + 11;
+        var bandTop = y1 + 40, bandBot = y0 - 8;     // 上方留两行图例文字
+        var gap = Math.min(15, famLabels.length > 1 ? (bandBot - bandTop) / (famLabels.length - 1) : 15);
+        for (var fi = 1; fi < famLabels.length; fi++)
+            if (famLabels[fi].y - famLabels[fi - 1].y < gap) famLabels[fi].y = famLabels[fi - 1].y + gap;
+        var over = famLabels[famLabels.length - 1].y - bandBot;
+        if (over > 0) for (var fa = 0; fa < famLabels.length; fa++) famLabels[fa].y -= over;
+        if (famLabels[0].y < bandTop){
+            var dTop = bandTop - famLabels[0].y;
+            for (var fb = 0; fb < famLabels.length; fb++) famLabels[fb].y += dTop;
         }
-        ctx.font = '10px Segoe UI, sans-serif';
+        ctx.font = '11px Segoe UI, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillStyle = 'rgba(186,208,235,0.82)';
+        ctx.fillStyle = 'rgba(186,208,235,0.85)';
         for (var fj = 0; fj < famLabels.length; fj++){
-            var labY = famLabels[fj].y - 4;
-            if (labY < y1 + 9) labY = y1 + 9;
-            if (labY > y0 - 2) labY = y0 - 2;
-            ctx.fillText(famLabels[fj].t, xToPx(0.64), labY);
+            var labY = famLabels[fj].y + 4;
+            if (labY < y1 + 11) labY = y1 + 11;
+            if (labY > y0 - 3) labY = y0 - 3;
+            ctx.fillText(famLabels[fj].t, labX, labY);
         }
     }
     ctx.restore();
 
     // ---- 标注 ----
+    ctx.font = '12px Segoe UI, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffd9a8'; ctx.fillText('Uₓ / V（实线）', x0 + 6, y1 + 12);
+    ctx.fillStyle = '#ffd9a8'; ctx.fillText('Uₓ / V（实线）', x0 + 6, y1 + 13);
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#8fd8b4'; ctx.fillText('I / A（虚线）', x1 - 6, y1 + 12);
+    ctx.fillStyle = '#8fd8b4'; ctx.fillText('I / A（虚线）', x1 - 6, y1 + 13);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(200,220,245,0.55)';
+    ctx.fillText(xMode === 's' ? '淡色曲线 = 不同 Rₓ（拖 Rₓ 滑条换曲线）'
+                               : '淡色曲线 = 不同滑片位置（拖本列滑条换曲线）', x0 + 6, y1 + 29);
     ctx.textAlign = 'center'; ctx.fillStyle = '#9fb6d4';
-    ctx.fillText(xMode === 's' ? '滑动变阻器滑片位置（0 → 100%，线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 3);
+    ctx.fillText(xMode === 's' ? '滑动变阻器滑片位置（0 → 100%，线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 4);
 }
 
 // ---------- 更新 ----------
@@ -478,26 +589,23 @@ function update(){
     bD.textContent = (rec === 'div') ? '✓ 推荐' : '—';
 
     var loL = E * uLimit(Rx, R0, 1);
-    var hint = (xModeL === 's')
-        ? '拖「Rₓ」换曲线 · 拖本图滑条取点'
-        : '拖本图滑条换曲线 · 拖「Rₓ」取点';
+    var hint = (xModeL === 's') ? '拖「Rₓ」换曲线 · 拖本列滑条取点' : '拖本列滑条换曲线 · 拖「Rₓ」取点';
     document.getElementById('fL').innerHTML =
-        'Uₓ 可调范围 <b>' + loL.toFixed(2) + ' ~ ' + E.toFixed(1) + ' V</b>（下限不为 0）；' +
-        '调节幅度占全量程 <b class="amber">' + ((1 - loL / E) * 100).toFixed(1) + '%</b>。' +
-        (rec === 'div' ? '　<span class="amber">Rₓ ≫ R₀，此区间被压得很窄，几乎调不动。</span>' : '') +
-        '　<span style="opacity:.7">（' + hint + '）</span>';
-    var hintD = (xModeD === 's')
-        ? '拖「Rₓ」换曲线 · 拖本图滑条取点'
-        : '拖本图滑条换曲线 · 拖「Rₓ」取点';
+        'Uₓ 可调范围 <b>' + loL.toFixed(2) + ' ~ ' + E.toFixed(1) + ' V</b>（下限不为 0）<br>' +
+        '调节幅度占全量程 <b class="amber">' + ((1 - loL / E) * 100).toFixed(1) + '%</b>' +
+        (rec === 'div' ? '<span class="br-extra"><br><span class="amber">Rₓ ≫ R₀，区间被压得很窄，几乎调不动。</span></span>' : '') +
+        '<div class="hint">（' + hint + '）</div>';
+    var hintD = (xModeD === 's') ? '拖「Rₓ」换曲线 · 拖本列滑条取点' : '拖本列滑条换曲线 · 拖「Rₓ」取点';
     document.getElementById('fD').innerHTML =
-        'Uₓ 可调范围 <b>0 ~ ' + E.toFixed(1) + ' V</b>（恒为全量程，<span class="blue">可从 0 起调</span>）；' +
-        '代价是干路电流始终为 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电。' +
-        '　<span style="opacity:.7">（' + hintD + '）</span>';
+        'Uₓ 可调范围 <b>0 ~ ' + E.toFixed(1) + ' V</b>（恒为全量程，<span class="blue">可从 0 起调</span>）<br>' +
+        '代价：干路电流始终 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电' +
+        '<div class="hint">（' + hintD + '）</div>';
 
     document.getElementById('statusPill').innerHTML =
-        'Rₓ/R₀ = ' + k.toFixed(2) + '　→　推荐 <b style="color:' + (rec === 'div' ? '#a9d6ff' : '#ffd9a8') + '">' +
-        (rec === 'div' ? '分压式' : '限流式') + '</b>' +
-        (rec === 'div' ? '（限流式几乎调节不动）' : (k < 0.2 ? '（此时分压式非线性严重且耗能大）' : '（更节能、电路更简单；若要求电压从 0 起调则仍须分压式）'));
+        'Rₓ / R₀ = <b>' + k.toFixed(2) + '</b>　→　推荐 <b style="color:' + (rec === 'div' ? '#a9d6ff' : '#ffd9a8') + '">' +
+        (rec === 'div' ? '分压式' : '限流式') + '</b><span id="statusDetail"><br><span style="opacity:.62;font-size:11.5px">' +
+        (rec === 'div' ? '限流式几乎调节不动（滑片挪到底也改变不了 Uₓ）' : (k < 0.2 ? '此时分压式非线性严重且耗能大' : '更节能、电路更简单；若要求电压从 0 起调则仍须分压式')) +
+        '</span></span>';
 
     document.getElementById('axL').textContent = '横轴：' + (xModeL === 's' ? '滑片位置' : 'Rₓ');
     document.getElementById('axD').textContent = '横轴：' + (xModeD === 's' ? '滑片位置' : 'Rₓ');
