@@ -103,8 +103,13 @@
     .col-head .live b { color: #ffe2a8; font-size: 14px; }
     .col-head button.mini { margin-left: 6px; }
     .col-head .live + button.mini { margin-left: 8px; }
+    .col-head .axis-tag {
+        margin-left: 8px; font-size: 11.5px; color: #9fb6d4; white-space: nowrap;
+        border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.03);
+        padding: 2px 7px; border-radius: 7px;
+    }
 
-    .circuit-wrap { flex: 0 0 auto; height: clamp(112px, 18vh, 178px); }
+    .circuit-wrap { flex: 0 0 auto; height: clamp(116px, 20vh, 208px); }
     .circuit-wrap svg { width: 100%; height: 100%; display: block; }
 
     .plot-wrap { flex: 1 1 auto; min-height: 130px; }
@@ -119,11 +124,6 @@
         .circuit-wrap { height: 170px; }
         .plot-wrap { min-height: 300px; }
     }
-    /* 矮屏：优先保函数图高度 */
-    @media (max-height: 660px) and (min-width: 1001px) {
-        .circuit-wrap { height: clamp(96px, 15vh, 150px); }
-        .side-title small { display: none; }
-    }
     /* 矮屏紧凑模式：收掉辅助说明文字，保证「左侧参数全部可见、页面不滚动」 */
     @media (max-height: 800px) and (min-width: 1001px) {
         .side { gap: 6px; }
@@ -132,7 +132,18 @@
         .foot .hint { display: none; }
         #statusDetail { display: none; }
         .foot .br-extra { display: none; }
-        .circuit-wrap { height: clamp(100px, 15vh, 150px); }
+        .circuit-wrap { height: clamp(104px, 16.5vh, 162px); }
+    }
+    /* 更矮的窗口：优先保函数图高度（须写在紧凑模式之后才生效） */
+    @media (max-height: 660px) and (min-width: 1001px) {
+        .circuit-wrap { height: clamp(96px, 15vh, 150px); }
+        .side-title small { display: none; }
+        .side { gap: 4px; }
+        .side-title { font-size: 14px; }
+        .panel { padding: 5px 8px 6px; gap: 4px; }
+        .panel-head { font-size: 12.5px; }
+        .quick { gap: 4px; }
+        .quick button { padding: 3px 5px; font-size: 11px; }
     }
 </style>
 </head>
@@ -201,10 +212,10 @@
         <div class="col">
             <div class="col-head">
                 <span class="dot" style="background:#ffb86b"></span>限流式接法
-                <span class="live">Uₓ = <b id="uL">—</b> V &nbsp; I = <b id="iL">—</b> A</span>
-                <button class="mini" id="axL">横轴：滑片位置</button>
+                <span class="live">Uₓ = <b id="uL">—</b> V &nbsp; I = <b id="iL">—</b> A &nbsp; R_接 = <b id="rL">—</b> Ω</span>
+                <span class="axis-tag" id="axL">横轴：接入阻值 / Ω</span>
             </div>
-            <div class="circuit-wrap"><svg id="svgL" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div class="circuit-wrap"><svg id="svgL" viewBox="0 0 500 168" preserveAspectRatio="xMidYMid meet"></svg></div>
             <div class="plot-wrap"><canvas id="cvL"></canvas></div>
         </div>
 
@@ -212,10 +223,10 @@
         <div class="col">
             <div class="col-head">
                 <span class="dot" style="background:#5fb0ff"></span>分压式接法
-                <span class="live">Uₓ = <b id="uD">—</b> V &nbsp; I = <b id="iD">—</b> A</span>
-                <button class="mini" id="axD">横轴：滑片位置</button>
+                <span class="live">Uₓ = <b id="uD">—</b> V &nbsp; I = <b id="iD">—</b> A &nbsp; R_接 = <b id="rD">—</b> Ω</span>
+                <span class="axis-tag" id="axD">横轴：接入阻值 / Ω</span>
             </div>
-            <div class="circuit-wrap"><svg id="svgD" viewBox="0 0 500 190" preserveAspectRatio="xMidYMid meet"></svg></div>
+            <div class="circuit-wrap"><svg id="svgD" viewBox="0 0 500 168" preserveAspectRatio="xMidYMid meet"></svg></div>
             <div class="plot-wrap"><canvas id="cvD"></canvas></div>
         </div>
     </div>
@@ -229,7 +240,6 @@
 // ============================================================
 var E = 3.0, R0 = 20, Rx = 20;
 var sL = 0.5, sD = 0.5;                 // 两列各自的滑片位置
-var xModeL = 's', xModeD = 's';         // 各自函数图横轴：默认「滑片位置」
 var R_MIN = 0.1, R_MAX = 500;
 
 function uLimit(rx, r0, ss){ return rx / (rx + ss * r0); }                        // 限流式 Uₓ/E
@@ -272,30 +282,77 @@ function battery(bx, cy){
     return g;
 }
 
-var RT = 46, RB = 146, XB = 62, XR = 400;   // 上/下导轨、电源竖线、右支路
+var RT = 46, RB = 132, XB = 62, XR = 400;   // 上/下导轨、电源竖线、右支路
+
+// ---------- 滑动变阻器几何（限流式；绘制与自检共用）----------
+//   真实结构：瓷筒（外面绕电阻丝）在下，金属杆在上，两端各有一个支架；
+//   4 个接线柱 = 瓷筒下方的 A（左）/ B（右） + 金属杆两端的 C（左）/ D（右）。
+//   限流式「一上一下」接法：导线接 A，再从金属杆一端引出（本图用右端 D）。
+function rheoGeom(){
+    var RX0 = 150, RX1 = 320;
+    return {
+        RX0: RX0, RX1: RX1,
+        RY: RT - 30,              // 金属杆（上接线柱）高度
+        TT: RT - 8, TB: RT + 8,   // 瓷筒（电阻丝）上、下沿
+        STUB: RT + 18,            // 下接线柱小柱的下端
+        wx: RX0 + sL * (RX1 - RX0) // 滑片位置：A→P 段占全长比例 = sL
+    };
+}
 
 // ---------- 限流式电路 ----------
 function svgLimit(){
-    var e = [];
-    e.push(ln(XB, RT, XR, RT));
+    var g = rheoGeom(), e = [], wx = g.wx;
     e.push(ln(XR, RB, XB, RB));
     // 电源
-    e.push(ln(XB, RT, XB, 88)); e.push(ln(XB, 99, XB, RB)); e.push(battery(XB, 96));
+    e.push(ln(XB, RT, XB, 81)); e.push(ln(XB, 92, XB, RB)); e.push(battery(XB, 89));
     e.push(txt(XB, RT - 8, 'E = '+E.toFixed(1)+' V', {fill:'#ffd27a', size:11.5}));
     // 电流表
     e.push(ln(XB, RT, 88, RT));
     e.push(circ(101, RT, 13, 'rgba(20,40,60,0.6)', '#9fd0ff'));
     e.push(txt(101, RT + 4, 'A', {fill:'#9fd0ff', size:12}));
-    e.push(ln(114, RT, 150, RT));
-    // 滑动变阻器（串联在干路）
-    var wx = 150 + sL * (320 - 150);
-    e.push('<rect x="150" y="'+(RT-7)+'" width="170" height="14" rx="3" fill="rgba(255,255,255,0.05)" stroke="#5b7da0" stroke-width="1"/>');
-    e.push('<rect x="150" y="'+(RT-7)+'" width="'+Math.max(0, wx-150).toFixed(1)+'" height="14" rx="3" fill="rgba(255,184,107,0.22)"/>');
-    e.push(ln(wx, RT - 22, wx, RT - 9, '#ffb86b', 2));
-    e.push(poly((wx-5)+' '+(RT-10)+' '+(wx+5)+' '+(RT-10)+' '+wx+' '+(RT-2), '#ffb86b'));
-    e.push(circ(wx, RT, 3.6, '#ffb86b', '#ffb86b'));
-    e.push(txt(235, RT - 14, 'R₀ = '+fmtR(R0)+' Ω', {fill:'#cdd9e8', size:11.5}));
-    e.push(ln(320, RT, XR, RT));
+    // 导线：电流表 → 下折 → 接到瓷筒下方的接线柱 A（不是直接搭在电阻丝上）
+    e.push(ln(114, RT, 132, RT));
+    e.push(ln(132, RT, 132, g.STUB));
+    e.push(ln(132, g.STUB, g.RX0, g.STUB));
+    // ---- 变阻器本体 ----
+    // 瓷筒（电阻丝整体，暗色底）
+    e.push('<rect x="'+g.RX0+'" y="'+g.TT+'" width="'+(g.RX1-g.RX0)+'" height="'+(g.TB-g.TT)+'" rx="3" fill="rgba(255,255,255,0.04)" stroke="#45607e" stroke-width="1"/>');
+    // 未接入段 P→B：虚线 + 压暗（B 端空置，这段没有电流）
+    if (g.RX1 - wx > 1.5){
+        e.push('<rect x="'+wx.toFixed(1)+'" y="'+g.TT+'" width="'+(g.RX1-wx).toFixed(1)+'" height="'+(g.TB-g.TT)+'" rx="3" fill="rgba(8,14,24,0.34)" stroke="#3f5a76" stroke-width="1" stroke-dasharray="4 3"/>');
+    }
+    // 接入段 A→P：琥珀实心高亮
+    if (wx - g.RX0 > 1.5){
+        e.push('<rect x="'+g.RX0+'" y="'+g.TT+'" width="'+(wx-g.RX0).toFixed(1)+'" height="'+(g.TB-g.TT)+'" rx="3" fill="rgba(255,184,107,0.32)" stroke="#ffb86b" stroke-width="1.2"/>');
+    }
+    // 金属杆（上接线柱）+ 两端支架
+    e.push(ln(g.RX0, g.RY, g.RX1, g.RY, '#9fb6d4', 2.5));
+    e.push(ln(wx, g.RY, g.RX1, g.RY, '#ffb86b', 2.5));    // 电流经滑片后在金属杆上流向上接线柱
+    e.push(ln(g.RX0, g.RY, g.RX0, g.TT, '#45607e', 2));
+    e.push(ln(g.RX1, g.RY, g.RX1, g.TT, '#45607e', 2));
+    e.push(circ(g.RX0, g.RY, 2.6, '#9fb6d4', '#9fb6d4'));
+    e.push(circ(g.RX1, g.RY, 2.6, '#ffb86b', '#ffb86b'));
+    // 滑片：滑块骑在金属杆上 → 连杆 → 触头压在电阻丝上（不再悬空）
+    e.push('<rect x="'+(wx-5).toFixed(1)+'" y="'+(g.RY-4)+'" width="10" height="7" rx="2" fill="#ffb86b"/>');
+    e.push(ln(wx, g.RY, wx, g.TT - 8, '#ffb86b', 2.5));
+    e.push(poly((wx-5).toFixed(1)+' '+(g.TT-8)+' '+(wx+5).toFixed(1)+' '+(g.TT-8)+' '+wx.toFixed(1)+' '+g.TT, '#ffb86b'));
+    e.push(circ(wx, g.TT, 2.8, '#ffb86b', '#ffb86b'));
+    // 下接线柱 A / B（B 空置）
+    e.push(ln(g.RX0, g.TB, g.RX0, g.STUB, '#ffb86b', 2));
+    e.push(circ(g.RX0, g.STUB, 2.8, '#ffb86b', '#ffb86b'));
+    e.push(ln(g.RX1, g.TB, g.RX1, g.STUB, '#45607e', 2));
+    e.push(circ(g.RX1, g.STUB, 2.8, '#45607e', '#45607e'));
+    // 引出导线：上接线柱 → 绕到干路 → 接 Rₓ
+    e.push(ln(g.RX1, g.RY, 344, g.RY));
+    e.push(ln(344, g.RY, 344, RT));
+    e.push(ln(344, RT, XR, RT));
+    // 标注
+    e.push(txt(g.RX0, g.STUB + 13, 'A', {fill:'#ffb86b', size:11}));
+    e.push(txt(g.RX1, g.STUB + 13, 'B', {fill:'#5b7da0', size:11}));
+    e.push(txt(g.RX1 + 9, g.STUB + 13, '空置（未接线）', {fill:'rgba(150,175,205,0.8)', size:9.5, anchor:'start'}));
+    e.push(txt(496, g.RY - 7, '电流：滑片 → 金属杆 → 上接线柱', {fill:'rgba(159,182,212,0.85)', size:9.5, anchor:'end'}));
+    e.push(txt(235, g.STUB + 30, '接入电路的是 A→P 段：s·R₀ = '+fmtR(sL*R0)+' Ω', {fill:'#ffb86b', size:11.5}));
+    e.push(txt(235, g.STUB + 45, 'R₀ 全阻 = '+fmtR(R0)+' Ω（P→B 段不接入，见虚线部分）', {fill:'#9fb6d4', size:10.5}));
     // 待测电阻 Rₓ
     e.push(ln(XR, RT, XR, 72)); e.push(zpath(XR, 72, 48, 7, 5)); e.push(ln(XR, 120, XR, RB));
     // 电压表（并联在 Rₓ 两端）
@@ -315,13 +372,17 @@ function svgDiv(){
     var e = [];
     e.push(ln(XB, RT, XR, RT));
     e.push(ln(XR, RB, XB, RB));
-    e.push(ln(XB, RT, XB, 88)); e.push(ln(XB, 99, XB, RB)); e.push(battery(XB, 96));
+    e.push(ln(XB, RT, XB, 81)); e.push(ln(XB, 92, XB, RB)); e.push(battery(XB, 89));
     e.push(txt(XB, RT - 8, 'E = '+E.toFixed(1)+' V', {fill:'#ffd27a', size:11.5}));
-    // 变阻器全阻 R₀ 跨接在电源两端
+    // 变阻器全阻 R₀ 跨接在电源两端；P→B 段就是分压输出段（= 横轴的接入阻值 R_接）
+    if (len > 1.5){
+        e.push('<rect x="'+(XR-10)+'" y="'+ys.toFixed(1)+'" width="20" height="'+len.toFixed(1)+'" rx="5" fill="rgba(95,176,255,0.20)"/>');
+    }
     e.push(zpath(XR, RT, RB - RT, 7, 7));
     e.push(txt(XR + 13, 100, 'R₀ = '+fmtR(R0)+' Ω', {fill:'#cdd9e8', size:11.5, anchor:'start'}));
-    // 滑片触头
-    e.push(poly((XR-16)+' '+(ys-5)+' '+(XR-16)+' '+(ys+5)+' '+(XR-4)+' '+ys, '#5fb0ff'));
+    e.push(txt(XR + 13, 115, '输出段 = '+fmtR(sD * R0)+' Ω', {fill:'#5fb0ff', size:10.5, anchor:'start'}));
+    // 滑片触头（箭头收窄到电流表右侧，避免被电流表挡住）
+    e.push(poly((XR-14)+' '+(ys-5)+' '+(XR-14)+' '+(ys+5)+' '+(XR-4)+' '+ys, '#5fb0ff'));
     e.push(circ(XR, ys, 3.6, '#5fb0ff', '#5fb0ff'));
     // Rₓ 支路：触头 → 电流表 → Rₓ → 下导轨
     e.push(ln(XR, ys, 387, ys));
@@ -357,13 +418,14 @@ function niceNum(v){
     for (var i = 0; i < steps.length; i++) if (f <= steps[i] + 1e-9) return steps[i] * e10;
     return 10 * e10;
 }
-function rxAxisMax(){
-    var want = Math.max(Rx, R0, 1) * 1.05;
-    var list = [1, 2, 5, 10, 20, 50, 100, 150, 200, 300, 400, 500];
-    for (var i = 0; i < list.length; i++) if (list[i] >= want) return list[i];
-    return 500;
+// 横轴刻度文字：接入阻值（Ω）的紧凑写法
+function fmtAxisR(v){
+    if (Math.abs(v) < 1e-9) return '0';
+    if (v >= 100) return String(Math.round(v));
+    if (v >= 10) return String(Math.round(v * 10) / 10);
+    return String(Math.round(v * 100) / 100);
 }
-// 横轴=滑片位置时的函数簇：以 R₀ 为标尺取一组待测电阻
+// 函数簇：以 R₀ 为标尺取一组待测电阻（横轴固定为「滑动变阻器接入阻值 R_接 / Ω」）
 function rxFamily(){
     var ratios = [0.2, 0.5, 1, 2, 5, 10], arr = [];
     ratios.forEach(function(r){
@@ -376,20 +438,11 @@ function rxFamily(){
     });
     return arr;
 }
-// 电流轴量程：只按「当前滑片位置对应的那条曲线」取样，自动向上取整
-function iAxisTop(kind, sCur, xMode){
-    var famI = (kind === 'limit') ? iLimit : iDiv;
-    var Xmax = (xMode === 's') ? 1 : rxAxisMax();
-    var mx = 0, N = 160;
-    for (var q = 1; q <= N; q++){
-        var xv = (xMode === 's') ? (q / N) : (Xmax * q / N);
-        var iv = (xMode === 's') ? famI(Rx, R0, xv) : famI(xv, R0, sCur);
-        if (iv > mx) mx = iv;
-    }
-    return { top: niceNum(mx * 1.1), max: mx };
-}
 
-function drawPlot(cvId, kind, sCur, xMode){
+// ---------- 绘图：只画「Uₓ 随滑动变阻器接入阻值 R_接 变化」的函数簇 ----------
+//   横轴 s = R_接 / R₀ ∈ [0, 1]（刻度按 Ω 标注）；纵轴 Uₓ ∈ [0, E]
+//   不再画电流曲线与右轴（避免无关的线干扰"调节范围"这一教学重点）
+function drawPlot(cvId, kind, sCur){
     var cv = document.getElementById(cvId); if (!cv) return;
     var ctx = cv.getContext('2d');
     var dpr = window.devicePixelRatio || 1;
@@ -398,67 +451,37 @@ function drawPlot(cvId, kind, sCur, xMode){
     cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
 
-    var fam  = (kind === 'limit') ? uLimit : uDiv;
-    var famI = (kind === 'limit') ? iLimit : iDiv;
+    var fam = (kind === 'limit') ? uLimit : uDiv;
     var accent = (kind === 'limit') ? '#ffb86b' : '#5fb0ff';
-    // 高图：上下留白更小，左右留给双轴标注
-    var m = {l: 54, r: 60, t: 16, b: 34};
+    var m = {l: 48, r: 22, t: 16, b: 34};
     var x0 = m.l, x1 = W - m.r, y0 = H - m.b, y1 = m.t;
 
-    var Xmax, curX;
-    var uAt, iAt;
-    if (xMode === 's'){
-        Xmax = 1; curX = sCur;
-        uAt = function(v){ return E * fam(Rx, R0, v); };
-        iAt = function(v){ return famI(Rx, R0, v); };
-    } else {
-        Xmax = rxAxisMax(); curX = Rx;
-        uAt = function(v){ return E * fam(v, R0, sCur); };
-        iAt = function(v){ return famI(v, R0, sCur); };
-    }
-    var xToPx = function(v){ return x0 + (v / Xmax) * (x1 - x0); };
-
-    // ---- 右轴（电流）量程：线性，只按当前曲线自动取整 ----
-    var iTop = iAxisTop(kind, sCur, xMode).top;
-
+    var xToPx = function(s){ return x0 + s * (x1 - x0); };
     var uToPy = function(u){ return y0 - (u / E) * (y0 - y1); };
-    var iToPy = function(I){ return y0 - (I / iTop) * (y0 - y1); };
+    var uAt = function(s){ return E * fam(Rx, R0, s); };
 
-    // ---- 网格与刻度（线性） ----
+    // ---- 坐标框与网格（线性） ----
     ctx.font = '12px Segoe UI, sans-serif'; ctx.textBaseline = 'alphabetic';
     ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 1;
     ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
-
-    var xTicks = 5, k, frac, px, py, fy;
-    // 网格线：严格落在坐标框内，无需裁剪
-    for (k = 0; k <= xTicks; k++){
-        px = x0 + (k / xTicks) * (x1 - x0);
+    var xTicks = 5, k;
+    for (k = 1; k < xTicks; k++){
+        var gx = x0 + (k / xTicks) * (x1 - x0);
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.beginPath(); ctx.moveTo(px, y1); ctx.lineTo(px, y0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(gx, y1); ctx.lineTo(gx, y0); ctx.stroke();
     }
     for (k = 1; k <= 5; k++){
-        py = y0 - (k / 5) * (y0 - y1);
+        var gy = y0 - (k / 5) * (y0 - y1);
         ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.beginPath(); ctx.moveTo(x0, py); ctx.lineTo(x1, py); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x1, gy); ctx.stroke();
     }
-    // 刻度数字：画在坐标框之外，必须在 clip 之前完成（否则会被裁掉）
-    ctx.textAlign = 'center';
-    for (k = 0; k <= xTicks; k++){
-        frac = k / xTicks; px = x0 + frac * (x1 - x0);
-        var xv2 = frac * Xmax;
-        var lab = xMode === 's' ? Math.round(frac * 100) + '%' : (Xmax >= 10 ? xv2.toFixed(0) : xv2.toFixed(1));
-        ctx.fillStyle = '#9fb6d4'; ctx.fillText(lab, px, y0 + 15);
-    }
-    ctx.textAlign = 'right';   // 左轴电压：向左伸出框外
-    for (k = 0; k <= 5; k++){
-        fy = k / 5; py = y0 - fy * (y0 - y1);
-        ctx.fillStyle = '#ffd9a8'; ctx.fillText((fy * E).toFixed(1), x0 - 6, py + 4);
-    }
-    ctx.textAlign = 'left';    // 右轴电流：向右伸出框外，不再压住曲线
-    for (k = 0; k <= 5; k++){
-        fy = k / 5; py = y0 - fy * (y0 - y1);
-        ctx.fillStyle = '#8fd8b4'; ctx.fillText((fy * iTop).toFixed(iTop < 1 ? 3 : 2), x1 + 6, py + 4);
-    }
+    // 刻度数字：全部画在坐标框之外，且必须在 clip() 之前
+    ctx.textAlign = 'center'; ctx.fillStyle = '#9fb6d4';
+    for (k = 0; k <= xTicks; k++)
+        ctx.fillText(fmtAxisR((k / xTicks) * R0), x0 + (k / xTicks) * (x1 - x0), y0 + 15);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#c7d8ee';
+    for (k = 0; k <= 5; k++)
+        ctx.fillText((k / 5 * E).toFixed(1), x0 - 6, y0 - (k / 5) * (y0 - y1) + 4);
 
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y1, x1 - x0, y0 - y1); ctx.clip();
 
@@ -467,64 +490,46 @@ function drawPlot(cvId, kind, sCur, xMode){
         ctx.setLineDash(dash || []);
         ctx.beginPath();
         for (var j = 0; j <= 180; j++){
-            var xv = (xMode === 's') ? (j / 180) : (Xmax * j / 180);
-            var px = xToPx(xv), py = fnU(xv);
+            var s = j / 180, px = xToPx(s), py = fnU(s);
             if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
         ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // ---- 淡色函数簇 ----
-    //   横轴=滑片位置 s：簇 = 不同「待测电阻 Rₓ」（拖动 Rₓ 滑条换曲线）
-    //   横轴=待测电阻 Rₓ：簇 = 不同「滑片位置」（拖动滑片滑条换曲线）
+    // ---- 淡色函数簇：每条曲线对应一个待测电阻 Rₓ ----
     var famFns = [], famTexts = [];
-    if (xMode === 's'){
-        rxFamily().forEach(function(rxf){
-            if (Math.abs(rxf - Rx) < 0.02 * Rx) return;
-            var fnU = function(v){ return E * fam(rxf, R0, v); };
-            line(function(v){ return uToPy(fnU(v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
-            famFns.push(function(fr){ return uToPy(fnU(fr)); });
-            famTexts.push(fmtR(rxf) + 'Ω');
-        });
-    } else {
-        [0.2, 0.4, 0.6, 0.8, 1.0].forEach(function(ss){
-            if (Math.abs(ss - sCur) < 0.005) return;
-            var fnU2 = function(v){ return E * fam(v, R0, ss); };
-            line(function(v){ return uToPy(fnU2(v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
-            famFns.push(function(fr){ return uToPy(fnU2(fr * Xmax)); });
-            famTexts.push('s=' + Math.round(ss * 100) + '%');
-        });
-    }
-    // 标注横坐标：在所有候选位置里挑「各条曲线垂直间距最大」的那个，
+    rxFamily().forEach(function(rxf){
+        if (Math.abs(rxf - Rx) < 0.02 * Rx) return;
+        var fnU = function(s){ return E * fam(rxf, R0, s); };
+        line(function(s){ return uToPy(fnU(s)); }, 'rgba(190,210,235,0.26)', 1.4, []);
+        famFns.push(function(fr){ return uToPy(fnU(fr)); });
+        famTexts.push(fmtR(rxf) + 'Ω');
+    });
+    // 标注横坐标：在所有候选位置里挑「各曲线垂直间距最大」的那个，
     // 这样标出来的数字才真正贴着各自的曲线、不会糊成一团。
-    var labFrac = 0.64, bestGap = -1;
-    [0.10, 0.18, 0.26, 0.34, 0.42, 0.50, 0.58, 0.66, 0.74, 0.82].forEach(function(f){
+    var labFrac = 0.82, bestGap = -1;
+    [0.30, 0.40, 0.50, 0.60, 0.68, 0.74, 0.80, 0.86, 0.92].forEach(function(f){
         var ys = famFns.map(function(fn){ return fn(f); }).sort(function(a, b){ return a - b; });
         var mg = 1e9;
         for (var i2 = 1; i2 < ys.length; i2++) mg = Math.min(mg, ys[i2] - ys[i2 - 1]);
         if (ys.length < 2) mg = 0;
         if (mg > bestGap){ bestGap = mg; labFrac = f; }
     });
-    var labX = x0 + labFrac * (x1 - x0);
-    if (labX > x1 - 48) labX = x1 - 48;
+    var labX = xToPx(labFrac);
+    if (labX > x1 - 46) labX = x1 - 46;
     var famLabels = famFns.map(function(fn, i2){ return { y: fn(labFrac), t: famTexts[i2] }; });
 
-    // ---- 当前曲线：Uₓ 实线 / I 虚线 ----
-    line(function(v){ return uToPy(uAt(v)); }, '#ffd27a', 2.6, []);
-    line(function(v){ return iToPy(iAt(v)); }, '#7fd4a8', 2.0, [7, 5]);
+    // ---- 当前 Rₓ 对应的那条曲线（加粗） ----
+    line(function(s){ return uToPy(uAt(s)); }, accent, 2.8, []);
 
-    // ---- 当前工作点 ----
-    var cxp = xToPx(curX);
+    // ---- 当前工作点：横坐标 = 本列滑片位置对应的接入阻值 s·R₀ ----
+    var cxp = xToPx(sCur);
     ctx.strokeStyle = 'rgba(255,255,255,0.34)'; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(cxp, y1); ctx.lineTo(cxp, y0); ctx.stroke(); ctx.setLineDash([]);
-    function dot(py, color){
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cxp, py, 4.6, 0, 7); ctx.fill();
-        ctx.strokeStyle = '#0b1826'; ctx.lineWidth = 1.6; ctx.stroke();
-    }
-    dot(uToPy(uAt(curX)), '#ffd27a');
-    dot(iToPy(iAt(curX)), '#7fd4a8');
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(cxp, uToPy(uAt(sCur)), 5, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#0b1826'; ctx.lineWidth = 1.6; ctx.stroke();
 
-    // ---- 函数簇曲线标注（标出每条淡色曲线对应的参数） ----
+    // ---- 函数簇曲线标注（标出每条淡色曲线对应的 Rₓ） ----
     if (famLabels.length){
         famLabels.sort(function(a, b){ return a.y - b.y; });
         var bandTop = y1 + 40, bandBot = y0 - 8;     // 上方留两行图例文字
@@ -549,18 +554,14 @@ function drawPlot(cvId, kind, sCur, xMode){
     }
     ctx.restore();
 
-    // ---- 标注 ----
+    // ---- 图例与轴名 ----
     ctx.font = '12px Segoe UI, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffd9a8'; ctx.fillText('Uₓ / V（实线）', x0 + 6, y1 + 13);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#8fd8b4'; ctx.fillText('I / A（虚线）', x1 - 6, y1 + 13);
-    ctx.textAlign = 'left';
+    ctx.fillStyle = accent; ctx.fillText('Uₓ / V', x0 + 6, y1 + 13);
     ctx.fillStyle = 'rgba(200,220,245,0.55)';
-    ctx.fillText(xMode === 's' ? '淡色曲线 = 不同 Rₓ（拖 Rₓ 滑条换曲线）'
-                               : '淡色曲线 = 不同滑片位置（拖本列滑条换曲线）', x0 + 6, y1 + 29);
+    ctx.fillText('淡色曲线 = 不同 Rₓ（拖「Rₓ」滑条换曲线，拖本列滑条取工作点）', x0 + 6, y1 + 29);
     ctx.textAlign = 'center'; ctx.fillStyle = '#9fb6d4';
-    ctx.fillText(xMode === 's' ? '滑动变阻器滑片位置（0 → 100%，线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 4);
+    ctx.fillText('滑动变阻器接入电路的阻值 R_接 / Ω', (x0 + x1) / 2, H - 4);
 }
 
 // ---------- 更新 ----------
@@ -570,6 +571,9 @@ function update(){
     document.getElementById('vRx').textContent = fmtR(Rx) + ' Ω';
     document.getElementById('vSL').textContent = Math.round(sL * 100) + '%';
     document.getElementById('vSD').textContent = Math.round(sD * 100) + '%';
+    // 接入阻值 R_接 = s·R₀（即函数图横轴上的工作点横坐标）
+    document.getElementById('rL').textContent = fmtR(sL * R0);
+    document.getElementById('rD').textContent = fmtR(sD * R0);
 
     document.getElementById('svgL').innerHTML = svgLimit();
     document.getElementById('svgD').innerHTML = svgDiv();
@@ -589,13 +593,13 @@ function update(){
     bD.textContent = (rec === 'div') ? '✓ 推荐' : '—';
 
     var loL = E * uLimit(Rx, R0, 1);
-    var hint = (xModeL === 's') ? '拖「Rₓ」换曲线 · 拖本列滑条取点' : '拖本列滑条换曲线 · 拖「Rₓ」取点';
+    var hint = '拖「Rₓ」滑条换曲线 · 拖本列滑条取工作点';
     document.getElementById('fL').innerHTML =
         'Uₓ 可调范围 <b>' + loL.toFixed(2) + ' ~ ' + E.toFixed(1) + ' V</b>（下限不为 0）<br>' +
         '调节幅度占全量程 <b class="amber">' + ((1 - loL / E) * 100).toFixed(1) + '%</b>' +
         (rec === 'div' ? '<span class="br-extra"><br><span class="amber">Rₓ ≫ R₀，区间被压得很窄，几乎调不动。</span></span>' : '') +
         '<div class="hint">（' + hint + '）</div>';
-    var hintD = (xModeD === 's') ? '拖「Rₓ」换曲线 · 拖本列滑条取点' : '拖本列滑条换曲线 · 拖「Rₓ」取点';
+    var hintD = '拖「Rₓ」滑条换曲线 · 拖本列滑条取工作点';
     document.getElementById('fD').innerHTML =
         'Uₓ 可调范围 <b>0 ~ ' + E.toFixed(1) + ' V</b>（恒为全量程，<span class="blue">可从 0 起调</span>）<br>' +
         '代价：干路电流始终 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电' +
@@ -607,13 +611,11 @@ function update(){
         (rec === 'div' ? '限流式几乎调节不动（滑片挪到底也改变不了 Uₓ）' : (k < 0.2 ? '此时分压式非线性严重且耗能大' : '更节能、电路更简单；若要求电压从 0 起调则仍须分压式')) +
         '</span></span>';
 
-    document.getElementById('axL').textContent = '横轴：' + (xModeL === 's' ? '滑片位置' : 'Rₓ');
-    document.getElementById('axD').textContent = '横轴：' + (xModeD === 's' ? '滑片位置' : 'Rₓ');
-    document.getElementById('axL').classList.toggle('active', xModeL === 'rx');
-    document.getElementById('axD').classList.toggle('active', xModeD === 'rx');
+    document.getElementById('axL').textContent = '横轴：接入阻值 / Ω';
+    document.getElementById('axD').textContent = '横轴：接入阻值 / Ω';
 
-    drawPlot('cvL', 'limit', sL, xModeL);
-    drawPlot('cvD', 'div', sD, xModeD);
+    drawPlot('cvL', 'limit', sL);
+    drawPlot('cvD', 'div', sD);
 }
 
 // ---------- 事件 ----------
@@ -639,14 +641,7 @@ for (var pi = 0; pi < presets.length; pi++){
     });
 }
 
-function bindAxis(btnId, setter, getter){
-    document.getElementById(btnId).addEventListener('click', function(){
-        setter(getter() === 'rx' ? 's' : 'rx');
-        update();
-    });
-}
-bindAxis('axL', function(v){ xModeL = v; }, function(){ return xModeL; });
-bindAxis('axD', function(v){ xModeD = v; }, function(){ return xModeD; });
+// 横轴已固定为「滑动变阻器接入阻值 R_接 / Ω」，故不再有轴切换按钮
 
 window.addEventListener('resize', function(){ update(); });
 
