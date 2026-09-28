@@ -14,7 +14,7 @@
         padding: 6px; color: #eef4fc; overflow: hidden; font-size: 15px;
     }
     .sim-card {
-        width: 100%; max-width: 2200px; height: 100%;
+        width: 100%; max-width: 2200px; height: calc(100vh - 12px);
         background: rgba(18, 34, 50, 0.40);
         backdrop-filter: blur(18px) saturate(180%);
         -webkit-backdrop-filter: blur(18px) saturate(180%);
@@ -95,7 +95,7 @@
 <div class="sim-card">
     <div class="toolbar">
         <div class="tb-row">
-            <div class="title">限流式与分压式 <small>滑动变阻器接法选择 · 电路图 + Uₓ / I 函数簇（线性坐标）</small></div>
+            <div class="title">限流式与分压式 <small>滑动变阻器接法选择 · 横轴＝滑片位置，淡色曲线＝不同 Rₓ（线性坐标）</small></div>
             <div class="status" id="statusPill">…</div>
         </div>
         <div class="tb-row">
@@ -136,7 +136,7 @@
                 <span class="ctrl-label">本图滑片位置</span>
                 <input type="range" id="sSL" min="0" max="100" step="1" value="50" />
                 <span class="ctrl-val" id="vSL">50%</span>
-                <button class="mini" id="axL">横轴：Rₓ</button>
+                <button class="mini" id="axL">横轴：滑片位置</button>
             </div>
             <div class="plot-wrap"><canvas id="cvL"></canvas></div>
             <div class="foot" id="fL"></div>
@@ -154,7 +154,7 @@
                 <span class="ctrl-label">本图滑片位置</span>
                 <input type="range" id="sSD" min="0" max="100" step="1" value="50" />
                 <span class="ctrl-val" id="vSD">50%</span>
-                <button class="mini" id="axD">横轴：Rₓ</button>
+                <button class="mini" id="axD">横轴：滑片位置</button>
             </div>
             <div class="plot-wrap"><canvas id="cvD"></canvas></div>
             <div class="foot" id="fD"></div>
@@ -170,7 +170,7 @@
 // ============================================================
 var E = 3.0, R0 = 20, Rx = 20;
 var sL = 0.5, sD = 0.5;                 // 两列各自的滑片位置
-var xModeL = 'rx', xModeD = 'rx';       // 各自函数图横轴
+var xModeL = 's', xModeD = 's';         // 各自函数图横轴：默认「滑片位置」
 var R_MIN = 0.1, R_MAX = 500;
 
 function uLimit(rx, r0, ss){ return rx / (rx + ss * r0); }                        // 限流式 Uₓ/E
@@ -302,6 +302,19 @@ function rxAxisMax(){
     for (var i = 0; i < list.length; i++) if (list[i] >= want) return list[i];
     return 500;
 }
+// 横轴=滑片位置时的函数簇：以 R₀ 为标尺取一组待测电阻
+function rxFamily(){
+    var ratios = [0.2, 0.5, 1, 2, 5, 10], arr = [];
+    ratios.forEach(function(r){
+        var v = R0 * r;
+        if (v < R_MIN) v = R_MIN;
+        if (v > R_MAX) v = R_MAX;
+        var dup = false;
+        for (var i = 0; i < arr.length; i++) if (Math.abs(arr[i] - v) < 1e-9) dup = true;
+        if (!dup) arr.push(v);
+    });
+    return arr;
+}
 
 function drawPlot(cvId, kind, sCur, xMode){
     var cv = document.getElementById(cvId); if (!cv) return;
@@ -380,11 +393,21 @@ function drawPlot(cvId, kind, sCur, xMode){
         ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // ---- 横轴为 Rₓ：先画淡色函数簇（不同滑片位置） ----
-    if (xMode === 'rx'){
+    // ---- 淡色函数簇 ----
+    //   横轴=滑片位置 s：簇 = 不同「待测电阻 Rₓ」（拖动 Rₓ 滑条换曲线）
+    //   横轴=待测电阻 Rₓ：簇 = 不同「滑片位置」（拖动滑片滑条换曲线）
+    var famLabels = [];
+    if (xMode === 's'){
+        rxFamily().forEach(function(rxf){
+            if (Math.abs(rxf - Rx) < 0.02 * Rx) return;
+            line(function(v){ return uToPy(E * fam(rxf, R0, v)); }, 'rgba(190,210,235,0.22)', 1.4, []);
+            famLabels.push({ y: uToPy(E * fam(rxf, R0, 0.62)), t: fmtR(rxf) + 'Ω' });
+        });
+    } else {
         [0.2, 0.4, 0.6, 0.8, 1.0].forEach(function(ss){
             if (Math.abs(ss - sCur) < 0.005) return;
             line(function(v){ return uToPy(E * fam(v, R0, ss)); }, 'rgba(190,210,235,0.22)', 1.4, []);
+            famLabels.push({ y: uToPy(E * fam(Rx, R0, ss)), t: 's=' + Math.round(ss * 100) + '%' });
         });
     }
     // ---- 当前曲线：Uₓ 实线 / I 虚线 ----
@@ -401,6 +424,23 @@ function drawPlot(cvId, kind, sCur, xMode){
     }
     dot(uToPy(uAt(curX)), '#ffd27a');
     dot(iToPy(iAt(curX)), '#7fd4a8');
+
+    // ---- 函数簇曲线标注（标出每条淡色曲线对应的参数） ----
+    if (famLabels.length){
+        famLabels.sort(function(a, b){ return a.y - b.y; });
+        for (var fi = 1; fi < famLabels.length; fi++){
+            if (famLabels[fi].y - famLabels[fi - 1].y < 11) famLabels[fi].y = famLabels[fi - 1].y + 11;
+        }
+        ctx.font = '10px Segoe UI, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(186,208,235,0.82)';
+        for (var fj = 0; fj < famLabels.length; fj++){
+            var labY = famLabels[fj].y - 4;
+            if (labY < y1 + 9) labY = y1 + 9;
+            if (labY > y0 - 2) labY = y0 - 2;
+            ctx.fillText(famLabels[fj].t, xToPx(0.64), labY);
+        }
+    }
     ctx.restore();
 
     // ---- 标注 ----
@@ -409,7 +449,7 @@ function drawPlot(cvId, kind, sCur, xMode){
     ctx.textAlign = 'right';
     ctx.fillStyle = '#8fd8b4'; ctx.fillText('I / A（虚线）', x1 - 6, y1 + 12);
     ctx.textAlign = 'center'; ctx.fillStyle = '#9fb6d4';
-    ctx.fillText(xMode === 's' ? '滑片位置 s（线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 3);
+    ctx.fillText(xMode === 's' ? '滑动变阻器滑片位置（0 → 100%，线性刻度）' : '待测电阻 Rₓ / Ω（线性刻度）', (x0 + x1) / 2, H - 3);
 }
 
 // ---------- 更新 ----------
@@ -438,23 +478,31 @@ function update(){
     bD.textContent = (rec === 'div') ? '✓ 推荐' : '—';
 
     var loL = E * uLimit(Rx, R0, 1);
+    var hint = (xModeL === 's')
+        ? '拖「Rₓ」换曲线 · 拖本图滑条取点'
+        : '拖本图滑条换曲线 · 拖「Rₓ」取点';
     document.getElementById('fL').innerHTML =
         'Uₓ 可调范围 <b>' + loL.toFixed(2) + ' ~ ' + E.toFixed(1) + ' V</b>（下限不为 0）；' +
         '调节幅度占全量程 <b class="amber">' + ((1 - loL / E) * 100).toFixed(1) + '%</b>。' +
-        (rec === 'div' ? '　<span class="amber">Rₓ ≫ R₀，此区间被压得很窄，几乎调不动。</span>' : '');
+        (rec === 'div' ? '　<span class="amber">Rₓ ≫ R₀，此区间被压得很窄，几乎调不动。</span>' : '') +
+        '　<span style="opacity:.7">（' + hint + '）</span>';
+    var hintD = (xModeD === 's')
+        ? '拖「Rₓ」换曲线 · 拖本图滑条取点'
+        : '拖本图滑条换曲线 · 拖「Rₓ」取点';
     document.getElementById('fD').innerHTML =
         'Uₓ 可调范围 <b>0 ~ ' + E.toFixed(1) + ' V</b>（恒为全量程，<span class="blue">可从 0 起调</span>）；' +
-        '代价是干路电流始终为 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电。';
+        '代价是干路电流始终为 <b>' + fmtI(E / (R0 * (1 - sD) + (Rx * sD * R0) / (Rx + sD * R0))) + ' A</b>，更耗电。' +
+        '　<span style="opacity:.7">（' + hintD + '）</span>';
 
     document.getElementById('statusPill').innerHTML =
         'Rₓ/R₀ = ' + k.toFixed(2) + '　→　推荐 <b style="color:' + (rec === 'div' ? '#a9d6ff' : '#ffd9a8') + '">' +
         (rec === 'div' ? '分压式' : '限流式') + '</b>' +
         (rec === 'div' ? '（限流式几乎调节不动）' : (k < 0.2 ? '（此时分压式非线性严重且耗能大）' : '（更节能、电路更简单；若要求电压从 0 起调则仍须分压式）'));
 
-    document.getElementById('axL').textContent = '横轴：' + (xModeL === 'rx' ? 'Rₓ' : '滑片');
-    document.getElementById('axD').textContent = '横轴：' + (xModeD === 'rx' ? 'Rₓ' : '滑片');
-    document.getElementById('axL').classList.toggle('active', xModeL === 's');
-    document.getElementById('axD').classList.toggle('active', xModeD === 's');
+    document.getElementById('axL').textContent = '横轴：' + (xModeL === 's' ? '滑片位置' : 'Rₓ');
+    document.getElementById('axD').textContent = '横轴：' + (xModeD === 's' ? '滑片位置' : 'Rₓ');
+    document.getElementById('axL').classList.toggle('active', xModeL === 'rx');
+    document.getElementById('axD').classList.toggle('active', xModeD === 'rx');
 
     drawPlot('cvL', 'limit', sL, xModeL);
     drawPlot('cvD', 'div', sD, xModeD);
