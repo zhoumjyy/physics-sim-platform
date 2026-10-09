@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一般电势标量场可视化 · φ 与 E = −∇φ</title>
+<style>
+:root{
+  --bg0:#060b16;
+  --panel:rgba(18,30,52,0.66);
+  --line:rgba(120,170,230,0.16);
+  --tx:#dbe7f7;
+  --dim:#8ba4c4;
+  --acc:#66b6ff;
+  --warm:#ffb86b;
+  --ok:#6ee0a8;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; }
+body{
+  background:
+    radial-gradient(1100px 640px at 18% -12%, #17294e 0%, rgba(6,11,22,0) 62%),
+    radial-gradient(900px 560px at 92% 108%, #1b2340 0%, rgba(6,11,22,0) 60%),
+    var(--bg0);
+  color:var(--tx);
+  font:14px/1.5 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+header{
+  flex:0 0 auto; padding:9px 16px 8px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  border-bottom:1px solid var(--line);
+}
+header h1{ margin:0; font-size:17px; font-weight:600; letter-spacing:.3px; }
+header h1 small{ font-weight:400; color:var(--dim); font-size:12.5px; margin-left:9px; }
+header .tip{ margin-left:auto; color:var(--dim); font-size:12px; }
+
+main{
+  flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px 16px;
+}
+
+.panel{
+  min-height:0; display:flex; flex-direction:column; gap:7px;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px 9px;
+  backdrop-filter:blur(10px);
+}
+.phead{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.phead .tag{
+  font-size:11.5px; font-weight:700; letter-spacing:.5px; color:#08111f;
+  background:linear-gradient(180deg,#ffd79a,#ffb86b); border-radius:6px; padding:2px 7px;
+}
+.panel.p2 .phead .tag{ background:linear-gradient(180deg,#a9d8ff,#66b6ff); }
+.phead .formula{ font-family:"Cambria Math","Times New Roman",Georgia,serif; font-size:16px; }
+.phead .formula small.conv{
+  font-family:"Segoe UI","Microsoft YaHei",sans-serif; font-size:11px; font-weight:400;
+  color:#9fb6d4; background:rgba(102,182,255,0.12); border:1px solid rgba(102,182,255,0.30);
+  border-radius:5px; padding:1px 5px; margin-left:6px; vertical-align:2px; white-space:nowrap;
+}
+.phead .goal{ margin-left:auto; color:var(--dim); font-size:12px; }
+.phead .goal b{ color:var(--warm); font-weight:600; }
+.panel.p2 .phead .goal b{ color:var(--acc); }
+
+.ctrls{ display:flex; align-items:center; gap:8px; flex:0 0 auto; flex-wrap:wrap; }
+.seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.seg button{
+  background:transparent; border:0; color:var(--dim); font:inherit; font-size:12px;
+  padding:4px 9px; cursor:pointer; border-right:1px solid var(--line); white-space:nowrap;
+}
+.seg button:last-child{ border-right:0; }
+.seg button.on{ background:rgba(102,182,255,0.18); color:#dcecff; }
+.seg button:hover{ color:#eaf3ff; }
+.slid{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); white-space:nowrap; }
+.slid input[type=range]{ width:104px; accent-color:#66b6ff; }
+.slid b{ color:var(--tx); font-weight:600; font-variant-numeric:tabular-nums; min-width:44px; }
+.togs{ display:flex; gap:5px; margin-left:auto; }
+.togs button{
+  background:transparent; border:1px solid var(--line); border-radius:7px; color:var(--dim);
+  font:inherit; font-size:11.5px; padding:3.5px 8px; cursor:pointer; white-space:nowrap;
+}
+.togs button.on{ background:rgba(110,224,168,0.15); border-color:rgba(110,224,168,0.45); color:#c8f6e0; }
+
+.cvwrap{ flex:1 1 auto; min-height:0; position:relative; border-radius:10px; overflow:hidden; }
+.cvwrap canvas{ display:block; width:100%; height:100%; cursor:crosshair; }
+.cvwrap .lay{
+  position:absolute; right:8px; top:7px; font-size:11px; color:var(--dim);
+  background:rgba(8,14,26,0.66); border:1px solid var(--line); border-radius:7px; padding:2px 7px;
+  pointer-events:none;
+}
+
+.ro{
+  flex:0 1 auto; min-height:0; overflow:auto; border-top:1px solid var(--line); padding-top:6px;
+  font-size:12.5px; line-height:1.62; font-variant-numeric:tabular-nums;
+}
+.ro .k{ color:var(--dim); }
+.ro .v{ color:#eaf3ff; font-weight:600; }
+.ro .m{ color:var(--dim); font-family:"Cambria Math","Times New Roman",Georgia,serif; }
+.ro .ans{ color:var(--warm); font-weight:600; }
+.panel.p2 .ro .ans{ color:var(--acc); }
+.ro .note{
+  display:block; margin-top:4px; font-size:11.5px; color:#ffcB8a;
+  background:rgba(255,184,107,0.10); border-left:2px solid rgba(255,184,107,0.55);
+  border-radius:5px; padding:3px 7px; line-height:1.5;
+}
+.ro .note.blue{ color:#bcdcff; background:rgba(102,182,255,0.10); border-left-color:rgba(102,182,255,0.55); }
+.hid{ display:none !important; }
+
+@media (max-width: 900px){
+  main{ grid-template-columns:1fr; overflow:auto; }
+  .panel{ min-height:420px; }
+}
+/* 并排显示且高度吃紧（常见笔记本 iframe）时收敛字号，保证读数区完整可见 */
+@media (min-width: 901px) and (max-height: 700px){
+  .panel{ padding:8px 10px 7px; gap:6px; }
+  .phead .formula{ font-size:15px; }
+  .ctrls{ gap:6px; }
+  .seg button{ padding:3px 7px; font-size:11.5px; }
+  .slid input[type=range]{ width:92px; }
+  .ro{ font-size:11.4px; line-height:1.46; padding-top:5px; }
+  .ro .note{ font-size:10.4px; padding:2px 6px; margin-top:3px; line-height:1.38; }
+  .cvwrap{ min-height:150px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>一般电势标量场可视化<small>φ 的等值线地形图 &nbsp;+&nbsp; 梯度场 E = −∇φ</small></h1>
+  <span class="tip">在图上移动鼠标可读取任意点的 φ 与 E；点击可锁定探针</span>
+</header>
+
+<main>
+  <!-- ============ 例1 ============ -->
+  <section class="panel p1" id="pn1">
+    <div class="phead">
+      <span class="tag">例 1</span>
+      <span class="formula">φ(x, y, z) = x²y + yz²</span>
+      <span class="goal">求 <b>E(1, 1, 1)</b></span>
+    </div>
+    <div class="ctrls">
+      <div class="seg" id="seg1">
+        <button data-k="y" class="on">平面 y = c</button>
+        <button data-k="z">平面 z = c</button>
+        <button data-k="x">平面 x = c</button>
+      </div>
+      <label class="slid">c = <input type="range" id="c1" min="-2.6" max="2.6" step="0.05" value="1"><b id="c1v">1.00</b></label>
+      <div class="togs" id="tg1">
+        <button data-t="heat" class="on">色温</button>
+        <button data-t="cont" class="on">等值线</button>
+        <button data-t="arr" class="on">E 矢量</button>
+      </div>
+    </div>
+    <div class="cvwrap"><canvas id="cv1"></canvas><span class="lay" id="lay1"></span></div>
+    <div class="ro" id="ro1"></div>
+  </section>
+
+  <!-- ============ 例2 ============ -->
+  <section class="panel p2" id="pn2">
+    <div class="phead">
+      <span class="tag">例 2</span>
+      <span class="formula">φ(r, θ, φ) = A·r·cosθ <small class="conv">θ 自 x 轴量起</small></span>
+      <span class="goal">求 <b>E(1, π/4, π/4)</b></span>
+    </div>
+    <div class="ctrls">
+      <div class="seg" id="seg2">
+        <button data-k="z" class="on">平面 z = c</button>
+        <button data-k="x">平面 x = c</button>
+        <button data-k="r">子午面（含 x 轴）</button>
+      </div>
+      <label class="slid" id="c2lab">c = <input type="range" id="c2" min="-2.6" max="2.6" step="0.01" value="0.5"><b id="c2v">0.50</b></label>
+      <label class="slid">A = <input type="range" id="a2" min="0.2" max="3" step="0.05" value="1"><b id="a2v">1.00</b></label>
+      <div class="togs" id="tg2">
+        <button data-t="heat" class="on">色温</button>
+        <button data-t="cont" class="on">等值线</button>
+        <button data-t="arr" class="on">E 矢量</button>
+        <button data-t="unit" class="on">ê<sub>r</sub> ê<sub>θ</sub></button>
+      </div>
+    </div>
+    <div class="cvwrap"><canvas id="cv2"></canvas><span class="lay" id="lay2"></span></div>
+    <div class="ro" id="ro2"></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ============================================================
+   标量场与梯度场可视化
+   例1  φ = x²y + yz²        E = −∇φ
+   例2  φ = A·r·cosθ = A·x   E = −∇φ = −A x̂
+        ⚠ 题面 θ 自 **x 轴**量起（极轴 = x，非 z），故 r·cosθ = x，
+          φ 只依赖 x：在 z = c 平面内各点电势互不相同（竖直条纹）。
+   ============================================================ */
+
+var L = 2.7;        // 视野半宽（数学单位）
+var A2 = 1.0;       // 例2 的常数 A
+
+/* ---------------- 基础工具 ---------------- */
+function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+function lerp(a, b, t){ return a + (b - a) * t; }
+function dot3(a, b){ return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+
+/* ---------------- 发散色带：t∈[0,1]，0.5 对应 φ≈0 ---------------- */
+var STOPS = [
+  [0.00,  28,  62, 148],
+  [0.20,  60, 138, 220],
+  [0.40,  22,  46,  86],
+  [0.50,  13,  21,  38],
+  [0.60,  60,  50,  42],
+  [0.80, 224, 150,  62],
+  [1.00, 232,  86,  58]
+];
+function cmap(t){
+  t = clamp(t, 0, 1);
+  for (var i = 1; i < STOPS.length; i++){
+    if (t <= STOPS[i][0]){
+      var a = STOPS[i-1], b = STOPS[i];
+      var f = (t - a[0]) / ((b[0] - a[0]) || 1);
+      return [Math.round(lerp(a[1], b[1], f)), Math.round(lerp(a[2], b[2], f)), Math.round(lerp(a[3], b[3], f))];
+    }
+  }
+  var z = STOPS[STOPS.length - 1];
+  return [z[1], z[2], z[3]];
+}
+
+/* ---------------- 两个标量场 ---------------- */
+var FIELD1 = {
+  phi:  function(x, y, z){ return x*x*y + y*z*z; },
+  grad: function(x, y, z){ return [2*x*y, x*x + z*z, 2*y*z]; },   // ∇φ
+  sign: -1,                                                       // E = −∇φ
+  query: [1, 1, 1]
+};
+var FIELD2 = {
+  /* 球坐标约定（题面口径）：θ = 与 **x 轴** 的夹角（极轴为 x），
+     φ_az = 绕 x 轴的方位角（在 y-z 平面内自 y 轴量起）。
+     于是 x = r cosθ, y = r sinθ cosφ_az, z = r sinθ sinφ_az，
+     φ = A·r·cosθ = A·x ，∇φ = A x̂ ，E = −∇φ = −A x̂（均匀场）。 */
+  phi:  function(x, y, z){ return A2 * x; },                      // A·r·cosθ = A·x
+  grad: function(x, y, z){ return [A2, 0, 0]; },                  // ∇φ = A x̂
+  sign: -1,                                                       // E = −∇φ = −A x̂
+  query: (function(){ var th = Math.PI/4, ph = Math.PI/4;
+          return [Math.cos(th), Math.sin(th)*Math.cos(ph), Math.sin(th)*Math.sin(ph)]; })()
+};
+function Efield(F, p){
+  var g = F.grad(p[0], p[1], p[2]);
+  return [F.sign*g[0], F.sign*g[1], F.sign*g[2]];
+}
+
+/* ---------------- 切片定义 ---------------- */
+/*  u,v 为切片内坐标；bu,bv 为切片内正交单位基  */
+function makeSlice(kind, c){
+  if (kind === 'z') return { kind:kind, c:c, map:function(u,v){ return [u, v, c]; },
+      bu:[1,0,0], bv:[0,1,0], u0:-L, u1:L, v0:-L, v1:L, uLabel:'x', vLabel:'y' };
+  if (kind === 'y') return { kind:kind, c:c, map:function(u,v){ return [u, c, v]; },
+      bu:[1,0,0], bv:[0,0,1], u0:-L, u1:L, v0:-L, v1:L, uLabel:'x', vLabel:'z' };
+  if (kind === 'x') return { kind:kind, c:c, map:function(u,v){ return [c, u, v]; },
+      bu:[0,1,0], bv:[0,0,1], u0:-L, u1:L, v0:-L, v1:L, uLabel:'y', vLabel:'z' };
+  var ca = Math.cos(c), sa = Math.sin(c);
+  /* 子午面（含 x 轴）：横轴为「到 x 轴的距离 ρ」（带符号，u<0 表示方位角 c+π 的那半侧），
+     纵轴为 x。本场 φ = A·x 与 ρ 无关 → 左右完全一致，故镜像展开成方形剖面。 */
+  return { kind:'r', c:c, map:function(u,v){ return [v, u*ca, u*sa]; },
+      bu:[0, ca, sa], bv:[1, 0, 0], u0:-L, u1:L, v0:-L, v1:L,
+      uLabel:'ρ', vLabel:'x', mirrored:true };
+}
+/* 世界点 → (u, v, 离面距离) */
+function toUV(sl, P){
+  if (sl.kind === 'z') return [P[0], P[1], P[2] - sl.c];
+  if (sl.kind === 'y') return [P[0], P[2], P[1] - sl.c];
+  if (sl.kind === 'x') return [P[1], P[2], P[0] - sl.c];
+  var ca = Math.cos(sl.c), sa = Math.sin(sl.c);
+  return [P[1]*ca + P[2]*sa, P[0], -P[1]*sa + P[2]*ca];
+}
+
+/* ---------------- 面板配置 ---------------- */
+function newCfg(paneId, canvasId, roId, layId, F){
+  return {
+    pane: document.getElementById(paneId),
+    canvas: document.getElementById(canvasId),
+    ro: document.getElementById(roId),
+    lay: document.getElementById(layId),
+    F: F,
+    /* 例2 默认切「平面 z = c」并取 c = 0.5（= 题问点的 z），直接看到 φ 随 x 变化 */
+    kind: (F === FIELD2) ? 'z' : 'y',
+    c: (F === FIELD2) ? 0.5 : 1,
+    show: { heat:true, cont:true, arr:true, unit:true },
+    probe: null,          // {u,v} 当前探针（世界切片坐标）
+    lock: null,           // 锁定的探针
+    _base: null, _baseKey: ''
+  };
+}
+var CFG1 = newCfg('pn1', 'cv1', 'ro1', 'lay1', FIELD1);
+var CFG2 = newCfg('pn2', 'cv2', 'ro2', 'lay2', FIELD2);
+
+/* ---------------- 采样：φ 在切片上的取值范围 ---------------- */
+function sampleRange(sl, F, n){
+  var mn = Infinity, mx = -Infinity;
+  for (var j = 0; j <= n; j++){
+    var v = lerp(sl.v0, sl.v1, j/n);
+    for (var i = 0; i <= n; i++){
+      var u = lerp(sl.u0, sl.u1, i/n);
+      var p = sl.map(u, v);
+      var val = F.phi(p[0], p[1], p[2]);
+      if (val < mn) mn = val;
+      if (val > mx) mx = val;
+    }
+  }
+  if (!isFinite(mn) || !isFinite(mx)){ mn = -1; mx = 1; }
+  return { vmin: mn, vmax: mx };
+}
+
+/* ---------------- 基础层绘制 ---------------- */
+function renderBase(cfg, ctx, W, H, dpr){
+  var sl = makeSlice(cfg.kind, cfg.c);
+  var F = cfg.F;
+
+  var padL = 46, padR = 46, padT = 12, padB = 28;
+  var pw = W - padL - padR, ph = H - padT - padB;
+  if (pw < 40 || ph < 40) return;
+
+  var uR = sl.u1 - sl.u0, vR = sl.v1 - sl.v0;
+  var s = Math.min(pw/uR, ph/vR);
+  var vw = uR*s, vh = vR*s;
+  var ox = padL + (pw - vw)/2, oy = padT + (ph - vh)/2;
+  var toX = function(u){ return ox + (u - sl.u0)*s; };
+  var toY = function(v){ return oy + (sl.v1 - v)*s; };
+
+  var rng = sampleRange(sl, F, 46);
+  var M = Math.max(Math.abs(rng.vmin), Math.abs(rng.vmax));
+  if (!(M > 0)) M = 1;
+  var symmetric = (rng.vmin < -1e-9 && rng.vmax > 1e-9);
+  var lo = symmetric ? -M : (rng.vmin < 0 ? -M : 0);
+  var hi = symmetric ?  M : (rng.vmax > 0 ?  M : 0);
+  cfg._vmax = M;
+  cfg._geom = { ox:ox, oy:oy, vw:vw, vh:vh, s:s, sl:sl, toX:toX, toY:toY,
+                M:M, symmetric:symmetric, lo:lo, hi:hi };
+
+  ctx.save();
+  /* 底色 */
+  ctx.fillStyle = 'rgba(7,12,23,0.85)';
+  ctx.fillRect(ox, oy, vw, vh);
+
+  /* ① 色温云图 */
+  if (cfg.show.heat){
+    var RW = 200, RH = Math.max(60, Math.round(RW*vh/vw));
+    var oc = document.createElement('canvas');
+    oc.width = RW; oc.height = RH;
+    var octx = oc.getContext('2d');
+    var img = octx.createImageData(RW, RH), d = img.data;
+    for (var j = 0; j < RH; j++){
+      var vv = sl.v1 - (j + 0.5)/RH*(sl.v1 - sl.v0);
+      for (var i = 0; i < RW; i++){
+        var uu = sl.u0 + (i + 0.5)/RW*(sl.u1 - sl.u0);
+        var p3 = sl.map(uu, vv);
+        var val = F.phi(p3[0], p3[1], p3[2]);
+        var t = 0.5 + 0.5*clamp(val/M, -1, 1);
+        var col = cmap(t);
+        var k = (j*RW + i)*4;
+        d[k] = col[0]; d[k+1] = col[1]; d[k+2] = col[2]; d[k+3] = 238;
+      }
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(oc, ox, oy, vw, vh);
+  }
+
+  /* ② 等值线（marching squares） */
+  if (cfg.show.cont) drawContours(ctx, sl, F, lo, hi, toX, toY);
+
+  /* ③ 梯度矢量（切片内投影） */
+  if (cfg.show.arr) drawArrows(ctx, sl, F, toX, toY, vw, vh);
+
+  /* ④ 边框 / 刻度 / 原点轴线 */
+  drawFrameAndTicks(ctx, sl, toX, toY, ox, oy, vw, vh);
+
+  /* ⑤ 题目要求的点 */
+  drawQuery(ctx, cfg, toX, toY);
+
+  /* ⑥ 色标 */
+  drawColorbar(ctx, ox + vw + 9, oy, 13, vh, M, symmetric, lo, hi);
+
+  /* ⑦ 球坐标单位矢量（仅子午面） */
+  if (sl.kind === 'r' && cfg.show.unit) drawUnitVec(ctx, cfg, toX, toY, s);
+
+  /* ⑧ 图内图例 */
+  drawLegend(ctx, cfg, ox, oy, sl);
+
+  ctx.restore();
+}
+
+/* ---- 图内图例 ---- */
+function drawLegend(ctx, cfg, ox, oy, sl){
+  var txt;
+  if (cfg.F === FIELD2 && sl.kind === 'x'){
+    /* φ = A·x 在 x = c 平面上恒为常数 —— 该平面本身就是等势面 */
+    txt = 'x = c 就是等势面：φ ≡ A·c 为常数，无等值线，E = −A x̂ 垂直切片（面内无分量）';
+  } else if (sl.kind === 'r' && cfg.show.unit){
+    txt = '绿箭头 = E（切片内投影）　黄/蓝 = êr / êθ　横轴 ρ（镜像展开）';
+  } else if (cfg.F === FIELD2){
+    txt = '绿箭头 = E 在切片内的分量　等势面即 x = 常数，E = −A x̂ 指向 x 减小方向';
+  } else {
+    txt = '绿箭头 = E 在切片内的分量';
+  }
+  ctx.save();
+  var vw = (cfg._geom ? cfg._geom.vw : 300);
+  var fs = 11;
+  ctx.font = fs + 'px "Segoe UI",sans-serif';
+  var w = ctx.measureText(txt).width + 16;
+  if (w > vw - 12){ fs = 10; ctx.font = fs + 'px "Segoe UI",sans-serif'; w = ctx.measureText(txt).width + 16; }
+  ctx.fillStyle = 'rgba(6,11,21,0.62)';
+  if (ctx.roundRect){ ctx.beginPath(); ctx.roundRect(ox + 7, oy + 6, w, 19, 6); ctx.fill(); }
+  else ctx.fillRect(ox + 7, oy + 6, w, 19);
+  ctx.fillStyle = '#cfe0f5';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(txt, ox + 15, oy + 16);
+  ctx.restore();
+}
+
+/* ---- 等值线 ---- */
+function drawContours(ctx, sl, F, lo, hi, toX, toY){
+  var nu = 104, nv = 104, NL = 9;
+  var i, j, k;
+  var g = new Float64Array((nu+1)*(nv+1));
+  for (j = 0; j <= nv; j++){
+    var v = lerp(sl.v0, sl.v1, j/nv);
+    for (i = 0; i <= nu; i++){
+      var u = lerp(sl.u0, sl.u1, i/nu);
+      var p = sl.map(u, v);
+      g[j*(nu+1) + i] = F.phi(p[0], p[1], p[2]);
+    }
+  }
+  var at = function(i2, j2){ return g[j2*(nu+1) + i2]; };
+  var uAt = function(i2){ return lerp(sl.u0, sl.u1, i2/nu); };
+  var vAt = function(j2){ return lerp(sl.v0, sl.v1, j2/nv); };
+
+  ctx.lineWidth = 1;
+  for (k = 1; k <= NL; k++){
+    var lev = lo + (hi - lo)*k/(NL + 1);
+    var near0 = Math.abs(lev) < (hi - lo)/(NL + 1) * 0.6;
+    ctx.strokeStyle = near0 ? 'rgba(206,232,255,0.86)' : 'rgba(178,210,246,0.50)';
+    ctx.lineWidth = near0 ? 1.6 : 1.05;
+    ctx.beginPath();
+    for (j = 0; j < nv; j++){
+      for (i = 0; i < nu; i++){
+        var a = at(i, j), b = at(i+1, j), c = at(i+1, j+1), d2 = at(i, j+1);
+        var idx = 0;
+        if (a > lev) idx |= 1;
+        if (b > lev) idx |= 2;
+        if (c > lev) idx |= 4;
+        if (d2 > lev) idx |= 8;
+        if (idx === 0 || idx === 15) continue;
+        var ip = function(p, q){ return (lev - p)/((q - p) || 1e-12); };
+        var eB = [uAt(i + ip(a, b)), vAt(j)];
+        var eR = [uAt(i+1), vAt(j + ip(b, c))];
+        var eT = [uAt(i + ip(d2, c)), vAt(j+1)];
+        var eL = [uAt(i), vAt(j + ip(a, d2))];
+        var seg = function(p, q){
+          ctx.moveTo(toX(p[0]), toY(p[1]));
+          ctx.lineTo(toX(q[0]), toY(q[1]));
+        };
+        switch (idx){
+          case 1: case 14: seg(eL, eB); break;
+          case 2: case 13: seg(eB, eR); break;
+          case 3: case 12: seg(eL, eR); break;
+          case 4: case 11: seg(eR, eT); break;
+          case 6: case 9:  seg(eB, eT); break;
+          case 7: case 8:  seg(eL, eT); break;
+          case 5:  seg(eL, eB); seg(eR, eT); break;
+          case 10: seg(eB, eR); seg(eT, eL); break;
+        }
+      }
+    }
+    ctx.stroke();
+  }
+}
+
+/* ---- 梯度矢量（切片内投影） ---- */
+function drawArrows(ctx, sl, F, toX, toY, vw, vh){
+  var N = 15, i, j;
+  var pts = [], mags = [];
+  for (j = 0; j <= N; j++){
+    var v = lerp(sl.v0, sl.v1, (j + 0.5)/(N + 1));
+    for (i = 0; i <= N; i++){
+      var u = lerp(sl.u0, sl.u1, (i + 0.5)/(N + 1));
+      var p = sl.map(u, v);
+      var E = Efield(F, p);
+      var eu = dot3(E, sl.bu), ev = dot3(E, sl.bv);
+      var m = Math.hypot(eu, ev);
+      pts.push({ u:u, v:v, eu:eu, ev:ev, m:m });
+      mags.push(m);
+    }
+  }
+  var sorted = mags.slice().sort(function(a, b){ return a - b; });
+  var scale = sorted[Math.floor(sorted.length*0.88)] || 1;
+  if (!(scale > 0)) scale = 1;
+  var base = Math.min(vw, vh)/20;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (var q = 0; q < pts.length; q++){
+    var P = pts[q];
+    if (P.m < 1e-9) continue;
+    var f = Math.tanh(P.m/scale*1.35);
+    var len = base*(0.34 + 0.66*f);
+    var ang = Math.atan2(P.ev, P.eu);           // 世界系中的方向（v 向上）
+    var dx = Math.cos(ang)*len, dy = -Math.sin(ang)*len;   // 屏幕 y 向下
+    var x0 = toX(P.u), y0 = toY(P.v);
+    var x1 = x0 + dx, y1 = y0 + dy;
+    var al = 0.30 + 0.62*f;
+    ctx.strokeStyle = 'rgba(150,235,205,' + al.toFixed(3) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    /* 箭头 */
+    var ah = Math.max(3.4, len*0.42);
+    var a1 = ang + Math.PI - 0.42, a2 = ang + Math.PI + 0.42;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + Math.cos(a1)*ah, y1 - Math.sin(a1)*ah);
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + Math.cos(a2)*ah, y1 - Math.sin(a2)*ah);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ---- 边框 / 刻度 / 轴线 ---- */
+function drawFrameAndTicks(ctx, sl, toX, toY, ox, oy, vw, vh){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(150,190,240,0.34)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ox + .5, oy + .5, vw - 1, vh - 1);
+
+  ctx.font = '11px "Segoe UI",sans-serif';
+  ctx.fillStyle = '#9fb6d4';
+
+  var k;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (k = 0; k <= 4; k++){
+    var u = lerp(sl.u0, sl.u1, k/4);
+    ctx.fillText(sl.mirrored ? fmtAxis(Math.abs(u)) : fmtAxis(u), toX(u), oy + vh + 5);
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (k = 0; k <= 4; k++){
+    var v = lerp(sl.v0, sl.v1, k/4);
+    ctx.fillText(fmtAxis(v), ox - 6, toY(v));
+  }
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#b9cdea';
+  ctx.font = '12px "Segoe UI",sans-serif';
+  ctx.fillText(sl.uLabel + ' / m', ox + vw/2, oy + vh + 16);
+
+  ctx.save();
+  ctx.translate(ox - 32, oy + vh/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(sl.vLabel + ' / m', 0, 0);
+  ctx.restore();
+
+  /* 原点坐标轴（若在视野内） */
+  if (sl.u0 <= 0 && sl.u1 >= 0){
+    ctx.strokeStyle = 'rgba(150,190,240,0.16)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(toX(0), oy); ctx.lineTo(toX(0), oy + vh); ctx.stroke();
+    if (sl.mirrored){
+      ctx.save();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(255,210,122,0.55)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(toX(0), oy); ctx.lineTo(toX(0), oy + vh); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  if (sl.v0 <= 0 && sl.v1 >= 0){
+    ctx.strokeStyle = 'rgba(150,190,240,0.16)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ox, toY(0)); ctx.lineTo(ox + vw, toY(0)); ctx.stroke();
+  }
+  ctx.restore();
+}
+function fmtAxis(v){
+  if (Math.abs(v) < 1e-9) return '0';
+  return (Math.abs(v) >= 10 ? v.toFixed(0) : (Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(2)));
+}
+
+/* ---- 题目要求的点 ---- */
+function drawQuery(ctx, cfg, toX, toY){
+  var uv = toUV(makeSlice(cfg.kind, cfg.c), cfg.F.query);
+  var x = toX(uv[0]), y = toY(uv[1]);
+  var inPlane = Math.abs(uv[2]) < 0.03;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, 6.5, 0, Math.PI*2);
+  ctx.strokeStyle = inPlane ? '#ffffff' : 'rgba(255,255,255,0.42)';
+  ctx.lineWidth = 2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI*2);
+  ctx.fillStyle = inPlane ? '#ffffff' : 'rgba(255,255,255,0.5)';
+  ctx.fill();
+  if (inPlane){
+    var E = Efield(cfg.F, cfg.F.query);
+    var sl = makeSlice(cfg.kind, cfg.c);
+    var eu = dot3(E, sl.bu), ev = dot3(E, sl.bv);
+    var m = Math.hypot(eu, ev);
+    if (m > 1e-9){
+      var g = cfg._geom, len = Math.min(g.vw, g.vh)*0.16;
+      var ang = Math.atan2(ev, eu);
+      var dx = Math.cos(ang)*len, dy = -Math.sin(ang)*len;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy);
+      ctx.strokeStyle = '#ff8f6a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.stroke();
+      var ah = 8, a1 = ang + Math.PI - 0.42, a2 = ang + Math.PI + 0.42;
+      ctx.beginPath();
+      ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx + Math.cos(a1)*ah, y + dy - Math.sin(a1)*ah);
+      ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx + Math.cos(a2)*ah, y + dy - Math.sin(a2)*ah);
+      ctx.stroke();
+      ctx.font = '11.5px "Segoe UI",sans-serif'; ctx.fillStyle = '#ffb79a';
+      var g2 = cfg._geom;
+      var lx = clamp(x + dx + 9, g2.ox + 2, g2.ox + g2.vw - 34);
+      var ly = clamp(y + dy, g2.oy + 9, g2.oy + g2.vh - 9);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('E面内', lx, ly);
+    }
+  }
+  ctx.restore();
+}
+
+/* ---- 球坐标单位矢量（仅子午面；θ 自 x 轴量起） ---- */
+function drawUnitVec(ctx, cfg, toX, toY, s){
+  var P = cfg.F.query;
+  var r = Math.sqrt(P[0]*P[0] + P[1]*P[1] + P[2]*P[2]);
+  if (r < 1e-9) return;
+  var er = [P[0]/r, P[1]/r, P[2]/r];
+  var th = Math.acos(clamp(P[0]/r, -1, 1));       // 与 x 轴夹角
+  var ph = Math.atan2(P[2], P[1]);                // 绕 x 轴的方位角（自 y 轴量起）
+  var et = [-Math.sin(th), Math.cos(th)*Math.cos(ph), Math.cos(th)*Math.sin(ph)];
+  var sl = makeSlice(cfg.kind, cfg.c);
+  var uv = toUV(sl, P);
+  var x = toX(uv[0]), y = toY(uv[1]);
+  var LEN = 62;   // 屏幕像素长度（单位矢量，等长）
+  var arrow = function(vec, col, name){
+    var cu = dot3(vec, sl.bu), cv = dot3(vec, sl.bv);
+    var m = Math.hypot(cu, cv); if (m < 1e-9) return;
+    var ang = Math.atan2(cv, cu);
+    var dx = cu/m*LEN, dy = -cv/m*LEN;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy);
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke();
+    var ah = 7.5, a1 = ang + Math.PI - 0.42, a2 = ang + Math.PI + 0.42;
+    ctx.beginPath();
+    ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx + Math.cos(a1)*ah, y + dy - Math.sin(a1)*ah);
+    ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx + Math.cos(a2)*ah, y + dy - Math.sin(a2)*ah);
+    ctx.stroke();
+    ctx.font = '12px "Cambria Math",Georgia,serif'; ctx.fillStyle = col;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(name, x + dx + 7, y + dy);
+  };
+  arrow(er, '#ffd27a', 'êr');
+  arrow(et, '#8fd8ff', 'êθ');
+}
+
+/* ---- 色标 ---- */
+function drawColorbar(ctx, x, y, w, h, M, symmetric, lo, hi){
+  ctx.save();
+  /* 单侧场（如 φ=x²+z² ≥ 0）只画出真正用到的半条色带 */
+  var tS = symmetric ? 0 : (hi > 0 ? 0.5 : 0);
+  var tE = symmetric ? 1 : (hi > 0 ? 1 : 0.5);
+  var steps = 60, i;
+  for (i = 0; i < steps; i++){
+    var f = i/(steps - 1);
+    var t = lerp(tS, tE, f);
+    var c = cmap(t);
+    ctx.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    var hh = h/steps;
+    ctx.fillRect(x, y + h - (i + 1)*hh, w, hh + 1);
+  }
+  ctx.strokeStyle = 'rgba(150,190,240,0.34)'; ctx.lineWidth = 1;
+  ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+
+  var fracs = symmetric ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1];
+  ctx.font = '10.5px "Segoe UI",sans-serif';
+  ctx.fillStyle = '#9fb6d4';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (i = 0; i < fracs.length; i++){
+    var ff = fracs[i];
+    var tv = lerp(tS, tE, ff);
+    ctx.fillText(fmtAxis((tv - 0.5)*2*M), x + w + 4, y + (1 - ff)*h);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillStyle = '#b9cdea'; ctx.font = '11px "Cambria Math",Georgia,serif';
+  ctx.fillText('φ', x + w/2, y - 3);
+  ctx.restore();
+}
+
+/* ---------------- 探针层 ---------------- */
+function renderPanel(cfg){
+  var cv = cfg.canvas;
+  var W = cv.clientWidth || 320, H = cv.clientHeight || 220;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var pw = Math.round(W*dpr), ph2 = Math.round(H*dpr);
+  if (cv.width !== pw || cv.height !== ph2){ cv.width = pw; cv.height = ph2; }
+
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  var key = [cfg.kind, cfg.c.toFixed(4), A2.toFixed(3), cfg.show.heat, cfg.show.cont,
+             cfg.show.arr, cfg.show.unit, W, H, dpr,
+             (cfg.F === FIELD1 ? 'F1' : 'F2')].join('|');
+  if (cfg._baseKey !== key || !cfg._base){
+    var oc = document.createElement('canvas');
+    oc.width = pw; oc.height = ph2;
+    var octx = oc.getContext('2d');
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderBase(cfg, octx, W, H, dpr);
+    cfg._base = oc; cfg._baseKey = key;
+  }
+  ctx.drawImage(cfg._base, 0, 0, W, H);
+
+  /* 探针 */
+  var pr = cfg.lock || cfg.probe;
+  var g = cfg._geom;
+  if (pr && g){
+    var x = g.toX(pr[0]), y = g.toY(pr[1]);
+    if (x >= g.ox - 2 && x <= g.ox + g.vw + 2 && y >= g.oy - 2 && y <= g.oy + g.vh + 2){
+      var p3 = g.sl.map(pr[0], pr[1]);
+      var E = Efield(cfg.F, p3);
+      var eu = dot3(E, g.sl.bu), ev = dot3(E, g.sl.bv);
+      var m = Math.hypot(eu, ev);
+      if (m > 1e-9){
+        var len = Math.min(g.vw, g.vh)*0.15;
+        var ang = Math.atan2(ev, eu);
+        var dx = Math.cos(ang)*len, dy = -Math.sin(ang)*len;
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy);
+        ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y + dy);
+        ctx.lineTo(x + dx + Math.cos(ang + Math.PI - 0.42)*8, y + dy - Math.sin(ang + Math.PI - 0.42)*8);
+        ctx.moveTo(x + dx, y + dy);
+        ctx.lineTo(x + dx + Math.cos(ang + Math.PI + 0.42)*8, y + dy - Math.sin(ang + Math.PI + 0.42)*8);
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.save();
+      ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI*2);
+      ctx.fillStyle = cfg.lock ? '#ffd27a' : 'rgba(255,210,122,0.85)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(10,16,28,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+      updateReadout(cfg, p3);
+      return;
+    }
+  }
+  updateReadout(cfg, null);
+}
+
+/* ---------------- 读数 ---------------- */
+function fmtN(v, d){
+  if (Math.abs(v) < 5e-4) v = 0;
+  return v.toFixed(d === undefined ? 3 : d);
+}
+function fmtV(v){
+  var a = [];
+  for (var i = 0; i < v.length; i++) a.push(fmtN(v[i]));
+  return '(' + a.join(', ') + ')';
+}
+function updateReadout(cfg, p3){
+  var F = cfg.F, g = cfg._geom;
+  if (!g) return;
+  var isF1 = (F === FIELD1);
+
+  if (!p3){
+    /* 默认显示题问点 */
+    var q = F.query;
+    var uv = toUV(g.sl, q);
+    p3 = q;
+    cfg.lay.textContent = '把鼠标移到图上 → 读取任意点';
+  } else {
+    var sl = g.sl;
+    cfg.lay.textContent = cfg.lock ? '探针已锁定（再点一次解除）' : '点击可锁定探针';
+  }
+
+  var phi = F.phi(p3[0], p3[1], p3[2]);
+  var E = Efield(F, p3);
+  var Em = Math.hypot(E[0], E[1], E[2]);
+  var uvt = toUV(g.sl, p3);
+  var inPlane = Math.abs(uvt[2]) < 0.03;
+
+  var sl = g.sl;
+  var eu = dot3(E, sl.bu), ev = dot3(E, sl.bv);
+  var eIn = Math.hypot(eu, ev);
+  var off = Math.hypot(E[0] - eu*sl.bu[0] - ev*sl.bv[0], E[1] - eu*sl.bu[1] - ev*sl.bv[1], E[2] - eu*sl.bu[2] - ev*sl.bv[2]);
+
+  var html = '';
+  if (isF1){
+    html += '<span class="k">探针</span> <span class="m">(x, y, z)</span> = <span class="v">' + fmtV(p3) + '</span>' +
+            (inPlane ? '　<span class="k">（在切片内）</span>' :
+                       '　<span class="k">（离切片 Δ=' + fmtN(uvt[2]) + '，箭头为投影）</span>') + '<br>';
+    html += '<span class="k">φ</span> = <span class="v">' + fmtN(phi) + '</span>' +
+            '　&nbsp; <span class="k">E = −∇φ</span> = <span class="v">' + fmtV(E) + '</span>' +
+            '　&nbsp; <span class="k">|E|</span> = <span class="v">' + fmtN(Em) + '</span><br>';
+    html += '<span class="k">∇φ</span> = <span class="v">' + fmtV(F.grad(p3[0], p3[1], p3[2])) + '</span>' +
+            '　<span class="k">（E 与 ∇φ 反向，垂直等值线、指向 φ 减小最快方向）</span><br>';
+    html += '<span class="ans">✔ 题问：E(1,1,1) = −(2 î + 2 ĵ + 2 k̂)，|E| = 2√3 ≈ 3.464</span>';
+  } else {
+    var r = Math.sqrt(p3[0]*p3[0] + p3[1]*p3[1] + p3[2]*p3[2]);
+    var th = r > 1e-9 ? Math.acos(clamp(p3[0]/r, -1, 1)) : 0;   // θ：与 x 轴夹角
+    var phz = Math.atan2(p3[2], p3[1]);                          // φ：绕 x 轴，自 y 轴量起
+    if (phz < 0) phz += Math.PI*2;
+    html += '<span class="k">球坐标</span> <span class="m">(r, θ, φ)</span><span class="k">（θ 自 x 轴）</span> = <span class="v">(' +
+            fmtN(r, 2) + ', ' + (th*180/Math.PI).toFixed(1) + '°, ' + (phz*180/Math.PI).toFixed(1) + '°)</span>' +
+            '　<span class="k">直角</span> <span class="v">' + fmtV(p3) + '</span><br>';
+    html += '<span class="k">φ = A·r·cosθ = A·x</span> = <span class="v">' + fmtN(phi) + '</span>' +
+            '　&nbsp; <span class="k">E = −∇φ</span> = <span class="v">' + fmtV(E) + '</span>' +
+            '　&nbsp; <span class="k">|E|</span> = <span class="v">' + fmtN(Em) + '</span><br>';
+    html += '<span class="k">球坐标分量：</span> <span class="m">∂φ/∂r</span> = <span class="v">' + fmtN(A2*Math.cos(th)) + '</span>，' +
+            '<span class="m">(1/r)∂φ/∂θ</span> = <span class="v">' + fmtN(-A2*Math.sin(th)) + '</span>，' +
+            '<span class="m">(1/(r sinθ))∂φ/∂φ</span> = <span class="v">0</span><br>';
+    html += '<span class="ans">✔ 题问点 (1, π/4, π/4)：E = −A x̂（均匀场，各点相同，与 r、φ 无关）</span>';
+    html += '<span class="note">注意：题意应为 <b>E = −∇φ</b>。题面 eg2 的解写成 E = +∇φ = A x̂（漏了负号），' +
+            '与静电场约定不一致；本程序按 −∇φ 绘制（eg1 的解也是 −∇φ）。</span>';
+  }
+  cfg.ro.innerHTML = html;
+}
+
+/* ---------------- 交互 ---------------- */
+function canvasToUV(cfg, ev){
+  var g = cfg._geom; if (!g) return null;
+  var rect = cfg.canvas.getBoundingClientRect();
+  var x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+  if (x < g.ox || x > g.ox + g.vw || y < g.oy || y > g.oy + g.vh) return null;
+  return [g.sl.u0 + (x - g.ox)/g.s, g.sl.v1 - (y - g.oy)/g.s];
+}
+function bindCanvas(cfg){
+  cfg.canvas.addEventListener('mousemove', function(ev){
+    if (cfg.lock) return;
+    var uv = canvasToUV(cfg, ev);
+    cfg.probe = uv;
+    renderPanel(cfg);
+  });
+  cfg.canvas.addEventListener('mouseleave', function(){
+    if (cfg.lock) return;
+    cfg.probe = null;
+    renderPanel(cfg);
+  });
+  cfg.canvas.addEventListener('click', function(ev){
+    if (cfg.lock){ cfg.lock = null; cfg.probe = canvasToUV(cfg, ev); }
+    else { cfg.lock = canvasToUV(cfg, ev); cfg.probe = null; }
+    renderPanel(cfg);
+  });
+  cfg.canvas.addEventListener('dblclick', function(){
+    cfg.lock = null; cfg.probe = null; renderPanel(cfg);
+  });
+}
+
+/* 平面按钮 */
+function bindSeg(segId, cfg, extra){
+  var seg = document.getElementById(segId);
+  seg.addEventListener('click', function(ev){
+    var b = ev.target.closest('button');
+    if (!b) return;
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    cfg.kind = b.getAttribute('data-k');
+    /* 切面时把 c 调回「含题问点」的合理值 */
+    if (extra) extra(cfg.kind);
+    renderPanel(cfg);
+  });
+}
+/* 开关按钮 */
+function bindTogs(togId, cfg){
+  var box = document.getElementById(togId);
+  box.addEventListener('click', function(ev){
+    var b = ev.target.closest('button');
+    if (!b) return;
+    var t = b.getAttribute('data-t');
+    if (!t) return;
+    cfg.show[t] = !cfg.show[t];
+    b.classList.toggle('on', cfg.show[t]);
+    cfg._baseKey = '';
+    renderPanel(cfg);
+  });
+}
+function bindExtras(){
+  /* 例1：c 滑条 */
+  var c1 = document.getElementById('c1'), c1v = document.getElementById('c1v');
+  c1.addEventListener('input', function(){
+    CFG1.c = parseFloat(c1.value);
+    c1v.textContent = CFG1.c.toFixed(2);
+    renderPanel(CFG1);
+  });
+  /* 例2：A 滑条 */
+  var a2 = document.getElementById('a2'), a2v = document.getElementById('a2v');
+  a2.addEventListener('input', function(){
+    A2 = parseFloat(a2.value);
+    a2v.textContent = A2.toFixed(2);
+    renderPanel(CFG2);
+  });
+
+  var c2lab = document.getElementById('c2lab');
+  var Q = FIELD2.query;
+  /* 各切片默认取「过题问点」的位置，保证题问点总落在切片内 */
+  function defC(kind){
+    if (kind === 'r') return Math.atan2(Q[2], Q[1]);   // 绕 x 轴方位角（题问点 45°）
+    if (kind === 'z') return Q[2];                     // 题问点 z = 0.5
+    return Math.round(Q[0]*100)/100;                   // 题问点 x = 0.71
+  }
+  /* 同一个处理函数：滑条值按当前 kind 解释（φ方位角 或 平面位置 c） */
+  function onC(ev){
+    var v = parseFloat(ev.target.value), out = ev.target.nextElementSibling;
+    if (CFG2.kind === 'r'){ CFG2.c = v*Math.PI/180; out.textContent = v.toFixed(0) + '°'; }
+    else { CFG2.c = v; out.textContent = v.toFixed(2); }
+    renderPanel(CFG2);
+  }
+  document.getElementById('c2').addEventListener('input', onC);
+
+  return function(kind){
+    var isR = (kind === 'r');
+    c2lab.innerHTML = isR
+      ? 'φ<sub>方位</sub> = <input type="range" id="c2" min="0" max="180" step="1"><b id="c2v"></b>'
+      : 'c = <input type="range" id="c2" min="-2.6" max="2.6" step="0.01"><b id="c2v"></b>';
+    var nc2 = document.getElementById('c2'), nc2v = document.getElementById('c2v');
+    var cv = defC(kind);
+    if (isR){
+      var deg = Math.round(cv*180/Math.PI);
+      nc2.value = String(deg); nc2v.textContent = deg + '°';
+      CFG2.c = deg*Math.PI/180;
+    } else {
+      nc2.value = cv.toFixed(2); nc2v.textContent = cv.toFixed(2);
+      CFG2.c = parseFloat(nc2.value);
+    }
+    nc2.addEventListener('input', onC);
+  };
+}
+
+/* ---------------- 启动 ---------------- */
+(function init(){
+  var reset2Sliders = bindExtras();
+
+  bindSeg('seg1', CFG1, function(kind){
+    if (kind === 'y'){ CFG1.c = 1; document.getElementById('c1').value = 1; }
+    else if (kind === 'z'){ CFG1.c = 1; document.getElementById('c1').value = 1; }
+    else { CFG1.c = 1; document.getElementById('c1').value = 1; }
+    document.getElementById('c1v').textContent = CFG1.c.toFixed(2);
+  });
+  bindSeg('seg2', CFG2, reset2Sliders);
+  bindTogs('tg1', CFG1);
+  bindTogs('tg2', CFG2);
+  bindCanvas(CFG1);
+  bindCanvas(CFG2);
+
+  var raf = null;
+  function all(){
+    renderPanel(CFG1);
+    renderPanel(CFG2);
+  }
+  function onResize(){
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(function(){
+      CFG1._baseKey = ''; CFG2._baseKey = '';
+      all();
+    });
+  }
+  window.addEventListener('resize', onResize);
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape'){ CFG1.lock = null; CFG2.lock = null; all(); }
+  });
+
+  all();
+  /* 字体/布局稳定后再刷一次 */
+  setTimeout(all, 120);
+  setTimeout(function(){ CFG1._baseKey = ''; CFG2._baseKey = ''; all(); }, 400);
+})();
+</script>
+</body>
+</html>
