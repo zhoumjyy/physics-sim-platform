@@ -773,16 +773,16 @@
         // ================================================================
         //  📋 模拟器分类配置 — 按物理板块组织
         // ================================================================
-        const DEFAULT_CATEGORIES = [{
-            id: 'mechanics',
-            name: '🔬 力学',
+                        const DEFAULT_CATEGORIES = [{
+            id: 'kinematics',
+            name: '🏃 运动学',
             sims: [{
                 id: 'displacement-micro-element',
                 name: '微元法 · 位移公式推导',
                 description: '匀变速直线运动 · 以直代曲',
                 icon: '📐',
                 src: 'simulations/displacement-micro-element.html'
-            },{
+            }, {
                 id: 'projectile',
                 name: '平抛运动',
                 description: '速度矢量 · 轨迹 · 碰撞',
@@ -800,57 +800,25 @@
                 description: '红车蓝车 · 速度加速度可调 · 间距突出',
                 icon: '🚗',
                 src: 'simulations/chase-meet.html'
-            }, {
+            }]
+        }, {
+            id: 'dynamics',
+            name: '⚙️ 动力学',
+            sims: [{
+                id: 'newton-laws',
+                name: '牛顿运动定律',
+                description: '受力分析 · 连接体 · 超重与失重',
+                icon: '🏋️',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'oscillation-wave',
+            name: '🌊 机械振动与机械波',
+            sims: [{
                 id: 'pendulum',
                 name: '单摆运动',
                 description: '简谐运动 · 周期',
                 icon: '🌀',
-                src: 'about:blank'
-            }]
-        }, {
-            id: 'electromagnetism',
-            name: '⚡ 电磁学',
-            sims: [{
-                id: 'electric-field',
-                name: '电场可视化 · 电场线与等势面',
-                description: '6 种电荷组合 · 立体/俯视 · 等高线 · 试探电荷',
-                icon: '⚡',
-                src: 'simulations/electric-field.html'
-            }, {
-                id: 'uniform-charged-body',
-                name: '均匀带电体 · 电场线与电势分布',
-                description: '圆环/圆盘/半球壳/实心半球 · 等势面 · 试探电荷',
-                icon: '🔵',
-                src: 'simulations/均匀带电体模拟器（修复带电体朝向）.html'
-            }, {
-                id: 'electrostatic-shielding',
-                name: '静电屏蔽 · 球壳与薄壳',
-                description: '外屏蔽/内屏蔽 · 接地/不接地 · 金属球壳与长方体薄壳',
-                icon: '🛡️',
-                src: 'simulations/electrostatic-shielding.html'
-            }, {
-                id: 'multi-charge-field',
-                name: '多点电荷电场 · 电场线与等势面',
-                description: '手动添加/拖动点电荷 · 实时生成电场线与等势面',
-                icon: '🔆',
-                src: 'simulations/multi-charge-field.html'
-            }, {
-                id: 'capacitor-dynamics',
-                name: '平行板电容器 · 动态变化',
-                description: '充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态',
-                icon: '🔋',
-                src: 'simulations/capacitor-dynamics.html'
-            }, {
-                id: 'divider-limit',
-                name: '限流式与分压式',
-                description: '滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇',
-                icon: '🔌',
-                src: 'simulations/限流式与分压式.html'
-            }, {
-                id: 'magnetic-field',
-                name: '磁场可视化',
-                description: '磁感线 · 安培定则',
-                icon: '🧲',
                 src: 'about:blank'
             }]
         }, {
@@ -870,8 +838,78 @@
                 src: 'about:blank'
             }]
         }, {
-            id: 'modern-physics',
-            name: '⚛️ 近代物理',
+            id: 'electrostatics',
+            name: '⚡ 静电场',
+            sims: [{
+                id: 'electric-field',
+                name: '电场可视化 · 电场线与等势面',
+                description: '6 种电荷组合 · 立体/俯视 · 等高线 · 试探电荷',
+                icon: '⚡',
+                src: 'simulations/electric-field.html'
+            }, {
+                id: 'uniform-charged-body',
+                name: '均匀带电体 · 电场线与电势分布',
+                description: '圆环/圆盘/半球壳/实心半球 · 等势面 · 试探电荷',
+                icon: '🔵',
+                src: 'simulations/均匀带电体模拟器（修复带电体朝向）.html'
+            }, {
+                id: 'electrostatic-shielding',
+                name: '静电屏蔽 · 球壳与薄壳',
+                description: '外屏蔽/内屏蔽 · 接地/不接地 · 金属球壳与长方体薄壳 · 全空间电场线',
+                icon: '🛡️',
+                src: 'simulations/electrostatic-shielding.html'
+            }, {
+                id: 'multi-charge-field',
+                name: '多点电荷电场 · 电场线与等势面',
+                description: '手动添加/拖动点电荷 · 实时生成电场线与等势面',
+                icon: '🔆',
+                src: 'simulations/multi-charge-field.html'
+            }, {
+                id: 'scalar-potential-field',
+                name: '一般电势标量场可视化',
+                description: '标量场 φ 的等值线地形图 · 梯度 E = −∇φ · 可切平面读取探针',
+                icon: '🗺️',
+                src: 'simulations/scalar-potential-field.html'
+            }, {
+                id: 'capacitor-dynamics',
+                name: '平行板电容器 · 动态变化',
+                description: '充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态',
+                icon: '🔋',
+                src: 'simulations/capacitor-dynamics.html'
+            }]
+        }, {
+            id: 'circuit',
+            name: '🔌 电路',
+            sims: [{
+                id: 'divider-limit',
+                name: '限流式与分压式',
+                description: '滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇',
+                icon: '🔌',
+                src: 'simulations/限流式与分压式.html'
+            }]
+        }, {
+            id: 'magnetic-field',
+            name: '🧲 磁场',
+            sims: [{
+                id: 'magnetic-field',
+                name: '磁场可视化',
+                description: '磁感线 · 安培定则',
+                icon: '🧲',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'electromagnetic-induction',
+            name: '🔄 电磁感应',
+            sims: [{
+                id: 'lenz-law',
+                name: '楞次定律',
+                description: '磁通量变化 · 感应电流 · 右手定则',
+                icon: '🔄',
+                src: 'about:blank'
+            }]
+        }, {
+            id: 'atomic-physics',
+            name: '⚛️ 原子物理',
             sims: [{
                 id: 'photoelectric',
                 name: '光电效应',
