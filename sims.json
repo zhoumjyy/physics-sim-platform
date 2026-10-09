@@ -1,9 +1,9 @@
 {
-  "manifestVersion": 15,
+  "manifestVersion": 16,
   "categories": [
     {
-      "id": "mechanics",
-      "name": "🔬 力学",
+      "id": "kinematics",
+      "name": "🏃 运动学",
       "sims": [
         {
           "id": "displacement-micro-element",
@@ -32,7 +32,26 @@
           "description": "红车蓝车 · 速度加速度可调 · 间距突出",
           "icon": "🚗",
           "src": "simulations/chase-meet.html"
-        },
+        }
+      ]
+    },
+    {
+      "id": "dynamics",
+      "name": "⚙️ 动力学",
+      "sims": [
+        {
+          "id": "newton-laws",
+          "name": "牛顿运动定律",
+          "description": "受力分析 · 连接体 · 超重与失重",
+          "icon": "🏋️",
+          "src": ""
+        }
+      ]
+    },
+    {
+      "id": "oscillation-wave",
+      "name": "🌊 机械振动与机械波",
+      "sims": [
         {
           "id": "pendulum",
           "name": "单摆运动",
@@ -43,8 +62,28 @@
       ]
     },
     {
-      "id": "electromagnetism",
-      "name": "⚡ 电磁学",
+      "id": "optics",
+      "name": "🌈 光学",
+      "sims": [
+        {
+          "id": "reflection",
+          "name": "反射定律",
+          "description": "入射角 = 反射角",
+          "icon": "🪞",
+          "src": ""
+        },
+        {
+          "id": "refraction",
+          "name": "折射与全反射",
+          "description": "斯涅耳定律",
+          "icon": "💧",
+          "src": ""
+        }
+      ]
+    },
+    {
+      "id": "electrostatics",
+      "name": "⚡ 静电场",
       "sims": [
         {
           "id": "electric-field",
@@ -72,24 +111,43 @@
           "name": "多点电荷电场 · 电场线与等势面",
           "description": "手动添加/拖动点电荷 · 实时生成电场线与等势面",
           "icon": "🔆",
-                "src": "simulations/multi-charge-field.html"
-            },
-            {
-                "id": "capacitor-dynamics",
-                "name": "平行板电容器 · 动态变化",
-                "description": "充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态",
-                "icon": "🔋",
-                "src": "simulations/capacitor-dynamics.html"
-            },
-            {
-                "id": "divider-limit",
-                "name": "限流式与分压式",
-                "description": "滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇",
-                "icon": "🔌",
-                "src": "simulations/限流式与分压式.html"
-            },
-            {
-                "id": "magnetic-field",
+          "src": "simulations/multi-charge-field.html"
+        },
+        {
+          "id": "scalar-potential-field",
+          "name": "一般电势标量场可视化",
+          "description": "标量场 φ 的等值线地形图 · 梯度 E = −∇φ · 可切平面读取探针",
+          "icon": "🗺️",
+          "src": "simulations/scalar-potential-field.html"
+        },
+        {
+          "id": "capacitor-dynamics",
+          "name": "平行板电容器 · 动态变化",
+          "description": "充电/断电双模式 · 面积/间距/电介质可调 · 静电计测电压 · 电场线动态",
+          "icon": "🔋",
+          "src": "simulations/capacitor-dynamics.html"
+        }
+      ]
+    },
+    {
+      "id": "circuit",
+      "name": "🔌 电路",
+      "sims": [
+        {
+          "id": "divider-limit",
+          "name": "限流式与分压式",
+          "description": "滑动变阻器接法选择 · 调控特性与 Uₓ/I 函数簇",
+          "icon": "🔌",
+          "src": "simulations/限流式与分压式.html"
+        }
+      ]
+    },
+    {
+      "id": "magnetic-field",
+      "name": "🧲 磁场",
+      "sims": [
+        {
+          "id": "magnetic-field",
           "name": "磁场可视化",
           "description": "磁感线 · 安培定则",
           "icon": "🧲",
@@ -98,28 +156,21 @@
       ]
     },
     {
-      "id": "optics",
-      "name": "🌈 光学",
+      "id": "electromagnetic-induction",
+      "name": "🔄 电磁感应",
       "sims": [
         {
-          "id": "reflection",
-          "name": "反射定律",
-          "description": "入射角 = 反射角",
-          "icon": "🪞",
-          "src": ""
-        },
-        {
-          "id": "refraction",
-          "name": "折射与全反射",
-          "description": "斯涅耳定律",
-          "icon": "💧",
+          "id": "lenz-law",
+          "name": "楞次定律",
+          "description": "磁通量变化 · 感应电流 · 右手定则",
+          "icon": "🔄",
           "src": ""
         }
       ]
     },
     {
-      "id": "modern-physics",
-      "name": "⚛️ 近代物理",
+      "id": "atomic-physics",
+      "name": "⚛️ 原子物理",
       "sims": [
         {
           "id": "photoelectric",
