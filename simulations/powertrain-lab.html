@@ -85,15 +85,6 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
   border:1px solid var(--line);border-radius:12px;padding:9px 11px;
 }
 .panel h3{margin:0 0 8px;font-size:12.5px;color:var(--dim);font-weight:600;letter-spacing:.5px}
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.modebtn{
-  display:flex;flex-direction:column;align-items:flex-start;gap:1px;
-  padding:8px 11px;border-radius:10px;text-align:left;
-}
-.modebtn b{font-size:13px}
-.modebtn i{font-style:normal;font-size:10.5px;color:var(--dim)}
-.modebtn.on{border-color:#37cfba;background:rgba(47,196,176,.13)}
-.modebtn.on b{color:#5ee6d2}
 
 .parts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .pt{
@@ -171,6 +162,9 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
             <feGaussianBlur stdDeviation="2.6" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <marker id="ah" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#7fd0ff"/>
+          </marker>
         </defs>
 
         <!-- 地面 -->
@@ -311,6 +305,11 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
           <path d="M 120,266 Q 244,244 272,228 L 318,194 Q 332,183 354,182 L 630,182"
                 fill="none" stroke="rgba(255,255,255,.30)" stroke-width="3" stroke-linecap="round"/>
           <path d="M 360,332 L 366,236 M 636,232 L 640,332" stroke="rgba(255,255,255,.13)" stroke-width="2" fill="none"/>
+          <g stroke="rgba(12,16,24,.85)" stroke-width="2.4">
+            <line x1="88" y1="288" x2="88" y2="312"/>
+            <line x1="95" y1="288" x2="95" y2="312"/>
+            <line x1="102" y1="288" x2="102" y2="312"/>
+          </g>
           <polygon points="84,284 104,280 104,296 84,294" fill="#ffe9a8" opacity=".85"/>
           <polygon points="904,286 908,288 908,306 902,304" fill="#ff6a5e" opacity=".85"/>
         </g>
@@ -354,23 +353,29 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
         </g>
         <text x="205" y="400" text-anchor="middle" font-size="12" fill="#8fa2bf">前轮</text>
         <text x="760" y="400" text-anchor="middle" font-size="12" fill="#8fa2bf">后轮</text>
+
+        <!-- 车头 / 车尾 标注 + 前进方向 -->
+        <text x="150" y="172" text-anchor="middle" font-size="14" font-weight="700" fill="#ffd27a">车头</text>
+        <text x="862" y="172" text-anchor="middle" font-size="14" font-weight="700" fill="#9fb6e8">车尾</text>
+        <g>
+          <text x="500" y="411" text-anchor="middle" font-size="13" font-weight="600" fill="#bcd4f5">前进方向</text>
+          <line x1="540" y1="423" x2="468" y2="423" stroke="#7fd0ff" stroke-width="3.5" stroke-linecap="round" marker-end="url(#ah)"/>
+        </g>
       </svg>
 
       <div class="eff">
         <div class="m" id="effMode">整车未成形</div>
         <div class="v" id="effVal">—</div>
-        <div class="c" id="effChain">从右侧组装部件，或直接选择预设动力形式</div>
+        <div class="c" id="effChain">从右侧组装部件，系统将自动识别动力形式</div>
       </div>
     </div>
 
     <aside>
       <div class="panel">
-        <h3>预设动力形式（课程演示）</h3>
-        <div class="modes">
-          <button class="modebtn" data-mode="ice"><b>纯油模式</b><i>效率 25%</i></button>
-          <button class="modebtn" data-mode="erev"><b>串联增程</b><i>效率 30%</i></button>
-          <button class="modebtn" data-mode="phev"><b>并联插混</b><i>效率 45%</i></button>
-          <button class="modebtn" data-mode="ev"><b>纯电模式</b><i>效率 80%</i></button>
+        <h3>玩法</h3>
+        <div style="font-size:12px;line-height:1.7;color:var(--dim)">
+          点击右侧部件卡片，或直接<b style="color:#cfd9ea">点车内部件</b>进行安装 / 拆卸。<br>
+          组装完成后，系统会自动识别这是哪种动力形式，并点亮对应的能量流路径。
         </div>
       </div>
 
@@ -455,7 +460,7 @@ var state = { tank:true, engine:true, gen:true, shaft:true, batt:true, motor:tru
 var running = false;
 var shellOn = true;
 var cur = judge(state);
-var spinF = 0, spinR = 0, dashOff = 0;
+var spinF = 0, spinR = 0, dashOff = 0, soc = 88;
 
 var $ = function(id){ return document.getElementById(id); };
 
@@ -491,17 +496,6 @@ function toggle(id){
   if (running){ cur = judge(state); if (cur.key==='custom'||cur.key==='empty') stop(); }
   render();
 }
-function applyMode(key){
-  var set = {
-    ice:  {tank:1,engine:1,gen:0,shaft:1,batt:0,motor:0},
-    erev: {tank:1,engine:1,gen:1,shaft:0,batt:1,motor:1},
-    phev: {tank:1,engine:1,gen:1,shaft:1,batt:1,motor:1},
-    ev:   {tank:0,engine:0,gen:0,shaft:0,batt:1,motor:1}
-  }[key];
-  for (var k in set) state[k] = !!set[k];
-  render();
-}
-
 /* ---------- 启停 ---------- */
 function start(){
   cur = judge(state);
@@ -544,12 +538,6 @@ function render(){
     var id = cards[j].getAttribute('data-part');
     cards[j].classList.toggle('off', !state[id]);
     cards[j].querySelector('.st').textContent = state[id] ? '已安装' : '未安装';
-  }
-
-  /* 预设按钮高亮 */
-  var btns = document.querySelectorAll('.modebtn');
-  for (var m=0;m<btns.length;m++){
-    btns[m].classList.toggle('on', btns[m].getAttribute('data-mode')===cur.key && running);
   }
 
   /* 能量流显隐 */
@@ -601,9 +589,15 @@ function frame(ts){
     dashOff -= dt * 85;
     var mode = MODES[cur.key];
     if (mode){
-      if (mode.paths.indexOf('R')>=0) spinF += dt * 240;
-      if (mode.paths.indexOf('G')>=0) spinR += dt * 290;
+      /* 车头在左，前进＝向左，车轮逆时针（负向）转动 */
+      if (mode.paths.indexOf('R')>=0) spinF -= dt * 240;
+      if (mode.paths.indexOf('G')>=0) spinR -= dt * 290;
     }
+    /* 电量单调变化：纯电放电下降；有发电机充电时回升 */
+    var charges = (state.gen && state.engine && state.tank);
+    var drains  = mode && mode.paths.indexOf('G')>=0;
+    if (drains && !charges) soc = Math.max(6, soc - dt*9);
+    else if (charges)       soc = Math.min(100, soc + dt*7);
   }
   $('spF').setAttribute('transform', 'rotate('+spinF+' 205 334)');
   $('spR').setAttribute('transform', 'rotate('+spinR+' 760 334)');
@@ -612,10 +606,10 @@ function frame(ts){
   /* 发动机振动 */
   var vib = (running && state.engine) ? ('translate(' + (Math.sin(ts*.055)*1.3).toFixed(2) + ',' + (Math.cos(ts*.08)*0.9).toFixed(2) + ')') : '';
   $('g-engine').setAttribute('transform', vib);
-  /* 电池 SOC 呼吸 */
-  var soc = 60 + (running ? 34*Math.sin(ts*.0012) : 0);
-  $('socBar').setAttribute('width', Math.max(6, 118*soc/100).toFixed(1));
-  $('socBar').setAttribute('fill', running ? (cur.key==='erev' ? '#f6c445' : '#41e08d') : '#41e08d');
+  /* 电池电量条（随工况单调变化，不来回伸缩） */
+  var sw = Math.max(4, 118*soc/100);
+  $('socBar').setAttribute('width', sw.toFixed(1));
+  $('socBar').setAttribute('fill', soc>30 ? '#41e08d' : (soc>15 ? '#f6c445' : '#ff5f57'));
   requestAnimationFrame(frame);
 }
 
@@ -626,10 +620,6 @@ $('btnShell').addEventListener('click', function(){
   $('shell').style.opacity = shellOn ? 1 : .06;
   this.textContent = shellOn ? '外壳：透视中' : '外壳：已隐藏';
 });
-var mbtns = document.querySelectorAll('.modebtn');
-for (var b=0;b<mbtns.length;b++){
-  mbtns[b].addEventListener('click', function(){ applyMode(this.getAttribute('data-mode')); });
-}
 var p3d = document.querySelectorAll('.part3d');
 for (var d=0;d<p3d.length;d++){
   p3d[d].addEventListener('click', function(){
