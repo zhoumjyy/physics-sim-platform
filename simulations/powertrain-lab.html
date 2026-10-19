@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>汽车动力形式 · 组装实验室</title>
+<title>汽车动力形式 · 学生实验台</title>
 <style>
 :root{
   --chem:#e6a83c;
@@ -53,37 +53,35 @@ button.primary.stop{
   box-shadow:0 4px 16px rgba(226,96,79,.2);
 }
 
-/* ---------- 零件架 ---------- */
+/* ---------- 器材架 ---------- */
 .rack{
   flex:0 0 auto;display:flex;gap:8px;padding:8px;
-  background:rgba(255,255,255,.035);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.018));
   border:1px solid var(--line);border-radius:13px;
 }
 .part{
   flex:1;min-width:0;display:flex;align-items:center;gap:9px;
-  padding:8px 10px;border-radius:10px;cursor:pointer;
+  padding:6px 10px;border-radius:10px;cursor:pointer;
   border:1px solid rgba(255,255,255,.09);
   background:rgba(255,255,255,.025);
   transition:.15s;
 }
 .part:hover{border-color:rgba(255,255,255,.26);background:rgba(255,255,255,.06)}
-.part svg{width:46px;height:32px;flex:0 0 46px}
+.part .ico{width:50px;height:36px;flex:0 0 50px;display:block}
 .part .nm{font-size:13px;font-weight:600;line-height:1.3;white-space:nowrap}
 .part .ds{font-size:10.5px;color:var(--dim);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .part .txt{min-width:0}
-.part.used{opacity:.26;filter:grayscale(1);border-style:dashed;cursor:default}
+.part.used{opacity:.28;filter:grayscale(1);border-style:dashed;cursor:default}
 .part.used:hover{background:rgba(255,255,255,.025);border-color:rgba(255,255,255,.09)}
 
 /* ---------- 主体 ---------- */
-.body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:11px}
+.body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:11px}
 .rig{display:flex;flex-direction:column;gap:8px;min-height:0}
 .stage{
   position:relative;flex:1;min-height:0;overflow:hidden;
-  border:1px solid var(--line);border-radius:14px;
-  background:
-    linear-gradient(rgba(255,255,255,.021) 1px,transparent 1px) 0 0/100% 26px,
-    linear-gradient(90deg,rgba(255,255,255,.021) 1px,transparent 1px) 0 0/26px 100%,
-    rgba(255,255,255,.026);
+  border:1px solid rgba(255,255,255,.10);border-radius:14px;
+  background:#10151b;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
 }
 #stage{width:100%;height:100%;display:block}
 .bar{flex:0 0 auto;display:flex;align-items:center;gap:11px;padding:0 3px;height:36px}
@@ -92,7 +90,6 @@ button.primary.stop{
 .bar .sp{flex:1}
 .lg{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--dim);white-space:nowrap}
 .lg i{width:14px;height:3px;border-radius:2px;display:inline-block}
-.lg i.chem{background:var(--chem)}
 .lg i.elec{background:var(--elec)}
 .lg i.mech{background:var(--mech)}
 
@@ -140,65 +137,46 @@ button.primary.stop{
 .tasks li.done{opacity:1}
 .tasks li.done .ck{background:#35d6c0;border-color:#35d6c0}
 .tasks li.done b{color:#7fe8d8}
-.taskcard{margin-top:0}
 
-/* ---------- SVG ---------- */
-.slot{cursor:pointer}
-.slot .frame{
-  fill:rgba(255,255,255,.014);
-  stroke:rgba(255,255,255,.20);
-  stroke-width:1.6;stroke-dasharray:7 6;
-  transition:stroke .18s,fill .18s;
+/* ---------- SVG 交互 ---------- */
+.hit{cursor:pointer}
+.ghost{fill:rgba(120,175,235,.028);stroke:rgba(145,190,245,.30);stroke-width:1.4;stroke-dasharray:4 6;transition:.2s}
+.hit:hover .ghost{stroke:rgba(140,215,255,.82);fill:rgba(120,190,255,.07)}
+.glabel{
+  font-size:12px;fill:rgba(168,196,228,.58);font-family:"Microsoft YaHei",sans-serif;
+  letter-spacing:.6px;transition:.2s;
 }
-.slot:hover .frame{stroke:rgba(255,255,255,.42);fill:rgba(255,255,255,.05)}
-.slot.filled .frame{stroke-dasharray:none;stroke-width:1.8;fill:rgba(255,255,255,.045)}
-.slot.filled:hover .frame{stroke:#ff9a86;fill:rgba(255,120,100,.07)}
-.slot.hint .frame{stroke:#58c8ff;stroke-width:2.4;animation:blink 1s ease-in-out infinite}
-@keyframes blink{0%,100%{stroke-opacity:.35}50%{stroke-opacity:1}}
-.slabel{font-size:14.5px;fill:#7d90ab;font-family:"Microsoft YaHei",sans-serif;letter-spacing:.5px}
-.slot:hover .slabel{fill:#b8cae0}
-.x{opacity:.32;transition:opacity .15s;pointer-events:none}
-.slot.filled:hover .x{opacity:1}
-.pop{animation:pop .26s cubic-bezier(.3,1.6,.5,1)}
-@keyframes pop{0%{transform:scale(.92);opacity:.4}100%{transform:scale(1);opacity:1}}
+.hit:hover .glabel{fill:rgba(200,232,255,.95)}
+.pop{animation:pop .28s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:translateY(-6px);opacity:.3}100%{transform:translateY(0);opacity:1}}
 
-.link{fill:none;stroke:#26303f;stroke-width:2.6;stroke-linecap:round;opacity:.6;transition:stroke .25s,opacity .25s}
-.link.armed{opacity:.62;stroke-width:3.2}
-.link.armed.chem{stroke:var(--chem)}
-.link.armed.elec{stroke:var(--elec)}
-.link.armed.mech{stroke:var(--mech)}
-.link.on{opacity:1;stroke-dasharray:11 9;animation:dashflow .85s linear infinite}
-@keyframes dashflow{to{stroke-dashoffset:-40}}
+.wire{fill:none;stroke-linecap:round}
+.wflow{fill:none;stroke:#ffe6b0;stroke-width:2;stroke-linecap:round;opacity:0}
+.running .wflow{opacity:.95;stroke-dasharray:4 16;animation:flow .75s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-20}}
 
-#spokes{transform-box:view-box;transform-origin:870px 235px}
-.stage.running #spokes{animation:spin 1.15s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.beltFlow{opacity:0}
+.running .beltFlow{opacity:.5;animation:flow .9s linear infinite}
 
-.note{font-size:10.5px;fill:#5b6c86;font-family:"Microsoft YaHei",sans-serif;letter-spacing:.6px}
-.lnote{font-size:11px;fill:#6aa9ff;font-family:"Microsoft YaHei",sans-serif;letter-spacing:.5px;opacity:.85}
+.artifact{filter:drop-shadow(0 4px 6px rgba(0,0,0,.45))}
+.zone:hover .artifact{filter:drop-shadow(0 4px 14px rgba(110,190,255,.35))}
 
 /* ---------- 窄屏 ---------- */
 @media (max-width:1180px){
-  .body{grid-template-columns:minmax(0,1fr) 252px}
-  .part svg{width:34px;flex:0 0 34px}
+  .body{grid-template-columns:minmax(0,1fr) 250px}
+  .part .ico{width:36px;flex:0 0 36px}
   .part .ds{display:none}
   .card{padding:11px 12px}
   .cname{font-size:15px}
   .desc{font-size:11.5px;line-height:1.55;margin-top:8px}
-  .chain{margin-top:8px;gap:5px}
-  .cn{font-size:11px;padding:2px 7px}
-  .tags{margin-top:7px}
-  .hr{margin:10px 0 9px}
   .tasks li{font-size:11.5px;gap:7px;padding:1px 0}
-  .slabel{font-size:17px}
-  .lnote{font-size:12px}
+  .glabel{font-size:14px}
 }
 @media (max-width:900px){
   body{overflow:auto}
   .app{height:auto;min-height:100vh}
   .body{display:block}
-  .rig{margin-bottom:10px}
-  .stage{flex:none;height:auto;aspect-ratio:1000/460}
+  .stage{flex:none;height:auto;aspect-ratio:916/404}
   .side{overflow:visible}
   .card{overflow:visible}
 }
@@ -207,10 +185,10 @@ button.primary.stop{
 <body>
 <div class="app">
   <header>
-    <h1>汽车动力总成实验室</h1>
-    <p class="sub">点零件装到底盘上，点已装的零件拆下来 —— 拆装出四种动力形式</p>
+    <h1>汽车动力总成 · 学生实验台</h1>
+    <p class="sub">从器材架上取器材放上台面，用导线和皮带把它们连起来 —— 组合出四种动力形式</p>
     <span class="sp"></span>
-    <button id="btnReset">全部拆下</button>
+    <button id="btnReset">全部归还</button>
   </header>
 
   <div class="rack" id="rack"></div>
@@ -218,24 +196,23 @@ button.primary.stop{
   <div class="body">
     <div class="rig">
       <div class="stage" id="stageWrap">
-        <svg id="stage" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet"></svg>
+        <svg id="stage" viewBox="18 18 926 404" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
       <div class="bar">
-        <button id="btnRun" class="primary" disabled>启动车辆</button>
-        <span class="status" id="status">先装一块动力电池和一台电动机试试</span>
+        <button id="btnRun" class="primary" disabled>接通运行</button>
+        <span class="status" id="status">先从器材架取一件器材放到台面上</span>
         <span class="sp"></span>
-        <span class="lg"><i class="chem"></i>化学能</span>
-        <span class="lg"><i class="elec"></i>电能</span>
-        <span class="lg"><i class="mech"></i>机械能</span>
+        <span class="lg"><i class="elec"></i>电流</span>
+        <span class="lg"><i class="mech"></i>机械传动</span>
       </div>
     </div>
 
     <aside class="side">
       <div class="card result" id="card">
-        <div class="cname" id="cname">未完成装配</div>
+        <div class="cname" id="cname">实验台还是空的</div>
         <div class="cen" id="cen"></div>
         <div class="chain" id="chain"></div>
-        <p class="desc" id="desc">把零件装到底盘的虚线框里，系统会判断这是哪一种动力形式。</p>
+        <p class="desc" id="desc">台面上标着淡淡的器材位置。点上面的器材，它就摆到台面上；再点台面上的器材可以拿下来。</p>
         <div class="tags" id="tags"></div>
         <div class="hr"></div>
         <h2 id="taskTitle">实验任务</h2>
@@ -245,234 +222,441 @@ button.primary.stop{
   </div>
 </div>
 
+<!-- 全局渐变 / 滤镜（供台面与器材架图标共用） -->
+<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<defs>
+  <linearGradient id="gMetalH" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f4f8fd"/>
+    <stop offset=".22" stop-color="#ccd8e6"/>
+    <stop offset=".55" stop-color="#93a3b6"/>
+    <stop offset="1" stop-color="#5f6d7e"/>
+  </linearGradient>
+  <linearGradient id="gDark" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#414c59"/>
+    <stop offset="1" stop-color="#171d24"/>
+  </linearGradient>
+  <linearGradient id="gCase" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#313b46"/>
+    <stop offset=".16" stop-color="#242c35"/>
+    <stop offset="1" stop-color="#10151a"/>
+  </linearGradient>
+  <linearGradient id="gWood" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#a87545"/>
+    <stop offset="1" stop-color="#6a4223"/>
+  </linearGradient>
+  <linearGradient id="gCopper" x1=".15" y1="0" x2=".9" y2="1">
+    <stop offset="0" stop-color="#f0c089"/>
+    <stop offset=".42" stop-color="#cf8f4e"/>
+    <stop offset="1" stop-color="#8f5620"/>
+  </linearGradient>
+  <radialGradient id="gBlade" cx=".3" cy=".26" r=".85">
+    <stop offset="0" stop-color="#f2f7fc" stop-opacity=".9"/>
+    <stop offset=".55" stop-color="#c6d3e2" stop-opacity=".72"/>
+    <stop offset="1" stop-color="#93a3b6" stop-opacity=".55"/>
+  </radialGradient>
+  <radialGradient id="gLamp" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#dfeaff" stop-opacity=".16"/>
+    <stop offset="1" stop-color="#dfeaff" stop-opacity="0"/>
+  </radialGradient>
+  <pattern id="pGrid" width="34" height="34" patternUnits="userSpaceOnUse">
+    <path d="M34 0 V34 M0 34 H34" fill="none" stroke="#2b3745" stroke-width="1"/>
+  </pattern>
+  <filter id="fShadow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="6"/>
+  </filter>
+</defs>
+</svg>
+
 <script>
 /* =============================================================
-   汽车动力形式 · 组装实验室
-   把"储能 → 动力装置 → 车轮"拆成可插拔的零件，
-   由装配组合自动识别出 BEV / ICE / PHEV / EREV 四种构型。
+   汽车动力形式 · 学生实验台
+   -------------------------------------------------------------
+   器材与汽车部件的对应：
+     手摇发电机  ← 发动机（把燃料的化学能变成轴上的转动）
+     蓄电池      ← 油箱 / 动力电池
+     小电动机    ← 电动机
+     小风扇      ← 车轮（转起来就代表车在跑）
+     传动皮带    ← 机械直驱通路
+   "装不装皮带" 正好对应 发动机是否直接驱动车轮：
+     装皮带 → 直驱（燃油 / 插混）
+     不装   → 只发电（增程）
    ============================================================= */
 
-/* ---------- 零件图标（统一 100×70 坐标系） ---------- */
-var ICONS = {
-  tank:
-    '<g>' +
-    '<rect x="7" y="15" width="86" height="44" rx="10" fill="#e6a83c" fill-opacity=".10" stroke="#e6a83c" stroke-width="2.6"/>' +
-    '<path d="M22 15 V7 h15 v8" fill="none" stroke="#e6a83c" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '<path d="M50 23 c8.5 10.5 13.5 15.5 13.5 22 a13.5 13.5 0 0 1 -27 0 c0-6.5 5-11.5 13.5-22 z" fill="#e6a83c" fill-opacity=".8"/>' +
-    '</g>',
-  engine:
-    '<g>' +
-    '<rect x="10" y="17" width="80" height="32" rx="5" fill="#e6a83c" fill-opacity=".10" stroke="#e6a83c" stroke-width="2.6"/>' +
-    '<rect x="19" y="24" width="12" height="18" rx="2.5" fill="none" stroke="#e6a83c" stroke-width="1.6" opacity=".5"/>' +
-    '<rect x="35" y="24" width="12" height="18" rx="2.5" fill="none" stroke="#e6a83c" stroke-width="1.6" opacity=".5"/>' +
-    '<rect x="51" y="24" width="12" height="18" rx="2.5" fill="none" stroke="#e6a83c" stroke-width="1.6" opacity=".5"/>' +
-    '<rect x="67" y="24" width="12" height="18" rx="2.5" fill="none" stroke="#e6a83c" stroke-width="1.6" opacity=".5"/>' +
-    '<circle cx="50" cy="59" r="7.5" fill="none" stroke="#e6a83c" stroke-width="2.2"/>' +
-    '<path d="M50 51.5 V49" stroke="#e6a83c" stroke-width="2.2"/>' +
-    '</g>',
-  gen:
-    '<g>' +
-    '<circle cx="42" cy="35" r="24" fill="#6aa9ff" fill-opacity=".10" stroke="#6aa9ff" stroke-width="2.6"/>' +
-    '<text x="42" y="43" text-anchor="middle" font-size="20" font-weight="700" fill="#6aa9ff" font-family="Georgia,serif">G</text>' +
-    '<rect x="66" y="31" width="24" height="8" rx="3.5" fill="#6aa9ff" fill-opacity=".55"/>' +
-    '</g>',
-  battery:
-    '<g>' +
-    '<rect x="9" y="19" width="74" height="38" rx="7" fill="#35d6c0" fill-opacity=".10" stroke="#35d6c0" stroke-width="2.6"/>' +
-    '<rect x="83" y="30" width="9" height="16" rx="2.5" fill="#35d6c0"/>' +
-    '<path d="M52 24 L39 41 H48 L45 52 L58 35 H49 Z" fill="#35d6c0"/>' +
-    '</g>',
-  motor:
-    '<g>' +
-    '<circle cx="42" cy="35" r="24" fill="#6aa9ff" fill-opacity=".10" stroke="#6aa9ff" stroke-width="2.6"/>' +
-    '<text x="42" y="43" text-anchor="middle" font-size="20" font-weight="700" fill="#6aa9ff" font-family="Georgia,serif">M</text>' +
-    '<rect x="66" y="31" width="24" height="8" rx="3.5" fill="#6aa9ff" fill-opacity=".55"/>' +
-    '</g>'
+/* ---------- 器材外观（局部坐标系） ---------- */
+function artCrank(spin){
+  var s = '';
+  /* 投影 */
+  s += '<ellipse cx="100" cy="152" rx="76" ry="9" fill="#05080d" opacity=".62" filter="url(#fShadow)"/>';
+  /* 底座 */
+  s += '<rect x="34" y="122" width="132" height="26" rx="6" fill="url(#gDark)" stroke="#0b1117" stroke-width="1.2"/>';
+  s += '<rect x="34" y="122" width="132" height="5" rx="2.5" fill="#6b7887" opacity=".5"/>';
+  s += '<circle cx="44" cy="138" r="2.1" fill="#161c23" stroke="#606d7c" stroke-width=".7"/>';
+  s += '<circle cx="156" cy="138" r="2.1" fill="#161c23" stroke="#606d7c" stroke-width=".7"/>';
+  /* 口字形磁轭（中间镂空，装转子） */
+  s += '<path d="M58 48 H142 V124 H58 Z M72 62 H128 V110 H72 Z" fill="url(#gDark)" fill-rule="evenodd" stroke="#0d1319" stroke-width="1.2"/>';
+  s += '<path d="M58.8 49 H141.2" stroke="#8290a0" stroke-width="2" opacity=".55"/>';
+  s += '<path d="M59.5 50 V123" stroke="#6f7d8c" stroke-width="1.5" opacity=".45"/>';
+  /* 转子：铜漆包线绕成的线圈 */
+  s += '<circle cx="100" cy="86" r="22" fill="url(#gCopper)" stroke="#7a4a1c" stroke-width="1.4"/>';
+  var w = '';
+  for (var i = -6; i <= 6; i++){
+    var dy = i * 3.3;
+    var hw = Math.sqrt(Math.max(1, 22*22 - dy*dy)) - 1.2;
+    w += '<path d="M ' + (100 - hw).toFixed(1) + ',' + (86 + dy).toFixed(1) +
+         ' Q 100,' + (86 + dy + 1.7).toFixed(1) + ' ' + (100 + hw).toFixed(1) + ',' + (86 + dy).toFixed(1) + '" ' +
+         'fill="none" stroke="#8b5a24" stroke-width="1.05" opacity=".5"/>';
+  }
+  s += w;
+  s += '<circle cx="100" cy="86" r="8" fill="#2e2418" stroke="#9a7448" stroke-width="1"/>';
+  s += '<circle cx="100" cy="86" r="3" fill="#c9a071"/>';
+  /* 转轴：左右穿出 */
+  s += '<rect x="26" y="83" width="78" height="6.5" rx="3.2" fill="#aab7c6"/>';
+  s += '<rect x="126" y="83" width="36" height="6.5" rx="3.2" fill="#aab7c6"/>';
+  s += '<rect x="26" y="84" width="78" height="1.6" rx=".8" fill="#eef4fb" opacity=".75"/>';
+  /* 右侧皮带轮 */
+  s += '<ellipse cx="156" cy="86" rx="8.5" ry="25" fill="#39434f" stroke="#7d8b9b" stroke-width="1.4"/>';
+  s += '<ellipse cx="156" cy="86" rx="2.6" ry="8" fill="#1a2129"/>';
+  /* 顶部接线柱（经电刷引出） */
+  s += '<rect x="87" y="31" width="11" height="18" rx="3" fill="#a93a2b"/>';
+  s += '<ellipse cx="92.5" cy="31" rx="5.5" ry="2.6" fill="#e4644f"/>';
+  s += '<rect x="107" y="31" width="11" height="18" rx="3" fill="#171d24"/>';
+  s += '<ellipse cx="112.5" cy="31" rx="5.5" ry="2.6" fill="#3b4753"/>';
+  /* 曲柄（装在机身外侧，始终露在磁轭左边） */
+  s += '<g>';
+  if (spin) s += '<animateTransform attributeName="transform" type="rotate" from="0 26 86" to="360 26 86" dur="1.7s" repeatCount="indefinite"/>';
+  s += '<circle cx="26" cy="86" r="9" fill="url(#gMetalH)" stroke="#4d5a69" stroke-width="1.2"/>';
+  s += '<circle cx="26" cy="86" r="2.8" fill="#2b3540"/>';
+  s += '<path d="M26 86 L11 101" stroke="#2f3a45" stroke-width="10.5" stroke-linecap="round"/>';
+  s += '<path d="M26 86 L11 101" stroke="#d5e0ee" stroke-width="7" stroke-linecap="round"/>';
+  s += '<path d="M26 86 L11 101" stroke="#f6fafd" stroke-width="2" stroke-linecap="round" opacity=".7"/>';
+  s += '<ellipse cx="11" cy="101" rx="9" ry="11" fill="url(#gWood)" stroke="#4a2c16" stroke-width="1.3"/>';
+  s += '<ellipse cx="8.6" cy="97.6" rx="3.2" ry="3.6" fill="#d3a06a" opacity=".55"/>';
+  s += '</g>';
+  return s;
+}
+
+function artBattery(){
+  var s = '';
+  s += '<ellipse cx="95" cy="113" rx="80" ry="9" fill="#05080d" opacity=".6" filter="url(#fShadow)"/>';
+  s += '<rect x="12" y="30" width="166" height="78" rx="8" fill="url(#gCase)" stroke="#0a0f14" stroke-width="1.2"/>';
+  s += '<rect x="12" y="22" width="166" height="18" rx="7" fill="#39434f"/>';
+  s += '<rect x="12" y="22" width="166" height="6" rx="3" fill="#63707f" opacity=".6"/>';
+  /* 接线柱 */
+  s += '<rect x="40" y="8" width="14" height="20" rx="3.5" fill="#a93a2b"/>';
+  s += '<ellipse cx="47" cy="8" rx="7" ry="3.2" fill="#e4644f"/>';
+  s += '<ellipse cx="47" cy="16" rx="7" ry="2.6" fill="#b8452f"/>';
+  s += '<rect x="140" y="8" width="14" height="20" rx="3.5" fill="#141a21"/>';
+  s += '<ellipse cx="147" cy="8" rx="7" ry="3.2" fill="#3b4753"/>';
+  s += '<ellipse cx="147" cy="16" rx="7" ry="2.6" fill="#232b34"/>';
+  /* 标签 */
+  s += '<rect x="30" y="54" width="130" height="42" rx="3" fill="#eef2f7"/>';
+  s += '<rect x="30" y="54" width="130" height="5" fill="#c2452f"/>';
+  s += '<text x="95" y="76" text-anchor="middle" font-size="14" font-weight="700" fill="#243040" font-family="Arial,sans-serif">12V 7Ah</text>';
+  s += '<text x="95" y="89" text-anchor="middle" font-size="7" fill="#7c8896" font-family="Arial,sans-serif" letter-spacing=".6">LEAD-ACID BATTERY</text>';
+  return s;
+}
+
+function artMotor(spin){
+  var s = '';
+  s += '<ellipse cx="62" cy="88" rx="56" ry="7" fill="#05080d" opacity=".55" filter="url(#fShadow)"/>';
+  s += '<rect x="18" y="28" width="88" height="52" rx="26" fill="url(#gMetalH)" stroke="#4f5c6b" stroke-width="1.2"/>';
+  for (var i = 0; i < 8; i++){
+    var x = 38 + i * 8.5;
+    s += '<line x1="' + x + '" y1="38" x2="' + x + '" y2="70" stroke="#6f7e90" stroke-width="2" opacity=".42"/>';
+  }
+  s += '<ellipse cx="20" cy="54" rx="9" ry="26" fill="url(#gDark)"/>';
+  s += '<ellipse cx="104" cy="54" rx="9" ry="26" fill="url(#gDark)"/>';
+  /* 输出轴 */
+  s += '<rect x="106" y="50" width="22" height="8" rx="2.5" fill="#b6c3d2" stroke="#697788" stroke-width=".8"/>';
+  s += '<rect x="106" y="51.6" width="22" height="2" fill="#f0f6fc" opacity=".75"/>';
+  /* 引出线 */
+  s += '<path d="M20 64 C 8 68 6 76 4 82" stroke="#c2452f" stroke-width="3.2" fill="none" stroke-linecap="round"/>';
+  s += '<path d="M20 74 C 8 78 6 84 4 90" stroke="#141a21" stroke-width="3.2" fill="none" stroke-linecap="round"/>';
+  return s;
+}
+
+function artFan(spin){
+  var s = '', c = 95;
+  s += '<ellipse cx="95" cy="181" rx="46" ry="7" fill="#05080d" opacity=".55" filter="url(#fShadow)"/>';
+  /* 支架 */
+  s += '<path d="M95 148 L95 172" stroke="#4b5764" stroke-width="13" stroke-linecap="round"/>';
+  s += '<path d="M95 150 L95 170" stroke="#8795a5" stroke-width="4" stroke-linecap="round" opacity=".55"/>';
+  s += '<rect x="64" y="169" width="62" height="12" rx="6" fill="#2c3540" stroke="#12181e"/>';
+  s += '<rect x="66" y="170" width="58" height="3" rx="1.5" fill="#5f6d7e" opacity=".5"/>';
+  /* 扇叶 */
+  s += '<g>';
+  if (spin) s += '<animateTransform attributeName="transform" type="rotate" from="0 95 95" to="360 95 95" dur="1.05s" repeatCount="indefinite"/>';
+  for (var i = 0; i < 3; i++){
+    s += '<g transform="rotate(' + (i * 120) + ' 95 95)">' +
+         '<path d="M95 95 C 88 74 100 55 120 54 C 141 53 149 74 139 88 C 129 102 108 101 95 95 Z" ' +
+         'fill="url(#gBlade)" stroke="#e2eaf4" stroke-width="1" opacity=".93"/>' +
+         '</g>';
+  }
+  s += '</g>';
+  /* 轮毂 */
+  s += '<circle cx="95" cy="95" r="21" fill="url(#gDark)" stroke="#55616f" stroke-width="1.2"/>';
+  s += '<circle cx="95" cy="95" r="12" fill="#1a2129"/>';
+  s += '<circle cx="95" cy="95" r="4" fill="#6b7988"/>';
+  /* 护网：密集同心圆 + 辐条，像真实的铁丝网罩 */
+  s += '<circle cx="95" cy="95" r="86" fill="none" stroke="#b3c2d2" stroke-width="2.8" opacity=".58"/>';
+  for (var r = 26; r <= 80; r += 9){
+    s += '<circle cx="95" cy="95" r="' + r + '" fill="none" stroke="#b3c2d2" stroke-width=".85" opacity=".17"/>';
+  }
+  for (var j = 0; j < 12; j++){
+    var a = j * 30 * Math.PI / 180;
+    s += '<line x1="' + (c + 20 * Math.cos(a)).toFixed(1) + '" y1="' + (c + 20 * Math.sin(a)).toFixed(1) +
+         '" x2="' + (c + 85 * Math.cos(a)).toFixed(1) + '" y2="' + (c + 85 * Math.sin(a)).toFixed(1) +
+         '" stroke="#b3c2d2" stroke-width=".8" opacity=".13"/>';
+  }
+  return s;
+}
+
+function artBeltIcon(){
+  return '<circle cx="26" cy="30" r="12" fill="#39434f" stroke="#7b8998" stroke-width="1.4"/>' +
+         '<circle cx="94" cy="30" r="15" fill="#39434f" stroke="#7b8998" stroke-width="1.4"/>' +
+         '<path d="M26 18 Q60 25 94 15" stroke="#17171a" stroke-width="6" fill="none" stroke-linecap="round"/>' +
+         '<path d="M26 42 Q60 39 94 45" stroke="#17171a" stroke-width="6" fill="none" stroke-linecap="round"/>';
+}
+
+/* ---------- 器材清单 ---------- */
+var PARTS = [
+  { k:'crank',   nm:'手摇发电机', ds:'代替发动机' },
+  { k:'battery', nm:'蓄电池',     ds:'储存电能' },
+  { k:'motor',   nm:'小电动机',   ds:'电生转动' },
+  { k:'fan',     nm:'小风扇',     ds:'代替车轮' },
+  { k:'belt',    nm:'传动皮带',   ds:'机械直驱' }
+];
+
+/* ---------- 台面位置 ---------- */
+var POS = {
+  crank:   { x:56,  y:26,  w:200, h:170 },
+  battery: { x:52,  y:280, w:190, h:120 },
+  motor:   { x:596, y:150, w:130, h:95  },
+  fan:     { x:742, y:96,  w:190, h:190 }
 };
 
-/* ---------- 零件 ---------- */
-var PARTS = [
-  { k:'tank',    nm:'油箱',     ds:'储存汽油' },
-  { k:'engine',  nm:'内燃机',   ds:'烧油生动力' },
-  { k:'gen',     nm:'发电机',   ds:'转动生电' },
-  { k:'battery', nm:'动力电池', ds:'储存电能' },
-  { k:'motor',   nm:'电动机',   ds:'电生转动' }
+/* 皮带两端（世界坐标） */
+var BELT_A = { x:56 + 156, y:26 + 86 };    /* 手摇发电机皮带轮 */
+var BELT_B = { x:742 + 95, y:96 + 95 };    /* 风扇轮毂 */
+var BELT_D = 'M ' + BELT_A.x + ',' + BELT_A.y + ' Q 522,160 ' + BELT_B.x + ',' + BELT_B.y;
+
+/* ---------- 电路（红黑两根） ---------- */
+var WIRES = [
+  { /* 手摇发电机 → 小电动机（从上方接入） */
+    on:function(s){ return s.crank && s.motor; },
+    paths:[
+      'M 148,57 C 310,-2 520,18 640,174',
+      'M 168,57 C 332,24 542,42 660,174'
+    ],
+    colors:['#c2452f', '#2f3945']
+  },
+  { /* 蓄电池 → 小电动机（从侧面接入） */
+    on:function(s){ return s.battery && s.motor; },
+    paths:[
+      'M 230,336 C 400,296 540,262 598,226',
+      'M 230,354 C 412,316 552,280 614,244'
+    ],
+    colors:['#c2452f', '#2f3945']
+  }
 ];
 
-/* ---------- 插槽 ---------- */
-var SLOTS = [
-  { k:'tank',    x:55,  y:79,  w:165, h:112, label:'油箱位' },
-  { k:'engine',  x:275, y:74,  w:180, h:122, label:'内燃机位' },
-  { k:'gen',     x:520, y:79,  w:155, h:112, label:'发电机位' },
-  { k:'battery', x:55,  y:288, w:165, h:112, label:'电池位' },
-  { k:'motor',   x:520, y:288, w:155, h:112, label:'电动机位' }
-];
-
-/* ---------- 能量通道 ----------
-   on(s) 判断这条通路在物理上是否成立（两端都装了、且动力真的走这条路） */
-var LINKS = [
-  { d:'M220 135 H275',              t:'chem', ends:['tank','engine'],    on:function(s){ return s.tank && s.engine; } },
-  { d:'M455 135 H520',              t:'mech', ends:['engine','gen'],     on:function(s){ return s.engine && s.gen; } },
-  { d:'M597 191 V288',              t:'elec', ends:['gen','motor'],      on:function(s){ return s.gen && s.motor; } },
-  { d:'M220 344 H520',              t:'elec', ends:['battery','motor'],  on:function(s){ return s.battery && s.motor; } },
-  { d:'M675 344 L803 300',          t:'mech', ends:['motor'],            on:function(s){ return !!s.motor; } },
-  { d:'M365 74 V38 H805 V170',      t:'mech', ends:['engine'],           on:function(s){ return s.engine && !s.gen; } }
-];
-
-/* ---------- 车型定义 ---------- */
+/* ---------- 车型 ---------- */
 var CARS = {
   bev: {
     nm:'纯电动汽车', en:'BEV', color:'#35d6c0',
-    paths:[['动力电池','电动机','车轮']],
-    desc:'电池放电驱动电动机，电动机直接带动车轮。没有内燃机，结构最简单，也没有尾气。',
+    paths:[['蓄电池','小电动机','风扇']],
+    desc:'蓄电池放电，小电动机转动，电动机的轴直接带着风扇转。没有发动机，结构最简单，也没有尾气。',
     tags:['零排放','结构简单','依赖充电']
   },
   ice: {
-    nm:'燃油汽车', en:'ICE', color:'#e6a83c',
-    paths:[['油箱','内燃机','车轮']],
-    desc:'汽油在内燃机里燃烧推动活塞，动力经传动机构直接带动车轮。低速、怠速时效率很低。',
+    nm:'燃油车（发动机直驱）', en:'ICE', color:'#e6a83c',
+    paths:[['手摇发电机','传动皮带','风扇']],
+    desc:'发动机的轴经皮带直接带动车轮。这里用手摇发电机代替发动机 —— 摇动它就是把人体的化学能变成轴上的转动，和发动机把燃料变成转动是一回事。',
     tags:['补能快','有尾气','效率偏低']
   },
   phev: {
     nm:'插电式混合动力', en:'PHEV', color:'#a78bfa',
-    paths:[['动力电池','电动机','车轮'],['油箱','内燃机','车轮']],
-    desc:'发动机和电动机都能直接驱动车轮（并联）。电量足时用电，亏电时烧油，两套系统并存。',
+    paths:[['手摇发电机','传动皮带','风扇'],['蓄电池','小电动机','风扇']],
+    desc:'发动机和电动机都能直接驱动车轮（并联）。装上皮带，手摇发电机就直接带动风扇；同时蓄电池也能驱动小电动机。',
     tags:['两套动力','都能直驱','结构复杂']
   },
   erev: {
     nm:'增程式电动车', en:'EREV', color:'#4ade80',
-    paths:[['油箱','内燃机','发电机','电池 / 电动机','车轮']],
-    desc:'发动机只带动发电机发电，从不直接驱动车轮（串联）。车轮始终由电动机驱动，电池做缓冲。',
+    paths:[['手摇发电机','产生电流','蓄电池 / 小电动机','风扇']],
+    desc:'发动机只带动发电机发电，从不直接驱动车轮（串联）。不装皮带，手摇发电机的能量只能走电路 —— 车轮始终由小电动机驱动。',
     tags:['全程电驱','发动机工况稳定','仍然烧油']
   }
 };
 
 var TASKS = [
-  { k:'bev',  nm:'装出纯电动车',   hint:'电池 + 电动机' },
-  { k:'ice',  nm:'装出燃油车',     hint:'油箱 + 内燃机，不要电动机' },
-  { k:'phev', nm:'装出插电混动',   hint:'油和电两套，都不要发电机' },
-  { k:'erev', nm:'装出增程式',     hint:'发动机只发电，加上发电机' }
+  { k:'bev',  nm:'装出纯电动车',   hint:'蓄电池 + 小电动机 + 风扇' },
+  { k:'ice',  nm:'装出发动机直驱', hint:'手摇发电机 + 风扇 + 传动皮带' },
+  { k:'phev', nm:'装出插电混动',   hint:'五件全装，皮带也要装' },
+  { k:'erev', nm:'装出增程式',     hint:'五件全装，但不装皮带' }
 ];
 
 /* ---------- 状态 ---------- */
-var state = { tank:false, engine:false, gen:false, battery:false, motor:false };
-var running = false;
-var done = {};
-var lastPop = null;
-
+var state = { crank:false, battery:false, motor:false, fan:false, belt:false };
+var running = false, done = {}, lastPop = null;
 var $ = function(id){ return document.getElementById(id); };
 
-/* ---------- 建静态舞台 ---------- */
-(function buildStage(){
-  var spokes = '';
-  for (var i = 0; i < 5; i++){
-    var a = i * 72 * Math.PI / 180;
-    spokes += '<line x1="870" y1="235" x2="' + (870 + 58*Math.cos(a)).toFixed(1) +
-              '" y2="' + (235 + 58*Math.sin(a)).toFixed(1) +
-              '" stroke="#54698a" stroke-width="6" stroke-linecap="round"/>';
-  }
-  var svg =
-    '<defs>' +
-      '<linearGradient id="wheelG" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0" stop-color="#2b3a52"/><stop offset="1" stop-color="#121b29"/>' +
-      '</linearGradient>' +
-    '</defs>' +
-    '<g id="gLinks"></g>' +
-    '<g id="wheelGroup">' +
-      '<circle cx="870" cy="235" r="92" fill="url(#wheelG)" stroke="#3c4d68" stroke-width="10"/>' +
-      '<circle cx="870" cy="235" r="76" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>' +
-      '<g id="spokes">' + spokes + '</g>' +
-      '<circle cx="870" cy="235" r="16" fill="#1a2536" stroke="#6aa9ff" stroke-width="2.5"/>' +
-      '<text x="870" y="356" text-anchor="middle" style="font-size:13px;fill:#6d7f99">驱动轮</text>' +
-    '</g>' +
-    '<g id="gSlots"></g>';
-  $('stage').innerHTML = svg;
-})();
-
-/* ---------- 判定 ---------- */
+/* =============================================================
+   判定
+   ============================================================= */
 function judge(s){
-  if (s.tank && s.engine && s.gen && s.motor && s.battery) return 'erev';
-  if (s.tank && s.engine && s.motor && s.battery && !s.gen) return 'phev';
-  if (s.tank && s.engine && !s.motor && !s.gen && !s.battery) return 'ice';
-  if (s.battery && s.motor && !s.tank && !s.engine && !s.gen) return 'bev';
+  if (!s.fan) return null;
+  if (s.crank && s.battery && s.motor && s.belt)  return 'phev';
+  if (s.crank && s.battery && s.motor && !s.belt) return 'erev';
+  if (s.crank && s.belt && !s.motor && !s.battery) return 'ice';
+  if (s.battery && s.motor && !s.crank)           return 'bev';
   return null;
 }
 
 function hintText(s){
-  if (!s.engine && !s.motor) return '底盘上还没有动力装置 —— 先装一台内燃机或电动机';
-  if (s.motor && !s.battery && !(s.gen && s.engine)) return '电动机没有电 —— 装一块动力电池';
-  if (s.engine && !s.tank) return '内燃机没有燃料 —— 装一个油箱';
-  if (s.gen && !s.engine) return '发电机没东西带它转 —— 它需要一台内燃机';
-  if (s.tank && !s.engine) return '油箱里的油没处烧 —— 装一台内燃机';
-  if (s.battery && !s.motor) return '电池的电没处用 —— 装一台电动机';
-  if (s.gen && s.engine && !s.motor) return '发电机发出的电没人用 —— 装一台电动机';
-  if (s.gen && s.engine && s.motor && !s.battery) return '增程式也需要一块动力电池做缓冲';
-  if (s.engine && s.motor && s.tank && !s.battery) return '还缺一块动力电池';
-  return '这个组合还跑不起来 —— 检查一下油路和电路是否接完整';
+  if (!s.fan) return '还没有负载 —— 先把小风扇放到台面右侧';
+  if (!s.crank && !s.motor) return '还没有动力装置 —— 装一台手摇发电机或小电动机';
+  if (s.belt && !s.crank) return '皮带没有带轮可绕 —— 它需要手摇发电机';
+  if (s.motor && !s.battery && !s.crank) return '小电动机没有电 —— 装一块蓄电池';
+  if (s.crank && !s.motor && !s.battery && !s.belt) return '手摇发电机的轴空转 —— 装上传动皮带，让它带动风扇';
+  if (s.crank && !s.belt && !s.motor) return '手摇发电机在发电，但没有用电的设备';
+  if (s.battery && !s.motor) return '蓄电池的电没处用 —— 装一台小电动机';
+  if (s.motor && !s.battery && s.crank && !s.belt) return '手摇发电机的电还没有接到电路上';
+  if (s.crank && s.motor && !s.battery) return '手摇发电机带动小电动机，中间还缺一块蓄电池做缓冲';
+  if (s.crank && s.battery && !s.motor) return '还缺一台小电动机把电变成转动';
+  if (s.crank && !s.battery) return '手摇发电机还缺一块蓄电池';
+  return '这个组合还跑不起来 —— 检查一下电路和皮带是否接完整';
 }
 
-/* ---------- 渲染 ---------- */
+/* =============================================================
+   渲染
+   ============================================================= */
 function renderRack(){
   var html = '';
   for (var i = 0; i < PARTS.length; i++){
     var p = PARTS[i], used = state[p.k];
+    var ico;
+    if (p.k === 'crank')       ico = '<svg class="ico" viewBox="0 0 200 168">' + artCrank(false) + '</svg>';
+    else if (p.k === 'battery')ico = '<svg class="ico" viewBox="0 0 190 124">' + artBattery() + '</svg>';
+    else if (p.k === 'motor')  ico = '<svg class="ico" viewBox="0 0 132 98">' + artMotor(false) + '</svg>';
+    else if (p.k === 'fan')    ico = '<svg class="ico" viewBox="0 0 190 192">' + artFan(false) + '</svg>';
+    else                       ico = '<svg class="ico" viewBox="0 0 120 60">' + artBeltIcon() + '</svg>';
+
     html += '<div class="part' + (used ? ' used' : '') + '" data-part="' + p.k + '">' +
-              '<svg viewBox="0 0 100 70">' + ICONS[p.k] + '</svg>' +
+              ico +
               '<div class="txt"><div class="nm">' + p.nm + '</div>' +
-              '<div class="ds">' + (used ? '已装上' : p.ds) + '</div></div>' +
+              '<div class="ds">' + (used ? '已在台面上' : p.ds) + '</div></div>' +
             '</div>';
   }
   $('rack').innerHTML = html;
 }
 
-function slotMarkup(s){
-  var filled = state[s.k];
-  var cls = 'slot' + (filled ? ' filled' : '') + (lastPop === s.k ? ' pop' : '');
-  var inner = '';
-  if (filled){
-    var sc = 1.42, iw = 100 * sc, ih = 70 * sc;
-    var tx = s.x + (s.w - iw) / 2;
-    var ty = s.y + (s.h - ih) / 2 - 4;
-    inner = '<g transform="translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + sc + ')">' +
-              ICONS[s.k] + '</g>' +
-            '<g class="x" transform="translate(' + (s.x + s.w - 17) + ',' + (s.y + 17) + ')">' +
-              '<circle r="9" fill="rgba(8,14,24,.92)" stroke="rgba(255,255,255,.28)"/>' +
-              '<path d="M-3.2 -3.2 L3.2 3.2 M3.2 -3.2 L-3.2 3.2" stroke="#ff9a86" stroke-width="1.8" stroke-linecap="round"/>' +
-            '</g>';
-  } else {
-    inner = '<text x="' + (s.x + s.w/2) + '" y="' + (s.y + s.h/2 + 5) + '" text-anchor="middle" class="slabel">' +
-              s.label + '</text>';
-  }
-  return '<g class="' + cls + '" data-slot="' + s.k + '">' +
-           '<rect class="frame" x="' + s.x + '" y="' + s.y + '" width="' + s.w + '" height="' + s.h + '" rx="14"/>' +
-           inner +
+function ghostMarkup(){
+  var g = '';
+  var keys = ['crank', 'battery', 'motor', 'fan'];
+  for (var i = 0; i < keys.length; i++){
+    var k = keys[i], p = POS[k];
+    if (state[k]) continue;
+    g += '<g class="hit zone" data-part="' + k + '">' +
+           '<rect class="ghost" x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="12"/>' +
+           '<text class="glabel" x="' + (p.x + p.w/2) + '" y="' + (p.y + p.h/2 + 5) + '" text-anchor="middle">' +
+             ({crank:'手摇发电机', battery:'蓄电池', motor:'小电动机', fan:'小风扇'})[k] +
+           '</text>' +
          '</g>';
+  }
+  /* 皮带空位：只有装了手摇发电机和风扇，皮带才有意义 */
+  if (!state.belt && state.crank && state.fan){
+    g += '<g class="hit zone" data-part="belt">' +
+           '<path d="' + BELT_D + '" fill="none" stroke="rgba(150,195,245,.34)" stroke-width="2" ' +
+             'stroke-dasharray="2 9" stroke-linecap="round"/>' +
+           '<text class="glabel" x="508" y="182" text-anchor="middle" style="font-size:11.5px">传动皮带（未装）</text>' +
+         '</g>';
+  }
+  return g;
+}
+
+function wiresMarkup(){
+  var out = '';
+  for (var i = 0; i < WIRES.length; i++){
+    var w = WIRES[i];
+    if (!w.on(state)) continue;
+    for (var j = 0; j < w.paths.length; j++){
+      out += '<path class="wire" d="' + w.paths[j] + '" stroke="#05080c" stroke-opacity=".55" stroke-width="5.4"/>';
+      out += '<path class="wire" d="' + w.paths[j] + '" stroke="' + w.colors[j] + '" stroke-width="4"/>';
+      out += '<path class="wire" d="' + w.paths[j] + '" stroke="#ffffff" stroke-opacity=".17" stroke-width="1.1"/>';
+      if (running) out += '<path class="wflow" d="' + w.paths[j] + '"/>';
+    }
+    /* 鳄鱼夹 */
+    var ends = [
+      { x:(i === 0 ? 148 : 230), y:(i === 0 ? 57 : 336) },
+      { x:(i === 0 ? 640 : 598), y:(i === 0 ? 174 : 226) }
+    ];
+    for (var e = 0; e < ends.length; e++){
+      out += '<circle cx="' + ends[e].x + '" cy="' + ends[e].y + '" r="4.4" fill="#c8c2b4" stroke="#6a655c" stroke-width="1"/>';
+    }
+  }
+  return out;
+}
+
+function beltMarkup(){
+  var s = '';
+  s += '<path d="' + BELT_D + '" fill="none" stroke="#05080a" stroke-width="14" stroke-linecap="round"/>';
+  s += '<path d="' + BELT_D + '" fill="none" stroke="#4d5560" stroke-width="9.5" stroke-linecap="round"/>';
+  s += '<path d="' + BELT_D + '" fill="none" stroke="#9daab8" stroke-width="1.7" stroke-linecap="round" opacity=".75" transform="translate(0,-3.6)"/>';
+  s += '<path d="' + BELT_D + '" fill="none" stroke="#79848f" stroke-width="1.3" stroke-linecap="round" opacity=".5" transform="translate(0,3.7)"/>';
+  if (running) s += '<path class="beltFlow" d="' + BELT_D + '" fill="none" stroke="#a8e2ff" stroke-width="2.6" stroke-dasharray="5 18"/>';
+  return s;
+}
+
+function partMarkup(){
+  var s = '';
+  /* 电动机与风扇之间的联轴器（电动机装上就直接带着风扇转） */
+  if (state.motor && state.fan){
+    s += '<rect x="720" y="197.5" width="100" height="9" rx="4.5" fill="#9dacbd" stroke="#5d6b7b" stroke-width="1"/>';
+    s += '<rect x="720" y="198.8" width="100" height="1.8" rx=".9" fill="#eef5fc" opacity=".62"/>';
+    s += '<rect x="716" y="192" width="10" height="19" rx="3" fill="#495664" stroke="#2a333d"/>';
+  }
+  if (state.crank){
+    s += '<g class="zone artifact" data-part="crank" transform="translate(36,26)">' + artCrank(running) + '</g>';
+  }
+  if (state.battery){
+    s += '<g class="zone artifact" data-part="battery" transform="translate(52,280)">' + artBattery() + '</g>';
+  }
+  if (state.motor){
+    s += '<g class="zone artifact" data-part="motor" transform="translate(596,150)">' + artMotor(running) + '</g>';
+  }
+  if (state.fan){
+    s += '<g class="zone artifact" data-part="fan" transform="translate(742,96)">' + artFan(running && !!judge(state)) + '</g>';
+  }
+  return s;
 }
 
 function renderStage(){
-  var links = '';
-  for (var i = 0; i < LINKS.length; i++){
-    var l = LINKS[i], armed = l.on(state);
-    /* 只有「两端都装了件」才画出这条管路；未点亮的灰线表示路存在但不走 */
-    var visible = armed || l.ends.every(function(k){ return state[k]; });
-    if (!visible) continue;
-    links += '<path class="link ' + l.t + (armed ? ' armed' : '') + (armed && running ? ' on' : '') +
-             '" d="' + l.d + '"/>';
-  }
-  if (state.engine && !state.gen){
-    links += '<text x="585" y="29" text-anchor="middle" class="lnote">直驱车轮</text>';
-  }
-  $('gLinks').innerHTML = links;
-  var slots = '';
-  for (var j = 0; j < SLOTS.length; j++) slots += slotMarkup(SLOTS[j]);
-  $('gSlots').innerHTML = slots;
+  var s = '';
+  /* 台面 */
+  s += '<g id="deskLayer">';
+  s += '<rect x="0" y="0" width="1000" height="460" fill="#151b22"/>';
+  s += '<rect x="0" y="0" width="1000" height="460" fill="url(#pGrid)" opacity=".55"/>';
+  s += '<ellipse cx="480" cy="120" rx="520" ry="300" fill="url(#gLamp)"/>';
+  /* 台垫边缘 */
+  s += '<rect x="8" y="8" width="984" height="444" rx="10" fill="none" stroke="rgba(255,255,255,.055)" stroke-width="2"/>';
+  s += '</g>';
+
+  s += '<g id="gGhost">' + ghostMarkup() + '</g>';
+  s += '<g id="gWires">' + wiresMarkup() + '</g>';
+  s += '<g id="gBelt">' + (state.belt ? beltMarkup() : '') + '</g>';
+  s += '<g id="gParts">' + partMarkup() + '</g>';
+
+  /* 角落标注 */
+  s += '<text x="936" y="414" text-anchor="end" font-size="10" fill="#465569" font-family="Microsoft YaHei,sans-serif" letter-spacing="1">学生实验台 · 低压直流</text>';
+  $('stage').innerHTML = s;
 }
 
 function renderCard(key){
   var card = $('card');
   if (!key){
     card.style.setProperty('--accent', '#33415a');
-    $('cname').textContent = '未完成装配';
+    $('cname').textContent = '实验台组装中';
+    $('cname').style.color = '';
     $('cen').textContent = '';
     $('chain').innerHTML = '';
     $('desc').textContent = hintText(state);
@@ -515,14 +699,14 @@ function renderTasks(){
 function renderBar(key){
   var btn = $('btnRun'), st = $('status');
   btn.disabled = !key;
-  btn.textContent = running ? '停车' : '启动车辆';
+  btn.textContent = running ? '停止' : '接通运行';
   btn.className = 'primary' + (running ? ' stop' : '');
   if (!key){
     st.innerHTML = hintText(state);
   } else if (running){
-    st.innerHTML = '<b>' + CARS[key].nm + '</b> 行驶中，能量正在流动';
+    st.innerHTML = '<b>' + CARS[key].nm + '</b> 运行中 —— 风扇在转，能量正在流动';
   } else {
-    st.innerHTML = '已识别为 <b>' + CARS[key].nm + '</b>，点「启动车辆」看能量流向';
+    st.innerHTML = '已装成 <b>' + CARS[key].nm + '</b>，点「接通运行」看能量怎么流';
   }
 }
 
@@ -538,14 +722,12 @@ function render(){
   lastPop = null;
 }
 
-/* ---------- 交互 ---------- */
+/* =============================================================
+   交互
+   ============================================================= */
 function toggle(k){
-  if (state[k]){
-    state[k] = false;
-  } else {
-    state[k] = true;
-    lastPop = k;
-  }
+  if (state[k]) state[k] = false;
+  else { state[k] = true; lastPop = k; }
   running = false;
   render();
 }
@@ -557,9 +739,9 @@ $('rack').addEventListener('click', function(e){
 });
 
 $('stage').addEventListener('click', function(e){
-  var el = e.target.closest('[data-slot]');
+  var el = e.target.closest('[data-part]');
   if (!el) return;
-  toggle(el.getAttribute('data-slot'));
+  toggle(el.getAttribute('data-part'));
 });
 
 $('btnRun').addEventListener('click', function(){
@@ -571,7 +753,7 @@ $('btnRun').addEventListener('click', function(){
 });
 
 $('btnReset').addEventListener('click', function(){
-  state = { tank:false, engine:false, gen:false, battery:false, motor:false };
+  state = { crank:false, battery:false, motor:false, fan:false, belt:false };
   running = false;
   render();
 });
