@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 16,
+  "manifestVersion": 17,
   "categories": [
     {
       "id": "kinematics",
@@ -185,6 +185,19 @@
           "description": "能级跃迁",
           "icon": "🪐",
           "src": ""
+        }
+      ]
+    },
+    {
+      "id": "ste",
+      "name": "🔧 STE",
+      "sims": [
+        {
+          "id": "powertrain-lab",
+          "name": "汽车动力形式 · 组装实验",
+          "description": "拆装零件 · 纯电 / 燃油 / 插混 / 增程",
+          "icon": "🚗",
+          "src": "simulations/powertrain-lab.html"
         }
       ]
     }
