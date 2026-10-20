@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>汽车动力形式 · 透视整车能量流</title>
+<title>汽车动力形式 · 3D 透视整车能量流</title>
 <style>
 :root{
   --y:#f6c445;   /* 燃油/机械传递 */
   --b:#4d9dff;   /* 发电→电池 */
   --g:#41e08d;   /* 电池→电机→后轮 */
   --r:#ff5f57;   /* 发动机→前轮 */
+  --k:#37e0d8;   /* 动能回收（反向） */
   --line:rgba(255,255,255,.09);
   --line2:rgba(255,255,255,.16);
   --dim:#8fa2bf;
@@ -30,7 +31,7 @@ body{
 .app{height:100%;display:flex;flex-direction:column;gap:9px;padding:11px 15px 13px}
 
 /* ---------- 头部 ---------- */
-header{display:flex;align-items:baseline;gap:14px;flex:0 0 auto}
+header{display:flex;align-items:baseline;gap:14px;flex:0 0 auto;flex-wrap:wrap}
 header h1{font-size:19px;margin:0;letter-spacing:.5px;font-weight:700}
 .sub{font-size:12.5px;color:var(--dim);margin:0}
 header .sp{flex:1}
@@ -53,6 +54,11 @@ button.primary.stop{
   border-color:#e2604f;color:#fff;
   box-shadow:0 4px 16px rgba(226,96,79,.2);
 }
+button.regen{
+  background:linear-gradient(180deg,#2bb6b0,#1c847f);
+  border-color:#37e0d8;color:#022;font-weight:700;
+}
+button.regen.on{ background:linear-gradient(180deg,#37e0d8,#1aa39c); color:#022; box-shadow:0 4px 16px rgba(55,224,216,.28);}
 
 /* ---------- 主体 ---------- */
 .body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:11px}
@@ -71,12 +77,12 @@ button.primary.stop{
   position:absolute;right:14px;bottom:10px;text-align:right;pointer-events:none;
   padding:8px 14px 9px;border-radius:12px;
   background:rgba(7,12,21,.72);border:1px solid var(--line2);
-  backdrop-filter:blur(4px);min-width:150px;
+  backdrop-filter:blur(4px);min-width:160px;
 }
 .eff .m{font-size:12.5px;color:var(--dim);margin-bottom:1px}
 .eff .v{font-size:34px;font-weight:800;line-height:1.05;color:#fff}
 .eff .v span{font-size:15px;font-weight:600;color:var(--dim);margin-left:2px}
-.eff .c{font-size:10.5px;color:var(--dim);margin-top:3px;line-height:1.45;max-width:230px}
+.eff .c{font-size:10.5px;color:var(--dim);margin-top:3px;line-height:1.45;max-width:250px}
 
 /* ---------- 侧栏 ---------- */
 aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
@@ -107,40 +113,36 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
 }
 .info .hint{
   margin-top:7px;padding:7px 9px;border-radius:8px;font-size:11px;line-height:1.6;
-  background:rgba(246,196,69,.08);border:1px solid rgba(246,196,69,.25);color:#efdCA8;
+  background:rgba(246,196,69,.08);border:1px solid rgba(246,196,69,.25);color:#efdca8;
+}
+.info .warn{
+  margin-top:7px;padding:7px 9px;border-radius:8px;font-size:11px;line-height:1.6;
+  background:rgba(255,95,87,.10);border:1px solid rgba(255,95,87,.35);color:#ffb3ae;
 }
 .badge{
   display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;
   background:rgba(65,224,141,.14);border:1px solid rgba(65,224,141,.4);color:#5ee6a0;
 }
 @media (max-width:900px){
-  .body{grid-template-columns:1fr;grid-template-rows:minmax(300px,1fr) auto}
+  .body{grid-template-columns:1fr;grid-template-rows:minmax(320px,1fr) auto}
 }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>汽车动力形式 · 透视整车</h1>
-    <p class="sub">组装 / 拆卸部件，观察四种动力形式的能量流动路径</p>
+    <h1>汽车动力形式 · 3D 透视整车</h1>
+    <p class="sub">侧上方斜视视角 · 组装 / 拆卸部件，观察四种动力形式的能量流动</p>
     <span class="sp"></span>
     <button id="btnShell">外壳：透视中</button>
+    <button id="btnBrake" class="regen">⚡ 刹车 / 动能回收</button>
     <button id="btnRun" class="primary">▶ 启动</button>
   </header>
 
   <div class="body">
     <div class="scene" id="scene">
-      <svg id="svg" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet">
+      <svg id="svg" viewBox="0 0 1000 440" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#8fb4ff" stop-opacity=".20"/>
-            <stop offset=".55" stop-color="#5f7fd0" stop-opacity=".09"/>
-            <stop offset="1" stop-color="#46557e" stop-opacity=".17"/>
-          </linearGradient>
-          <linearGradient id="gGlass" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#a9c8ff" stop-opacity=".30"/>
-            <stop offset="1" stop-color="#7f9fd8" stop-opacity=".10"/>
-          </linearGradient>
           <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#d7deea"/>
             <stop offset=".5" stop-color="#98a4b6"/>
@@ -150,217 +152,19 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
             <stop offset="0" stop-color="#f2ac62"/>
             <stop offset="1" stop-color="#9c5a26"/>
           </linearGradient>
-          <linearGradient id="gBatt" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#2c3650"/>
-            <stop offset="1" stop-color="#1a2234"/>
-          </linearGradient>
-          <linearGradient id="gTank" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#48536b"/>
-            <stop offset="1" stop-color="#2b3448"/>
-          </linearGradient>
-          <filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="2.6" result="b"/>
+          <radialGradient id="gGround" cx="50%" cy="0%" r="80%">
+            <stop offset="0" stop-color="#13203a"/>
+            <stop offset="1" stop-color="#080d18"/>
+          </radialGradient>
+          <filter id="fGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
           <marker id="ah" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto" markerUnits="userSpaceOnUse">
             <path d="M0,0 L9,4 L0,8 Z" fill="#7fd0ff"/>
           </marker>
         </defs>
-
-        <!-- 地面 -->
-        <rect x="0" y="372" width="1000" height="58" fill="#0a101d"/>
-        <line x1="0" y1="372" x2="1000" y2="372" stroke="#1c2740" stroke-width="2"/>
-        <g stroke="#233252" stroke-width="3" stroke-dasharray="26 30" opacity=".8">
-          <line x1="30" y1="402" x2="970" y2="402"/>
-        </g>
-        <ellipse cx="500" cy="378" rx="390" ry="13" fill="#000" opacity=".45"/>
-
-        <!-- ====== 幽灵槽位（未安装提示） ====== -->
-        <g fill="none" stroke="rgba(255,255,255,.10)" stroke-dasharray="5 6" stroke-width="1.5">
-          <rect id="gs-engine" x="245" y="220" width="132" height="86" rx="9"/>
-          <rect id="gs-gen"    x="398" y="260" width="56"  height="48" rx="11"/>
-          <rect id="gs-batt"   x="478" y="284" width="128" height="44" rx="7"/>
-          <rect id="gs-motor"  x="640" y="262" width="60"  height="50" rx="13"/>
-          <rect id="gs-tank"   x="770" y="280" width="106" height="42" rx="15"/>
-          <line id="gs-shaft"  x1="296" y1="296" x2="214" y2="330"/>
-        </g>
-
-        <!-- ====== 管路底色（已安装即显示的灰色管线） ====== -->
-        <g fill="none" stroke="#3c4a63" stroke-width="4" stroke-linecap="round">
-          <path id="pipeFuel"  d="M 780,302 C 660,346 470,346 382,290"/>
-          <path id="pipeEG"    d="M 378,283 L 400,282"/>
-          <path id="pipeGB"    d="M 440,306 C 458,328 468,328 480,316"/>
-          <path id="pipeBM"    d="M 606,306 C 628,312 626,288 642,286"/>
-          <path id="pipeRA"    d="M 698,296 L 754,328"/>
-          <path id="pipeFA"    d="M 296,296 L 214,330"/>
-        </g>
-
-        <!-- ====== 能量流（运行时的彩色光路，课程四色） ====== -->
-        <g fill="none" stroke-linecap="round" filter="url(#fGlow)">
-          <path id="flowY" class="fl" d="M 780,302 C 660,346 470,346 382,290 M 378,283 L 400,282"
-                stroke="var(--y)" stroke-width="4" stroke-dasharray="10 13"/>
-          <path id="flowB" class="fl" d="M 440,306 C 458,328 468,328 480,316"
-                stroke="var(--b)" stroke-width="4" stroke-dasharray="9 12"/>
-          <path id="flowG" class="fl" d="M 606,306 C 628,312 626,288 642,286 M 698,296 L 754,328"
-                stroke="var(--g)" stroke-width="4" stroke-dasharray="10 13"/>
-          <path id="flowR" class="fl" d="M 296,296 L 214,330"
-                stroke="var(--r)" stroke-width="4" stroke-dasharray="10 13"/>
-        </g>
-
-        <!-- ====== 部件实体 ====== -->
-        <!-- 发动机 -->
-        <g id="p-engine" class="part3d" style="cursor:pointer">
-          <g id="g-engine">
-            <rect x="265" y="298" width="90" height="12" rx="5" fill="#39424f"/>
-            <rect x="245" y="230" width="132" height="70" rx="9" fill="url(#gMetal)" stroke="#38414f" stroke-width="1.5"/>
-            <rect x="257" y="212" width="106" height="20" rx="4" fill="#aab5c5" stroke="#4a5566" stroke-width="1.2"/>
-            <g fill="#5d6a7d">
-              <circle cx="268" cy="222" r="2.6"/><circle cx="294" cy="222" r="2.6"/>
-              <circle cx="320" cy="222" r="2.6"/><circle cx="346" cy="222" r="2.6"/>
-            </g>
-            <g stroke="#77839a" stroke-width="2" opacity=".8">
-              <line x1="265" y1="238" x2="265" y2="292"/><line x1="285" y1="238" x2="285" y2="292"/>
-              <line x1="305" y1="238" x2="305" y2="292"/><line x1="325" y1="238" x2="325" y2="292"/>
-              <line x1="345" y1="238" x2="345" y2="292"/>
-            </g>
-            <circle cx="253" cy="296" r="13" fill="url(#gMetal)" stroke="#39424f" stroke-width="1.5"/>
-            <circle cx="253" cy="296" r="5" fill="#39424f"/>
-          </g>
-          <text x="311" y="352" text-anchor="middle" font-size="12" fill="#9fb2d0">发动机</text>
-        </g>
-
-        <!-- 发电机 -->
-        <g id="p-gen" class="part3d" style="cursor:pointer">
-          <g id="g-gen">
-            <rect x="398" y="260" width="56" height="48" rx="11" fill="url(#gMetal)" stroke="#38414f" stroke-width="1.5"/>
-            <rect x="406" y="268" width="9" height="32" rx="3" fill="url(#gCopper)"/>
-            <rect x="419" y="268" width="9" height="32" rx="3" fill="url(#gCopper)"/>
-            <circle cx="452" cy="284" r="5.5" fill="#39424f"/>
-          </g>
-          <text x="426" y="326" text-anchor="middle" font-size="12" fill="#9fb2d0">发电机</text>
-        </g>
-
-        <!-- 动力电池 -->
-        <g id="p-batt" class="part3d" style="cursor:pointer">
-          <g id="g-batt">
-            <rect x="478" y="284" width="128" height="44" rx="7" fill="url(#gBatt)" stroke="#46536e" stroke-width="1.5"/>
-            <g fill="#ff9f43" opacity=".85">
-              <rect x="486" y="292" width="12" height="28" rx="2"/>
-              <rect x="504" y="292" width="12" height="28" rx="2"/>
-              <rect x="522" y="292" width="12" height="28" rx="2"/>
-              <rect x="540" y="292" width="12" height="28" rx="2"/>
-              <rect x="558" y="292" width="12" height="28" rx="2"/>
-              <rect x="576" y="292" width="12" height="28" rx="2"/>
-            </g>
-            <rect x="596" y="290" width="5" height="9" rx="1" fill="#c33"/>
-            <rect x="596" y="311" width="5" height="9" rx="1" fill="#36f"/>
-            <rect x="482" y="277" width="120" height="4.5" rx="2" fill="#1a2234" stroke="#33405c" stroke-width=".8"/>
-            <rect id="socBar" x="483" y="278" width="118" height="3" rx="1.5" fill="#41e08d"/>
-          </g>
-          <text x="542" y="346" text-anchor="middle" font-size="12" fill="#9fb2d0">动力电池</text>
-        </g>
-
-        <!-- 电动机 -->
-        <g id="p-motor" class="part3d" style="cursor:pointer">
-          <g id="g-motor">
-            <rect x="640" y="262" width="60" height="50" rx="13" fill="url(#gMetal)" stroke="#38414f" stroke-width="1.5"/>
-            <g stroke="#77839a" stroke-width="2" opacity=".8">
-              <line x1="646" y1="274" x2="694" y2="274"/>
-              <line x1="646" y1="286" x2="694" y2="286"/>
-              <line x1="646" y1="298" x2="694" y2="298"/>
-            </g>
-            <path d="M 660,262 C 654,250 640,252 634,264" fill="none" stroke="#ff8c3a" stroke-width="3" stroke-linecap="round"/>
-          </g>
-          <text x="670" y="330" text-anchor="middle" font-size="12" fill="#9fb2d0">电动机</text>
-        </g>
-
-        <!-- 油箱 -->
-        <g id="p-tank" class="part3d" style="cursor:pointer">
-          <g id="g-tank">
-            <rect x="770" y="280" width="106" height="42" rx="15" fill="url(#gTank)" stroke="#55617a" stroke-width="1.5"/>
-            <rect x="777" y="297" width="92" height="18" rx="7" fill="#f6c445" opacity=".32"/>
-            <circle cx="866" cy="287" r="5" fill="#8d99ad" stroke="#39424f"/>
-          </g>
-          <text x="823" y="340" text-anchor="middle" font-size="12" fill="#9fb2d0">油箱</text>
-        </g>
-
-        <!-- 传动轴（发动机→前轮） -->
-        <g id="p-shaft" class="part3d" style="cursor:pointer">
-          <g id="g-shaft">
-            <path d="M 296,296 L 214,330" stroke="#7c8798" stroke-width="7" stroke-linecap="round" fill="none"/>
-            <circle cx="296" cy="296" r="6.5" fill="url(#gMetal)" stroke="#39424f"/>
-            <circle cx="214" cy="330" r="6.5" fill="url(#gMetal)" stroke="#39424f"/>
-          </g>
-        </g>
-
-        <!-- ====== 车身外壳（半透明，盖在部件之上） ====== -->
-        <g id="shell">
-          <path d="M 80,312 Q 84,278 120,268 L 196,256 Q 244,246 272,230 L 318,196
-                   Q 332,184 354,182 L 636,182 Q 666,184 682,200 L 724,238
-                   Q 792,248 850,264 Q 902,274 908,300 L 910,314
-                   Q 910,330 894,332 L 96,332 Q 80,330 80,312 Z"
-                fill="url(#gBody)" stroke="rgba(170,200,255,.55)" stroke-width="2.5"/>
-          <path d="M 334,230 L 366,194 L 628,194 L 662,230 Z" fill="url(#gGlass)" stroke="rgba(190,215,255,.4)" stroke-width="1.5"/>
-          <line x1="498" y1="194" x2="498" y2="230" stroke="rgba(190,215,255,.35)" stroke-width="2"/>
-          <path d="M 120,266 Q 244,244 272,228 L 318,194 Q 332,183 354,182 L 630,182"
-                fill="none" stroke="rgba(255,255,255,.30)" stroke-width="3" stroke-linecap="round"/>
-          <path d="M 360,332 L 366,236 M 636,232 L 640,332" stroke="rgba(255,255,255,.13)" stroke-width="2" fill="none"/>
-          <g stroke="rgba(12,16,24,.85)" stroke-width="2.4">
-            <line x1="88" y1="288" x2="88" y2="312"/>
-            <line x1="95" y1="288" x2="95" y2="312"/>
-            <line x1="102" y1="288" x2="102" y2="312"/>
-          </g>
-          <polygon points="84,284 104,280 104,296 84,294" fill="#ffe9a8" opacity=".85"/>
-          <polygon points="904,286 908,288 908,306 902,304" fill="#ff6a5e" opacity=".85"/>
-        </g>
-
-        <!-- ====== 车轮 ====== -->
-        <g id="wF">
-          <circle cx="205" cy="334" r="40" fill="#14181f" stroke="#2a3242" stroke-width="3"/>
-          <g stroke="#0c0f15" stroke-width="3">
-            <line x1="205" y1="296" x2="205" y2="304"/><line x1="205" y1="364" x2="205" y2="372"/>
-            <line x1="167" y1="334" x2="175" y2="334"/><line x1="235" y1="334" x2="243" y2="334"/>
-            <line x1="178" y1="307" x2="184" y2="313"/><line x1="226" y1="355" x2="232" y2="361"/>
-            <line x1="232" y1="307" x2="226" y2="313"/><line x1="184" y1="355" x2="178" y2="361"/>
-          </g>
-          <circle cx="205" cy="334" r="22" fill="url(#gMetal)" stroke="#39424f" stroke-width="2"/>
-          <g id="spF" stroke="#4b566b" stroke-width="4" stroke-linecap="round">
-            <line x1="205" y1="316" x2="205" y2="328"/>
-            <line x1="220" y1="343" x2="209" y2="337"/>
-            <line x1="190" y1="343" x2="201" y2="337"/>
-            <line x1="212" y1="319" x2="208" y2="330"/>
-            <line x1="198" y1="319" x2="202" y2="330"/>
-          </g>
-          <circle cx="205" cy="334" r="6" fill="#39424f"/>
-        </g>
-        <g id="wR">
-          <circle cx="760" cy="334" r="40" fill="#14181f" stroke="#2a3242" stroke-width="3"/>
-          <g stroke="#0c0f15" stroke-width="3">
-            <line x1="760" y1="296" x2="760" y2="304"/><line x1="760" y1="364" x2="760" y2="372"/>
-            <line x1="722" y1="334" x2="730" y2="334"/><line x1="790" y1="334" x2="798" y2="334"/>
-            <line x1="733" y1="307" x2="739" y2="313"/><line x1="781" y1="355" x2="787" y2="361"/>
-            <line x1="787" y1="307" x2="781" y2="313"/><line x1="739" y1="355" x2="733" y2="361"/>
-          </g>
-          <circle cx="760" cy="334" r="22" fill="url(#gMetal)" stroke="#39424f" stroke-width="2"/>
-          <g id="spR" stroke="#4b566b" stroke-width="4" stroke-linecap="round">
-            <line x1="760" y1="316" x2="760" y2="328"/>
-            <line x1="775" y1="343" x2="764" y2="337"/>
-            <line x1="745" y1="343" x2="756" y2="337"/>
-            <line x1="767" y1="319" x2="763" y2="330"/>
-            <line x1="753" y1="319" x2="757" y2="330"/>
-          </g>
-          <circle cx="760" cy="334" r="6" fill="#39424f"/>
-        </g>
-        <text x="205" y="400" text-anchor="middle" font-size="12" fill="#8fa2bf">前轮</text>
-        <text x="760" y="400" text-anchor="middle" font-size="12" fill="#8fa2bf">后轮</text>
-
-        <!-- 车头 / 车尾 标注 + 前进方向 -->
-        <text x="150" y="172" text-anchor="middle" font-size="14" font-weight="700" fill="#ffd27a">车头</text>
-        <text x="862" y="172" text-anchor="middle" font-size="14" font-weight="700" fill="#9fb6e8">车尾</text>
-        <g>
-          <text x="500" y="411" text-anchor="middle" font-size="13" font-weight="600" fill="#bcd4f5">前进方向</text>
-          <line x1="540" y1="423" x2="468" y2="423" stroke="#7fd0ff" stroke-width="3.5" stroke-linecap="round" marker-end="url(#ah)"/>
-        </g>
+        <g id="world"></g>
       </svg>
 
       <div class="eff">
@@ -375,7 +179,7 @@ aside{display:flex;flex-direction:column;gap:9px;min-height:0;overflow:auto}
         <h3>玩法</h3>
         <div style="font-size:12px;line-height:1.7;color:var(--dim)">
           点击右侧部件卡片，或直接<b style="color:#cfd9ea">点车内部件</b>进行安装 / 拆卸。<br>
-          组装完成后，系统会自动识别这是哪种动力形式，并点亮对应的能量流路径。
+          组装完成后系统自动识别动力形式；运行时点亮对应能量流；<b style="color:#37e0d8">刹车</b>可演示动能回收。
         </div>
       </div>
 
@@ -398,7 +202,7 @@ var PARTS = [
   {id:'tank',  name:'油箱',   desc:'存储汽油（化学能）'},
   {id:'engine',name:'发动机', desc:'化学能 → 机械能'},
   {id:'gen',   name:'发电机', desc:'机械能 → 电能'},
-  {id:'shaft', name:'传动轴', desc:'发动机直驱前轮'},
+  {id:'gearbox',name:'变速箱',desc:'发动机直驱前轮（机械耦合）'},
   {id:'batt',  name:'动力电池', desc:'存储电能'},
   {id:'motor', name:'电动机', desc:'电能 → 机械能，驱动后轮'}
 ];
@@ -406,19 +210,19 @@ var PARTS = [
 var MODES = {
   ice:  {name:'纯油模式', eff:25, paths:['R'],          nconv:1,
          chain:'化学能 → 机械能',
-         rows:[['R','红色路径：发动机 → 前轮']],
+         rows:[['R','红色路径：发动机 → 变速箱 → 前轮']],
          qa:'纯油车效率约 25%：大部分能量以废热与排气损失带走，机械路径虽直接，热效率先天偏低。'},
   erev: {name:'串联增程（增程模式）', eff:30, paths:['Y','B','G'], nconv:4,
          chain:'化学能 → 机械能 → 电能 → 电能 → 机械能',
          rows:[['Y','黄色路径：汽油 → 发动机 → 发电机'],
                ['B','蓝色路径：发电机 → 电池'],
                ['G','绿色路径：电池 → 电动机 → 后轮']],
-         qa:'增程模式下发动机没有直接驱动车轮，能量经过 4 次转化（化学能→机械能→电能→电能→机械能），总效率约 30%。'},
+         qa:'增程模式下发动机没有直接驱动车轮（只带动发电机发电），能量经过 4 次转化（化学能→机械能→电能→电能→机械能），总效率约 30%。'},
   phev: {name:'并联插混（四驱）', eff:45, paths:['R','G'],  nconv:2,
          chain:'红路：化学能→机械能（前轮）｜ 绿路：电能→机械能（后轮）',
-         rows:[['R','红色路径：发动机 → 前轮'],
+         rows:[['R','红色路径：发动机 → 变速箱 → 前轮'],
                ['G','绿色路径：电池 → 电动机 → 后轮']],
-         qa:'发动机驱动前轮、电动机驱动后轮，前轮和后轮同时在转＝四驱。这就是插混天然就是四驱的原因；发动机可直驱车轮，比增程少一步"机械能→电能"的转化损失，效率 45%。'},
+         qa:'发动机经变速箱驱动前轮、电动机驱动后轮，前轮和后轮同时在转＝四驱。这就是插混天然就是四驱的原因；发动机可直驱车轮，比增程少一步"机械能→电能"的转化损失，效率 45%。'},
   ev:   {name:'纯电模式', eff:80, paths:['G'],           nconv:1,
          chain:'电能 → 机械能',
          rows:[['G','绿色路径：电池 → 电动机 → 后轮']],
@@ -428,20 +232,21 @@ var MODES = {
 function judge(s){
   var canEngine = s.tank && s.engine;
   var canEV     = s.batt && s.motor;
+  var gb = s.gearbox, gen = s.gen;
   if (canEngine && canEV){
-    if (s.shaft && s.gen)  return {key:'phev'};
-    if (!s.shaft && s.gen) return {key:'erev'};
-    if (s.shaft && !s.gen)
+    if (gb && gen)  return {key:'phev'};
+    if (!gb && gen) return {key:'erev'};
+    if (gb && !gen)
       return {key:'custom', hint:'发动机已直驱前轮、电池与电动机已就位，但缺少发电机——电池无法补电，亏电后无法持续。装上发电机即为并联插混。'};
-    return {key:'custom', hint:'发动机与车轮之间没有传动轴，也没有发电机消耗机械能——发动机的动力没有去处。加装传动轴或发电机。'};
+    return {key:'custom', hint:'发动机的动力没有去处——加装变速箱让发动机直驱前轮，或加装发电机构成电驱链路。'};
   }
   if (canEngine && !canEV){
-    if (s.shaft && !s.batt && !s.motor) return {key:'ice'};
-    if (!s.shaft && s.batt && !s.motor)
+    if (gb && !s.batt && !s.motor) return {key:'ice'};
+    if (!gb && s.batt && !s.motor)
       return {key:'custom', hint:'发电机可以给电池充电，但缺少电动机——电能无法转化为驱动车轮的机械能。装上电动机即为串联增程。'};
-    if (!s.shaft && !s.batt && s.motor)
+    if (!gb && !s.batt && s.motor)
       return {key:'custom', hint:'有电动机但没有电池，电能没有来源。补上电池（通常还需发电机）构成电驱通路。'};
-    return {key:'custom', hint:'动力没有完整的输出路径：要么加装传动轴让发动机直驱前轮，要么补齐"发电机→电池→电动机"的电驱链路。'};
+    return {key:'custom', hint:'动力没有完整的输出路径：要么加装变速箱让发动机直驱前轮，要么补齐"发电机→电池→电动机"的电驱链路。'};
   }
   if (!canEngine && canEV){
     if (!s.engine && !s.tank) return {key:'ev'};
@@ -455,178 +260,384 @@ if (typeof window === 'undefined' && typeof globalThis !== 'undefined'){
 </script>
 
 <script>
-/* ===== 界面与动画 ===== */
-var state = { tank:true, engine:true, gen:true, shaft:true, batt:true, motor:true };
-var running = false;
-var shellOn = true;
+/* ===== 3D 斜视投影 + 界面与动画 ===== */
+/* ---- 斜投影参数：侧上方斜视（前-左-上）---- */
+var SCALE = 2.12, OX = 165, OY = 372;
+var TILT = 0.30;   /* 深度(车宽)在屏幕 X 的偏移 */
+var RISE = 0.52;   /* 深度在屏幕 Y 的抬升（体现"上方"视角） */
+function P(x,y,z){ return [ OX + SCALE*(x + z*TILT), OY - SCALE*(y + z*RISE) ]; }
+function ptStr(a){ return a[0].toFixed(1)+','+a[1].toFixed(1); }
+function n2(v){ return v.toFixed(1); }
+
+/* ---- 部件 3D 包围盒 [x0,y0,z0, x1,y1,z1] + 配色[顶,侧,前]（位置参考真实车辆） ---- */
+var BOX = {
+  /* 发动机：车头最前端、引擎盖下（顶 62 < 该处引擎盖线 ~72，绝不穿出） */
+  engine: {b:[14,42,-30, 62,62,30],  c:['#cdd6e2','#8f9bab','#646f82']},
+  /* 发电机：紧贴发动机后端（增程/发电时由发动机带动） */
+  gen:    {b:[62,46,-20, 88,64,20],  c:['#e6b878','#b67f37','#875c22']},
+  /* 变速箱：发动机与前轴之间（前轴 X=95），把动力传给前轮 */
+  gearbox:{b:[84,40,-22,106,58,22],  c:['#bcc6d4','#8a96a8','#5d6678']},
+  /* 动力电池：平铺底盘中央（两轴之间、地板下方） */
+  batt:   {b:[120,40,-34,250,52,34], c:['#33415f','#222c44','#161e30']},
+  /* 电动机：后轴前方（X≈270），驱动后轮 */
+  motor:  {b:[252,46,-24,288,70,24], c:['#cdd6e2','#8f9bab','#646f82']},
+  /* 油箱：车尾、后轴上方 */
+  tank:   {b:[300,44,-30,352,68,30], c:['#5b667e','#3e475e','#2b3346']}
+};
+var WR = 30;                            /* 车轮半径 */
+var WHEELS = { fw:{x:95,z:-30}, rw:{x:285,z:-30} };  /* 前轴/后轴（近端可见） */
+function centers(){
+  return {
+    eng:  P(38,52,0),
+    gen:  P(75,55,0),
+    gb:   P(95,49,0),
+    batt: P(185,46,0),
+    mot:  P(270,58,0),
+    tank: P(326,56,0),
+    fw:   P(95,30,-30),
+    rw:   P(285,30,-30)
+  };
+}
+
+/* ---- 通用面绘制 ---- */
+function quad(a,b,c,d, fill, op, stroke){
+  return '<polygon points="'+ptStr(a)+' '+ptStr(b)+' '+ptStr(c)+' '+ptStr(d)+'" fill="'+fill+'" '+
+         (op!=null?'fill-opacity="'+op+'" ':'')+
+         (stroke?'stroke="'+stroke+'" stroke-width="1" stroke-opacity=".5" ':'')+'/>';
+}
+/* 立体盒子：近侧面/顶面/前面 三面 */
+function box3d(b,c){
+  var x0=b[0],y0=b[1],z0=b[2],x1=b[3],y1=b[4],z1=b[5];
+  var A=P(x0,y0,z0),B=P(x1,y0,z0),C=P(x1,y1,z0),D=P(x0,y1,z0);
+  var E=P(x0,y0,z1),F=P(x1,y0,z1),G=P(x1,y1,z1),H=P(x0,y1,z1);
+  var s='';
+  s+=quad(A,B,C,D, c[1], 1);            /* 近侧面 */
+  s+=quad(D,C,G,H, c[0], 1);            /* 顶面 */
+  s+=quad(A,D,H,E, c[2], 1);            /* 前面 */
+  return s;
+}
+/* 幽灵槽（虚线线框） */
+function ghost3d(b){
+  var x0=b[0],y0=b[1],z0=b[2],x1=b[3],y1=b[4],z1=b[5];
+  var A=P(x0,y0,z0),B=P(x1,y0,z0),C=P(x1,y1,z0),D=P(x0,y1,z0);
+  var E=P(x0,y0,z1),F=P(x1,y0,z1),G=P(x1,y1,z1),H=P(x0,y1,z1);
+  var st='fill="none" stroke="rgba(255,255,255,.20)" stroke-width="1.4" stroke-dasharray="5 6"';
+  return '<polygon points="'+ptStr(A)+' '+ptStr(B)+' '+ptStr(C)+' '+ptStr(D)+'" '+st+'/>'
+       + '<polygon points="'+ptStr(D)+' '+ptStr(C)+' '+ptStr(G)+' '+ptStr(H)+'" '+st+'/>'
+       + '<polygon points="'+ptStr(A)+' '+ptStr(D)+' '+ptStr(H)+' '+ptStr(E)+'" '+st+'/>';
+}
+
+/* ---- 车身轮廓（侧面剪影：X=车长 0前→360后, Y=高） ---- */
+var PROFILE = [
+  [0,42],[2,68],[34,78],[104,80],[150,118],[225,120],
+  [258,92],[310,86],[356,84],[360,42]
+];
+function polyOf(pts,z){ return pts.map(function(p){return ptStr(P(p[0],p[1],z));}).join(' '); }
+function bodyBase(){
+  var zN=-44, zF=44;
+  var s='';
+  /* 地面（Y=0 平面投影为平行四边形） */
+  s+=quad(P(0,0,zN),P(360,0,zN),P(360,0,zF),P(0,0,zF), 'url(#gGround)', 1, null);
+  /* 车底阴影 */
+  s+='<ellipse cx="'+P(180,0,0)[0].toFixed(1)+'" cy="'+P(180,0,0)[1].toFixed(1)+'" rx="'+(SCALE*185).toFixed(1)+'" ry="16" fill="#000" opacity=".4"/>';
+  /* 远端车壳（淡，体现厚度） */
+  s+='<polygon points="'+polyOf(PROFILE,zF)+'" fill="#7fa0d8" fill-opacity=".07" stroke="rgba(150,185,240,.14)" stroke-width="1.5"/>';
+  /* 车顶/引擎盖/行李箱 拉伸壁（各边 z 近→远 扫掠） */
+  for (var i=0;i<PROFILE.length-1;i++){
+    var p=PROFILE[i], q=PROFILE[i+1];
+    if (p[1]<43 && q[1]<43) continue; /* 底边不画壁 */
+    s+=quad(P(p[0],p[1],zN),P(q[0],q[1],zN),P(q[0],q[1],zF),P(p[0],p[1],zF), '#9fb8e6', .10, null);
+  }
+  return s;
+}
+function shellGlass(){
+  var zN=-44;
+  var s='<g id="shellG">';
+  /* 车窗（贴在近端剪影的座舱玻璃） */
+  var win=[[142,86],[152,112],[222,114],[252,90]];
+  s+='<polygon points="'+polyOf(win,zN)+'" fill="#0c1426" fill-opacity=".55" stroke="rgba(150,190,255,.35)" stroke-width="1.5"/>';
+  s+='<line x1="'+P(196,86,zN)[0].toFixed(1)+'" y1="'+P(196,86,zN)[1].toFixed(1)+'" x2="'+P(200,114,zN)[0].toFixed(1)+'" y2="'+P(200,114,zN)[1].toFixed(1)+'" stroke="rgba(150,190,255,.3)" stroke-width="2"/>';
+  /* 近端车壳（玻璃感，半透明，可见内部） */
+  s+='<polygon id="shellNear" points="'+polyOf(PROFILE,zN)+'" fill="url(#gMetal)" fill-opacity=".14" stroke="rgba(180,210,255,.55)" stroke-width="2.5"/>';
+  /* 前格栅 + 大灯 + 尾灯（贴在近端轮廓） */
+  s+='<rect x="'+P(3,52,zN)[0].toFixed(1)+'" y="'+P(3,52,zN)[1].toFixed(1)+'" width="5" height="'+(SCALE*11).toFixed(1)+'" fill="#1b2233" fill-opacity=".7"/>';
+  s+='<circle cx="'+P(7,62,zN)[0].toFixed(1)+'" cy="'+P(7,62,zN)[1].toFixed(1)+'" r="4" fill="#ffe9a8" opacity=".9"/>';
+  s+='<circle cx="'+P(356,64,zN)[0].toFixed(1)+'" cy="'+P(356,64,zN)[1].toFixed(1)+'" r="4" fill="#ff6a5e" opacity=".9"/>';
+  s+='</g>';
+  return s;
+}
+
+/* ---- 单个部件（含幽灵槽） ---- */
+function buildPart(id){
+  var b=BOX[id].b, c=BOX[id].c;
+  var z0=b[2];
+  var solid=box3d(b,c);
+  var detail='';
+  if (id==='batt'){
+    var cells='';
+    for (var cx=128; cx<246; cx+=18){
+      cells+='<rect x="'+P(cx,42,z0)[0].toFixed(1)+'" y="'+P(cx,42,z0)[1].toFixed(1)+'" width="'+(SCALE*8).toFixed(1)+'" height="'+(SCALE*6).toFixed(1)+'" fill="#ff9f43" fill-opacity=".85"/>';
+    }
+    detail=cells;
+    /* 电量条贴在电池近端侧面上沿 */
+    detail+='<rect x="'+P(124,50.5,z0)[0].toFixed(1)+'" y="'+P(124,50.5,z0)[1].toFixed(1)+'" width="'+(SCALE*120).toFixed(1)+'" height="4" rx="2" fill="#16203a"/>';
+    detail+='<rect id="socBar" x="'+P(125,51,z0)[0].toFixed(1)+'" y="'+P(125,51,z0)[1].toFixed(1)+'" width="'+(SCALE*118).toFixed(1)+'" height="3" rx="1.5" fill="#41e08d"/>';
+  }
+  if (id==='gen'){
+    detail='<rect x="'+P(66,49,z0)[0].toFixed(1)+'" y="'+P(66,49,z0)[1].toFixed(1)+'" width="5" height="'+(SCALE*14).toFixed(1)+'" fill="url(#gCopper)"/>'
+         + '<rect x="'+P(75,49,z0)[0].toFixed(1)+'" y="'+P(75,49,z0)[1].toFixed(1)+'" width="5" height="'+(SCALE*14).toFixed(1)+'" fill="url(#gCopper)"/>';
+  }
+  if (id==='motor'){
+    detail='<path d="M '+ptStr(P(296,54,z0))+' q -12,-12 -26,-2" fill="none" stroke="#ff8c3a" stroke-width="3" stroke-linecap="round"/>';
+  }
+  var name={tank:'油箱',engine:'发动机',gen:'发电机',gearbox:'变速箱',batt:'动力电池',motor:'电动机'}[id];
+  var lbl=P((b[0]+b[3])/2, b[4]+7, 0);   /* 标签放在盒体上方，避免被车轮遮挡 */
+  return '<g id="p-'+id+'" class="part3d" style="cursor:pointer">'
+       + '<g id="g-'+id+'">'+solid+detail+'</g>'
+       + '<text x="'+lbl[0].toFixed(1)+'" y="'+lbl[1].toFixed(1)+'" text-anchor="middle" font-size="12" fill="#aebfd9">'+name+'</text>'
+       + '</g>'
+       + '<g id="gs-'+id+'" style="display:none">'+ghost3d(b)+'</g>';
+}
+
+/* ---- 车轮（3D 圆柱：远端轮圈露边体现厚度，近端圆面 + 旋转辐条） ---- */
+function buildWheel(id){
+  var w=WHEELS[id];
+  var R=SCALE*WR;
+  var near=P(w.x,WR,w.z), far=P(w.x,WR,-w.z);
+  var s='';
+  s+='<circle cx="'+n2(far[0])+'" cy="'+n2(far[1])+'" r="'+n2(R)+'" fill="#10141c" stroke="#232c3c" stroke-width="2"/>';
+  s+='<line x1="'+n2(near[0])+'" y1="'+n2(near[1]-R)+'" x2="'+n2(far[0])+'" y2="'+n2(far[1]-R)+'" stroke="#232c3c" stroke-width="2"/>';
+  s+='<line x1="'+n2(near[0])+'" y1="'+n2(near[1]+R)+'" x2="'+n2(far[0])+'" y2="'+n2(far[1]+R)+'" stroke="#232c3c" stroke-width="2"/>';
+  s+='<circle cx="'+n2(near[0])+'" cy="'+n2(near[1])+'" r="'+n2(R)+'" fill="#14181f" stroke="#2a3242" stroke-width="3"/>';
+  var hub=R*0.55;
+  var spokes='';
+  for (var k=0;k<6;k++){
+    var ang=k*60*Math.PI/180;
+    spokes+='<line x1="'+n2(near[0])+'" y1="'+n2(near[1])+'" x2="'+n2(near[0]+Math.sin(ang)*hub)+'" y2="'+n2(near[1]-Math.cos(ang)*hub)+'" stroke="#4b566b" stroke-width="3.5" stroke-linecap="round"/>';
+  }
+  s+='<g id="sp-'+id+'">'
+   + '<circle cx="'+n2(near[0])+'" cy="'+n2(near[1])+'" r="'+n2(hub)+'" fill="url(#gMetal)" stroke="#39424f" stroke-width="2"/>'
+   + spokes + '</g>';
+  s+='<circle cx="'+n2(near[0])+'" cy="'+n2(near[1])+'" r="'+n2(R*0.16)+'" fill="#39424f"/>';
+  return s;
+}
+
+/* ---- 能量流（3D 折线 + 辉光虚线，画在部件之上保证可见） ---- */
+function buildFlows(){
+  var c=centers();
+  var defs=[
+    ['flowY','var(--y)',[c.tank,c.eng,c.gen]],
+    ['flowB','var(--b)',[c.gen,c.batt]],
+    ['flowG','var(--g)',[c.batt,c.mot,c.rw]],
+    ['flowR','var(--r)',[c.eng,c.gb,c.fw]]
+  ];
+  var s='<g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#fGlow)">';
+  for (var i=0;i<defs.length;i++){
+    var d=defs[i];
+    s+='<path id="'+d[0]+'" class="fl" d="M '+d[2].map(ptStr).join(' L ')+'" stroke="'+d[1]+'" stroke-width="4" stroke-dasharray="10 13" opacity="0"/>';
+  }
+  s+='</g>';
+  return s;
+}
+
+/* ---- 标注 ---- */
+function buildLabels(){
+  var f=P(24,106,-44), rr=P(342,106,-44), mid=P(185,14,-44);
+  return '<text x="'+n2(f[0])+'" y="'+n2(f[1])+'" text-anchor="middle" font-size="14" font-weight="700" fill="#ffd27a">车头</text>'
+       + '<text x="'+n2(rr[0])+'" y="'+n2(rr[1])+'" text-anchor="middle" font-size="14" font-weight="700" fill="#9fb6e8">车尾</text>'
+       + '<text x="'+n2(mid[0])+'" y="'+n2(mid[1])+'" text-anchor="middle" font-size="13" font-weight="600" fill="#bcd4f5">前进方向</text>'
+       + '<line x1="'+n2(mid[0]+40)+'" y1="'+n2(mid[1]+13)+'" x2="'+n2(mid[0]-40)+'" y2="'+n2(mid[1]+13)+'" stroke="#7fd0ff" stroke-width="3.5" stroke-linecap="round" marker-end="url(#ah)"/>';
+}
+
+/* ---- 组装世界：底座 → 部件 → 车轮 → 能量流 → 玻璃壳 → 标注 ---- */
+function buildWorld(){
+  var s='';
+  s+=bodyBase();
+  ['tank','engine','gen','gearbox','batt','motor'].forEach(function(id){ s+=buildPart(id); });
+  s+=buildWheel('fw')+buildWheel('rw');
+  s+=buildFlows();
+  s+=shellGlass();
+  s+=buildLabels();
+  $('world').innerHTML=s;
+}
+
+/* ===== 状态与逻辑 ===== */
+var state = { tank:true, engine:true, gen:true, gearbox:true, batt:true, motor:true };
+var running=false, shellOn=true, braking=false;
 var cur = judge(state);
-var spinF = 0, spinR = 0, dashOff = 0, soc = 88;
+var spinF=0, spinR=0, dashOff=0, soc=88;
 
 var $ = function(id){ return document.getElementById(id); };
 
-/* ---------- 部件卡片 ---------- */
 var PART_ICON = {
   tank:  '<rect x="3" y="7" width="28" height="13" rx="5" fill="#48536b"/><rect x="6" y="12" width="22" height="6" rx="2" fill="#f6c445" opacity=".4"/>',
   engine:'<rect x="6" y="5" width="22" height="14" rx="3" fill="#98a4b6"/><rect x="9" y="2" width="16" height="4" rx="1.5" fill="#aab5c5"/><circle cx="7" cy="19" r="3" fill="#77839a"/>',
   gen:   '<rect x="8" y="6" width="18" height="13" rx="4" fill="#98a4b6"/><rect x="11" y="8" width="3.5" height="9" fill="#f2ac62"/><rect x="17" y="8" width="3.5" height="9" fill="#f2ac62"/>',
-  shaft: '<line x1="5" y1="18" x2="29" y2="8" stroke="#7c8798" stroke-width="4" stroke-linecap="round"/><circle cx="5" cy="18" r="3" fill="#98a4b6"/><circle cx="29" cy="8" r="3" fill="#98a4b6"/>',
+  gearbox:'<rect x="7" y="6" width="20" height="13" rx="3" fill="#98a4b6"/><circle cx="13" cy="12" r="3" fill="#77839a"/><circle cx="21" cy="12" r="2.5" fill="#77839a"/>',
   batt:  '<rect x="4" y="7" width="26" height="12" rx="2.5" fill="#232b3d" stroke="#46536e"/><rect x="7" y="9" width="4" height="8" fill="#ff9f43"/><rect x="14" y="9" width="4" height="8" fill="#ff9f43"/><rect x="21" y="9" width="4" height="8" fill="#ff9f43"/>',
   motor: '<rect x="8" y="6" width="18" height="13" rx="5" fill="#98a4b6"/><line x1="11" y1="10" x2="23" y2="10" stroke="#77839a" stroke-width="1.5"/><line x1="11" y1="14" x2="23" y2="14" stroke="#77839a" stroke-width="1.5"/>'
 };
 function buildParts(){
-  var html = '';
+  var html='';
   for (var i=0;i<PARTS.length;i++){
-    var p = PARTS[i];
-    html += '<div class="pt" data-part="'+p.id+'" title="'+p.desc+'">'
-         +  '<svg viewBox="0 0 34 24">'+PART_ICON[p.id]+'</svg>'
-         +  '<div><div class="nm">'+p.name+'</div><div class="st"></div></div></div>';
+    var p=PARTS[i];
+    html+='<div class="pt" data-part="'+p.id+'" title="'+p.desc+'">'
+        + '<svg viewBox="0 0 34 24">'+PART_ICON[p.id]+'</svg>'
+        + '<div><div class="nm">'+p.name+'</div><div class="st"></div></div></div>';
   }
-  $('partsGrid').innerHTML = html;
-  var cards = document.querySelectorAll('.pt');
+  $('partsGrid').innerHTML=html;
+  var cards=document.querySelectorAll('.pt');
   for (var j=0;j<cards.length;j++){
-    cards[j].addEventListener('click', function(){
-      toggle(this.getAttribute('data-part'));
-    });
+    cards[j].addEventListener('click', function(){ toggle(this.getAttribute('data-part')); });
   }
 }
 
-/* ---------- 状态切换 ---------- */
 function toggle(id){
-  state[id] = !state[id];
-  if (running){ cur = judge(state); if (cur.key==='custom'||cur.key==='empty') stop(); }
+  state[id]=!state[id];
+  if (running){ cur=judge(state); if (cur.key==='custom'||cur.key==='empty') stop(); }
   render();
 }
-/* ---------- 启停 ---------- */
 function start(){
-  cur = judge(state);
-  if (cur.key!=='ice'&&cur.key!=='erev'&&cur.key!=='phev'&&cur.key!=='ev') return;
-  running = true;
-  $('btnRun').textContent = '■ 停止';
-  $('btnRun').classList.add('stop');
+  cur=judge(state);
+  if (['ice','erev','phev','ev'].indexOf(cur.key)<0) return;
+  running=true; braking=false;
+  $('btnRun').textContent='■ 停止'; $('btnRun').classList.add('stop');
   render();
 }
 function stop(){
-  running = false;
-  $('btnRun').textContent = '▶ 启动';
-  $('btnRun').classList.remove('stop');
+  running=false; braking=false;
+  $('btnRun').textContent='▶ 启动'; $('btnRun').classList.remove('stop');
+  $('btnBrake').classList.remove('on');
+  $('btnBrake').textContent='⚡ 刹车 / 动能回收';
   render();
 }
 
-/* ---------- 渲染 ---------- */
-var PIPE_OF = {
-  tank:'pipeFuel', engine:'pipeEG', gen:'pipeGB', batt:'pipeBM', motor:'pipeRA', shaft:'pipeFA'
-};
 function render(){
-  cur = judge(state);
-  /* 部件实体 / 幽灵槽 */
+  cur=judge(state);
   for (var i=0;i<PARTS.length;i++){
-    var p = PARTS[i];
-    $('p-'+p.id).style.display  = state[p.id] ? '' : 'none';
+    var p=PARTS[i];
+    $('p-'+p.id).style.display = state[p.id] ? '' : 'none';
     $('gs-'+p.id).style.display = state[p.id] ? 'none' : '';
   }
-  /* 管路底色：两端部件齐备即显示 */
-  $('pipeFuel').style.display = (state.tank&&state.engine) ? '' : 'none';
-  $('pipeEG').style.display   = (state.engine&&state.gen)  ? '' : 'none';
-  $('pipeGB').style.display   = (state.gen&&state.batt)    ? '' : 'none';
-  $('pipeBM').style.display   = (state.batt&&state.motor)  ? '' : 'none';
-  $('pipeRA').style.display   = state.motor ? '' : 'none';
-  $('pipeFA').style.display   = (state.shaft&&state.engine) ? '' : 'none';
+  var mode=MODES[cur.key];
+  var flowIds=['flowY','flowB','flowG','flowR'], pathKeys=['Y','B','G','R'];
+  var regen = braking && state.batt && state.motor;
+  for (var f=0;f<4;f++){
+    var on = running && !braking && mode && mode.paths.indexOf(pathKeys[f])>=0;
+    $(flowIds[f]).style.opacity = on ? 1 : 0;
+  }
+  if (regen){ $('flowG').style.opacity=.9; }
+  $('flowG').setAttribute('stroke', regen ? 'var(--k)' : 'var(--g)');
+  /* 亏电时绿路调暗（电机已无能量输入） */
+  if (running && !braking && mode && mode.paths.indexOf('G')>=0 && soc<=6){
+    $('flowG').style.opacity=.22;
+  }
 
-  /* 部件卡片 */
-  var cards = document.querySelectorAll('.pt');
+  var cards=document.querySelectorAll('.pt');
   for (var j=0;j<cards.length;j++){
-    var id = cards[j].getAttribute('data-part');
+    var id=cards[j].getAttribute('data-part');
     cards[j].classList.toggle('off', !state[id]);
     cards[j].querySelector('.st').textContent = state[id] ? '已安装' : '未安装';
   }
 
-  /* 能量流显隐 */
-  var mode = MODES[cur.key];
-  var flowIds = ['flowY','flowB','flowG','flowR'];
-  var pathKeys = ['Y','B','G','R'];
-  for (var f=0;f<4;f++){
-    var on = running && mode && mode.paths.indexOf(pathKeys[f])>=0;
-    $(flowIds[f]).style.opacity = on ? 1 : 0;
-  }
-
-  /* 效率角标 */
   if (cur.key==='custom'||cur.key==='empty'){
     $('effMode').textContent = cur.key==='empty' ? '整车未成形' : '自定义组装中';
-    $('effVal').textContent = '—';
-    $('effVal').style.color = '#8fa2bf';
-    $('effChain').textContent = cur.hint || '';
+    $('effVal').textContent='—'; $('effVal').style.color='#8fa2bf';
+    $('effChain').textContent = cur.hint||'';
   } else {
     $('effMode').textContent = mode.name;
-    $('effVal').innerHTML = running ? (mode.eff + '<span>%</span>') : '—';
+    $('effVal').innerHTML = running ? (mode.eff+'<span>%</span>') : '—';
     $('effVal').style.color = running ? '#5ee6a0' : '#8fa2bf';
-    $('effChain').textContent = mode.chain + '（' + mode.nconv + ' 次转化）';
+    $('effChain').textContent = mode.chain+'（'+mode.nconv+' 次转化）';
   }
 
-  /* 信息面板 */
-  var h = '';
+  var h='';
   if (cur.key==='custom'||cur.key==='empty'){
-    h += '<div class="row"><span class="badge" style="background:rgba(246,196,69,.14);border-color:rgba(246,196,69,.4);color:#efdCA8">'
-      +  (cur.key==='empty'?'未成形':'组装中') + '</span></div>'
-      +  '<div class="hint">'+cur.hint+'</div>';
+    h+='<div class="row"><span class="badge" style="background:rgba(246,196,69,.14);border-color:rgba(246,196,69,.4);color:#efdca8">'
+      +(cur.key==='empty'?'未成形':'组装中')+'</span></div><div class="hint">'+cur.hint+'</div>';
   } else {
-    h += '<div class="row"><span class="badge">'+mode.name+'</span>'
-      +  '<span style="color:var(--dim);font-size:11px;margin-top:4px">总效率约 '
-      +  mode.eff + '%（' + mode.nconv + ' 次转化）</span></div>';
+    h+='<div class="row"><span class="badge">'+mode.name+'</span>'
+      +'<span style="color:var(--dim);font-size:11px;margin-top:4px">总效率约 '+mode.eff+'%（'+mode.nconv+' 次转化）</span></div>';
     for (var r=0;r<mode.rows.length;r++){
-      var c = {Y:'var(--y)',B:'var(--b)',G:'var(--g)',R:'var(--r)'}[mode.rows[r][0]];
-      h += '<div class="row"><span class="dot" style="background:'+c+'"></span><span>'+mode.rows[r][1]+'</span></div>';
+      var cc={'Y':'var(--y)','B':'var(--b)','G':'var(--g)','R':'var(--r)'}[mode.rows[r][0]];
+      h+='<div class="row"><span class="dot" style="background:'+cc+'"></span><span>'+mode.rows[r][1]+'</span></div>';
     }
-    h += '<div class="qa">【预设答案】'+mode.qa+'</div>';
+    h+='<div class="qa">【预设答案】'+mode.qa+'</div>';
   }
-  $('infoBody').innerHTML = h;
+  if (running && braking && state.batt && state.motor){
+    h+='<div class="warn" style="background:rgba(55,224,216,.10);border-color:rgba(55,224,216,.35);color:#9ff0ea">⚡ 动能回收中：后轮 → 电动机 → 电池。制动时的机械能经电机转化为电能回充，电量回升。</div>';
+  }
+  if (running && soc<=6 && mode && mode.paths.indexOf('G')>=0){
+    h+='<div class="warn">⚠ 电量耗尽：电动机失去动力，依赖电池驱动的车轮已停止转动。</div>';
+  }
+  $('infoBody').innerHTML=h;
 }
 
-/* ---------- 动画循环 ---------- */
-var tPrev = 0;
+/* ---- 动画 ---- */
+var tPrev=0, warnDead=false;
 function frame(ts){
-  var dt = Math.min((ts - tPrev)/1000, .05); tPrev = ts;
+  var dt=Math.max(0, Math.min((ts-tPrev)/1000,.05)); tPrev=ts;
+  var mode=MODES[cur.key];
+  var elecAlive = soc>6;
+  /* 亏电警告：状态翻转时才重渲染（避免每帧 innerHTML） */
+  var dead = running && !braking && soc<=6 && mode && mode.paths.indexOf('G')>=0;
+  if (dead!==warnDead){ warnDead=dead; render(); }
   if (running){
-    dashOff -= dt * 85;
-    var mode = MODES[cur.key];
-    if (mode){
-      /* 车头在左，前进＝向左，车轮逆时针（负向）转动 */
-      if (mode.paths.indexOf('R')>=0) spinF -= dt * 240;
-      if (mode.paths.indexOf('G')>=0) spinR -= dt * 290;
+    if (braking){
+      /* 动能回收：车轮减速、绿路反向流动、电量回升 */
+      dashOff += dt*85;
+      spinF *= Math.max(0, 1-dt*1.6);
+      spinR *= Math.max(0, 1-dt*1.6);
+      if (state.batt && state.motor) soc=Math.min(100, soc+dt*14);
+    } else {
+      dashOff -= dt*85;
+      if (mode){
+        if (mode.paths.indexOf('R')>=0) spinF -= dt*240;                 /* 发动机直驱前轮 */
+        if (mode.paths.indexOf('G')>=0 && elecAlive) spinR -= dt*290;    /* 电机驱后轮（亏电即停） */
+      }
+      var charges=(state.gen&&state.engine&&state.tank);
+      var drains = mode && mode.paths.indexOf('G')>=0;
+      if (drains && !charges) soc=Math.max(0, soc-dt*9);
+      else if (charges) soc=Math.min(100, soc+dt*7);
     }
-    /* 电量单调变化：纯电放电下降；有发电机充电时回升 */
-    var charges = (state.gen && state.engine && state.tank);
-    var drains  = mode && mode.paths.indexOf('G')>=0;
-    if (drains && !charges) soc = Math.max(6, soc - dt*9);
-    else if (charges)       soc = Math.min(100, soc + dt*7);
   }
-  $('spF').setAttribute('transform', 'rotate('+spinF+' 205 334)');
-  $('spR').setAttribute('transform', 'rotate('+spinR+' 760 334)');
-  var fl = document.querySelectorAll('.fl');
-  for (var i=0;i<fl.length;i++) fl[i].setAttribute('stroke-dashoffset', dashOff);
+  /* 车轮旋转（圆面在 X-Y 平面，投影后仍为绕圆心旋转） */
+  var fwC=P(95,WR,-30), rwC=P(285,WR,-30);
+  $('sp-fw').setAttribute('transform','rotate('+spinF.toFixed(1)+' '+n2(fwC[0])+' '+n2(fwC[1])+')');
+  $('sp-rw').setAttribute('transform','rotate('+spinR.toFixed(1)+' '+n2(rwC[0])+' '+n2(rwC[1])+')');
+  var fl=document.querySelectorAll('.fl');
+  for (var i=0;i<fl.length;i++) fl[i].setAttribute('stroke-dashoffset', dashOff.toFixed(1));
   /* 发动机振动 */
-  var vib = (running && state.engine) ? ('translate(' + (Math.sin(ts*.055)*1.3).toFixed(2) + ',' + (Math.cos(ts*.08)*0.9).toFixed(2) + ')') : '';
+  var vib=(running&&state.engine)?('translate('+(Math.sin(ts*.055)*1.3).toFixed(2)+','+(Math.cos(ts*.08)*0.9).toFixed(2)+')'):'';
   $('g-engine').setAttribute('transform', vib);
-  /* 电池电量条（随工况单调变化，不来回伸缩） */
-  var sw = Math.max(4, 118*soc/100);
+  /* 电量条（单调变化，不伸缩） */
+  var sw=Math.max(2, SCALE*118*soc/100);
   $('socBar').setAttribute('width', sw.toFixed(1));
-  $('socBar').setAttribute('fill', soc>30 ? '#41e08d' : (soc>15 ? '#f6c445' : '#ff5f57'));
+  $('socBar').setAttribute('fill', soc>30?'#41e08d':(soc>15?'#f6c445':'#ff5f57'));
   requestAnimationFrame(frame);
 }
 
-/* ---------- 事件 ---------- */
-$('btnRun').addEventListener('click', function(){ running ? stop() : start(); });
+/* ---- 事件 ---- */
+$('btnRun').addEventListener('click', function(){ running?stop():start(); });
+$('btnBrake').addEventListener('click', function(){
+  if (!running) return;
+  braking=!braking;
+  this.classList.toggle('on', braking);
+  this.textContent = braking ? '⚡ 松刹 / 恢复' : '⚡ 刹车 / 动能回收';
+  render();
+});
 $('btnShell').addEventListener('click', function(){
-  shellOn = !shellOn;
-  $('shell').style.opacity = shellOn ? 1 : .06;
+  shellOn=!shellOn;
+  var g=$('shellG');
+  if (g) g.style.opacity = shellOn ? 1 : .12;
   this.textContent = shellOn ? '外壳：透视中' : '外壳：已隐藏';
 });
-var p3d = document.querySelectorAll('.part3d');
+var p3d=document.querySelectorAll('.part3d');
 for (var d=0;d<p3d.length;d++){
-  p3d[d].addEventListener('click', function(){
-    toggle(this.id.replace('p-',''));
-  });
+  p3d[d].addEventListener('click', function(){ toggle(this.id.replace('p-','')); });
 }
 
+buildWorld();
 buildParts();
 render();
 requestAnimationFrame(frame);
